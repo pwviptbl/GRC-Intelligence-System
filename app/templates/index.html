@@ -162,6 +162,39 @@
       font-size: 16px;
     }
 
+    .nav-folder {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-2);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 16px 0 8px 0;
+      padding: 0 10px;
+    }
+
+    .nav-folder:hover {
+      color: var(--text-1);
+    }
+
+    .nav-submenu-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-left: 12px;
+      border-left: 1px solid var(--border);
+      padding-left: 8px;
+    }
+    
+    .nav-btn.submenu {
+      font-size: 13px;
+      padding: 8px 10px;
+      height: 38px;
+    }
+
     .sidebar-footer {
       padding: 16px 20px;
       border-top: 1px solid var(--border);
@@ -822,22 +855,25 @@
         <button class="nav-btn" :class="{active: view==='chat'}" @click="view='chat'" id="nav-chat">
           <span class="icon">🤖</span> Chat IA
         </button>
-        <div class="nav-label">Dados</div>
-        <button class="nav-btn" :class="{active: view==='clientes'}" @click="switchView('clientes')" id="nav-clientes">
-          <span class="icon">🏢</span> Clientes
-        </button>
-        <button class="nav-btn" :class="{active: view==='softwares'}" @click="switchView('softwares')"
-          id="nav-softwares">
-          <span class="icon">💾</span> Softwares
-        </button>
-        <button class="nav-btn" :class="{active: view==='instancias'}" @click="switchView('instancias')"
-          id="nav-instancias">
-          <span class="icon">🔗</span> Instâncias
-        </button>
-        <button class="nav-btn" :class="{active: view==='relatorios'}" @click="switchView('relatorios')"
-          id="nav-relatorios">
-          <span class="icon">📊</span> Relatório
-        </button>
+        <div class="nav-folder" @click="toggleMenuAtivos" style="margin-top: 20px;">
+          <span style="display: flex; align-items: center; gap: 6px;"><span class="icon" style="font-size: 14px;">📁</span> Ativos</span>
+          <span style="font-size: 10px; color: var(--text-3);">{{ menuAtivosAberto ? '▼' : '►' }}</span>
+        </div>
+        
+        <div class="nav-submenu-group" v-show="menuAtivosAberto">
+          <button class="nav-btn submenu" :class="{active: view==='clientes'}" @click="switchView('clientes')" id="nav-clientes">
+            <span class="icon" style="opacity: 0.8;">🏢</span> Clientes
+          </button>
+          <button class="nav-btn submenu" :class="{active: view==='softwares'}" @click="switchView('softwares')" id="nav-softwares">
+            <span class="icon" style="opacity: 0.8;">💾</span> Softwares
+          </button>
+          <button class="nav-btn submenu" :class="{active: view==='instancias'}" @click="switchView('instancias')" id="nav-instancias">
+            <span class="icon" style="opacity: 0.8;">🔗</span> Instâncias
+          </button>
+          <button class="nav-btn submenu" :class="{active: view==='relatorios'}" @click="switchView('relatorios')" id="nav-relatorios">
+            <span class="icon" style="opacity: 0.8;">📊</span> Relatório
+          </button>
+        </div>
       </nav>
       <div class="sidebar-footer">
         <div><span class="status-dot"></span>API Conectada</div>
@@ -1260,6 +1296,7 @@
 
         const form = ref({ nome: '', tecnologia: '', git_url: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' });
         const filtrosRelatorio = ref({ cliente: '', software: '', branch: '' });
+        const menuAtivosAberto = ref(true);
         
         const clienteSelecionado = ref(null);
         const instanciasClienteSelecionado = ref([]);
@@ -1457,13 +1494,17 @@
           modal.value = 'instancia';
         }
 
+        function toggleMenuAtivos() {
+          menuAtivosAberto.value = !menuAtivosAberto.value;
+        }
+
         return {
           view, modal, loading, clientes, softwares, instancias, userInput, chatBox,
           messages, hints, form, viewTitles, viewDesc, viewBadge, clientesAtivos,
-          clienteSelecionado, instanciasClienteSelecionado, filtrosRelatorio, branchesUnicas, instanciasFiltradas,
+          clienteSelecionado, instanciasClienteSelecionado, filtrosRelatorio, branchesUnicas, instanciasFiltradas, menuAtivosAberto,
           renderMd, tipoLabel, fmtDate, openModal, switchView, sendMessage,
           deletar, saveCliente, saveSoftware, saveInstancia,
-          verDetalhesCliente, irParaNovaInstancia, getTechParaSoftware, exportarCSV, exportarPDF
+          verDetalhesCliente, irParaNovaInstancia, getTechParaSoftware, exportarCSV, exportarPDF, toggleMenuAtivos
         };
       }
     }).mount('#app');
