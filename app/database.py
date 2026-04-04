@@ -72,4 +72,47 @@ def init_db():
             )
         """)
 
+        # ── Módulo Governança ──────────────────────────────────────────────────
+
+        # Tabela de políticas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS politicas (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo       TEXT NOT NULL,
+                categoria    TEXT NOT NULL,
+                versao       TEXT NOT NULL DEFAULT '1.0',
+                status       TEXT NOT NULL DEFAULT 'rascunho',
+                conteudo     TEXT NOT NULL DEFAULT '',
+                criado_em    DATETIME DEFAULT CURRENT_TIMESTAMP,
+                atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Tabela de procedimentos
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS procedimentos (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo       TEXT NOT NULL,
+                tipo         TEXT NOT NULL,
+                status       TEXT NOT NULL DEFAULT 'rascunho',
+                criado_em    DATETIME DEFAULT CURRENT_TIMESTAMP,
+                atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Tabela de etapas dos procedimentos
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS procedimento_etapas (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                procedimento_id  INTEGER NOT NULL,
+                ordem            INTEGER NOT NULL DEFAULT 1,
+                nome_etapa       TEXT NOT NULL,
+                responsavel      TEXT NOT NULL DEFAULT '',
+                descricao        TEXT NOT NULL DEFAULT '',
+                sla              TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (procedimento_id) REFERENCES procedimentos(id) ON DELETE CASCADE
+            )
+        """)
+
     print(f"[DB] Banco de dados inicializado em: {DB_PATH}")
+

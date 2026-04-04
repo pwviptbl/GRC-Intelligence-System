@@ -14,6 +14,9 @@ from app.routers.clientes import clientes_bp
 from app.routers.softwares import softwares_bp
 from app.routers.instancias import instancias_bp
 from app.routers.chat import chat_bp
+from app.routers.politicas import politicas_bp
+from app.routers.procedimentos import procedimentos_bp
+from app.routers.governanca import governanca_bp
 
 # ─── Inicialização da Aplicação ───────────────────────────────────────────────
 
@@ -31,6 +34,9 @@ def create_app() -> Flask:
     app.register_blueprint(softwares_bp)
     app.register_blueprint(instancias_bp)
     app.register_blueprint(chat_bp)
+    app.register_blueprint(politicas_bp)
+    app.register_blueprint(procedimentos_bp)
+    app.register_blueprint(governanca_bp)
 
     # Serve o frontend Vue.js na rota raiz
     @app.route("/")

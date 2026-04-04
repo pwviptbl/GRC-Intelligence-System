@@ -304,3 +304,46 @@ def processar_mensagem(mensagem: str) -> dict:
             "resposta": f"❌ Erro ao processar mensagem: `{e}`",
             "tipo": "erro"
         }
+
+
+# ─── Funções de Governança ────────────────────────────────────────────────────
+
+def processar_governanca(prompt: str) -> str:
+    """
+    Envia um prompt ao Gemini sem system prompt de GRC e retorna texto puro.
+    Usado para geração de documentos de políticas em Markdown.
+    """
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key == "sua_chave_api_aqui":
+            return "⚠️ GEMINI_API_KEY não configurada."
+        genai.configure(api_key=api_key)
+        modelo = genai.GenerativeModel(model_name="gemini-2.5-flash-lite")
+        result = modelo.generate_content(prompt)
+        return result.text.strip()
+    except Exception as e:
+        return f"❌ Erro ao gerar documento: {e}"
+
+
+def processar_governanca_json(prompt: str):
+    """
+    Envia um prompt ao Gemini e tenta parsear a resposta como JSON.
+    Usado para listas de perguntas, etapas de procedimentos e análise de lacunas.
+    Retorna o objeto Python parseado, ou dict de erro.
+    """
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key == "sua_chave_api_aqui":
+            return {"erro": "GEMINI_API_KEY não configurada."}
+        genai.configure(api_key=api_key)
+        modelo = genai.GenerativeModel(model_name="gemini-2.5-flash-lite")
+        result = modelo.generate_content(prompt)
+        texto = result.text.strip()
+        # Remove blocos de código markdown se presentes
+        texto_limpo = re.sub(r"```(?:json)?\s*", "", texto).replace("```", "").strip()
+        return json.loads(texto_limpo)
+    except json.JSONDecodeError:
+        return {"erro": "A IA não retornou um JSON válido.", "raw": texto}
+    except Exception as e:
+        return {"erro": str(e)}
+

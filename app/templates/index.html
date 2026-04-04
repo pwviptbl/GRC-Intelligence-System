@@ -874,6 +874,25 @@
             <span class="icon" style="opacity: 0.8;">📊</span> Relatório
           </button>
         </div>
+
+        <div class="nav-folder" @click="toggleMenuGovernanca" style="margin-top: 8px;">
+          <span style="display: flex; align-items: center; gap: 6px;"><span class="icon" style="font-size: 14px;">📜</span> Governança</span>
+          <span style="font-size: 10px; color: var(--text-3);">{{ menuGovernancaAberto ? '▼' : '►' }}</span>
+        </div>
+        <div class="nav-submenu-group" v-show="menuGovernancaAberto">
+          <button class="nav-btn submenu" :class="{active: view==='politicas'}" @click="switchView('politicas')" id="nav-politicas">
+            <span class="icon" style="opacity: 0.8;">📄</span> Políticas
+          </button>
+          <button class="nav-btn submenu" :class="{active: view==='procedimentos'}" @click="switchView('procedimentos')" id="nav-procedimentos">
+            <span class="icon" style="opacity: 0.8;">🔄</span> Procedimentos
+          </button>
+          <button class="nav-btn submenu" :class="{active: view==='lacunas'}" @click="switchView('lacunas')" id="nav-lacunas">
+            <span class="icon" style="opacity: 0.8;">🔍</span> Análise de Lacunas
+          </button>
+          <button class="nav-btn submenu" :class="{active: view==='relatorio_gov'}" @click="switchView('relatorio_gov')" id="nav-relatorio-gov">
+            <span class="icon" style="opacity: 0.8;">📊</span> Relatórios
+          </button>
+        </div>
       </nav>
       <div class="sidebar-footer">
         <div><span class="status-dot"></span>API Conectada</div>
@@ -1130,8 +1149,515 @@
           </div>
         </div>
 
+        <!-- VIEW: POLÍTICAS -->
+        <div class="view" :class="{active: view==='politicas'}">
+          <div class="table-view">
+            <div class="table-header">
+              <h3>📄 Políticas Corporativas</h3>
+              <div style="display:flex;gap:8px;">
+                <button class="btn-add" @click="openModal('politica_manual')" id="btn-add-politica">+ Nova Manual</button>
+                <button class="btn-add" @click="openModal('politica_ia')" style="background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.3);color:var(--cyan)">+ Criar com IA</button>
+              </div>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="politicas.length">
+                <thead>
+                  <tr>
+                    <th>Título</th><th>Categoria</th><th>Versão</th><th>Status</th><th>Atualizado</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in politicas" :key="p.id">
+                    <td style="font-weight:500;color:var(--text-1)">{{ p.titulo }}</td>
+                    <td><span class="tech-badge">{{ p.categoria }}</span></td>
+                    <td style="font-family:var(--mono);font-size:11px">v{{ p.versao }}</td>
+                    <td><span class="badge" :style="statusStylePolitica(p.status)">{{ statusLabelPolitica(p.status) }}</span></td>
+                    <td style="color:var(--text-3);font-size:12px">{{ fmtDate(p.atualizado_em) }}</td>
+                    <td style="display:flex;gap:4px">
+                      <button class="btn-del" @click="editarPolitica(p)" style="color:var(--cyan)" title="Editar">✏️</button>
+                      <button class="btn-del" @click="exportarPoliticaPDF(p)" style="color:var(--yellow)" title="Exportar PDF">📄</button>
+                      <button class="btn-del" @click="deletar('politicas', p.id)" title="Remover">🗑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">📄</div>
+                <p>Nenhuma política cadastrada. Crie manualmente ou use a IA para gerar um rascunho.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: PROCEDIMENTOS -->
+        <div class="view" :class="{active: view==='procedimentos'}">
+          <div class="table-view">
+            <div class="table-header">
+              <h3>🔄 Procedimentos Operacionais</h3>
+              <div style="display:flex;gap:8px;">
+                <button class="btn-add" @click="openModal('procedimento_manual')" id="btn-add-procedimento">+ Novo Manual</button>
+                <button class="btn-add" @click="openModal('procedimento_ia')" style="background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.3);color:var(--cyan)">+ Criar com IA</button>
+              </div>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="procedimentos.length">
+                <thead>
+                  <tr>
+                    <th>Título</th><th>Tipo</th><th>Status</th><th>Etapas</th><th>Atualizado</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="p in procedimentos" :key="p.id">
+                    <td style="font-weight:500;color:var(--text-1)">{{ p.titulo }}</td>
+                    <td><span class="branch-badge">{{ p.tipo }}</span></td>
+                    <td><span class="badge" :style="statusStylePolitica(p.status)">{{ statusLabelPolitica(p.status) }}</span></td>
+                    <td style="color:var(--text-3);font-size:12px">{{ p.etapas?.length || 0 }} etapas</td>
+                    <td style="color:var(--text-3);font-size:12px">{{ fmtDate(p.atualizado_em) }}</td>
+                    <td style="display:flex;gap:4px">
+                      <button class="btn-del" @click="editarProcedimento(p)" style="color:var(--cyan)" title="Editar">✏️</button>
+                      <button class="btn-del" @click="exportarProcedimentoPDF(p)" style="color:var(--yellow)" title="Exportar PDF">📄</button>
+                      <button class="btn-del" @click="deletar('procedimentos', p.id)" title="Remover">🗑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">🔄</div>
+                <p>Nenhum procedimento cadastrado. Crie manualmente ou use a IA para gerar as etapas.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: LACUNAS -->
+        <div class="view" :class="{active: view==='lacunas'}">
+          <div class="table-view">
+            <div class="table-header">
+              <h3>🔍 Análise de Lacunas em Governança</h3>
+              <button class="btn-add" @click="analisarLacunas" :disabled="analisandoLacunas"
+                style="background:linear-gradient(135deg,var(--cyan-dim),#0077aa);color:#000;font-weight:700;border:none;">
+                {{ analisandoLacunas ? 'Analisando...' : '🧠 Analisar minha cobertura' }}
+              </button>
+            </div>
+
+            <div v-if="!resultadoLacunas && !analisandoLacunas" class="empty-state">
+              <div class="empty-icon">🔍</div>
+              <p>Clique em "Analisar minha cobertura" para que a IA compare o que você tem com as boas práticas de GRC.</p>
+            </div>
+
+            <div v-if="analisandoLacunas" class="empty-state">
+              <div class="typing-indicator" style="justify-content:center;margin-bottom:12px">
+                <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+              </div>
+              <p>A IA está analisando seus documentos...</p>
+            </div>
+
+            <div v-if="resultadoLacunas">
+              <!-- Coberto -->
+              <div v-if="resultadoLacunas.coberto?.length" style="margin-bottom:20px">
+                <h4 style="color:var(--green);margin-bottom:10px">✅ Coberto ({{ resultadoLacunas.coberto.length }})</h4>
+                <div class="table-card">
+                  <table class="data-table">
+                    <thead><tr><th>Tipo</th><th>Título</th><th>Observação</th></tr></thead>
+                    <tbody>
+                      <tr v-for="(i,k) in resultadoLacunas.coberto" :key="k">
+                        <td><span class="tech-badge">{{ i.tipo }}</span></td>
+                        <td style="font-weight:500;color:var(--text-1)">{{ i.titulo }}</td>
+                        <td style="color:var(--text-3);font-size:12px">{{ i.observacao }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <!-- Incompleto -->
+              <div v-if="resultadoLacunas.incompleto?.length" style="margin-bottom:20px">
+                <h4 style="color:var(--yellow);margin-bottom:10px">⚠️ Incompleto / Em Rascunho ({{ resultadoLacunas.incompleto.length }})</h4>
+                <div class="table-card">
+                  <table class="data-table">
+                    <thead><tr><th>Tipo</th><th>Título</th><th>Observação</th><th></th></tr></thead>
+                    <tbody>
+                      <tr v-for="(i,k) in resultadoLacunas.incompleto" :key="k">
+                        <td><span class="tech-badge">{{ i.tipo }}</span></td>
+                        <td style="font-weight:500;color:var(--text-1)">{{ i.titulo }}</td>
+                        <td style="color:var(--text-3);font-size:12px">{{ i.observacao }}</td>
+                        <td><button class="btn-add" @click="switchView(i.tipo==='politica'?'politicas':'procedimentos')" style="font-size:10px;padding:4px 8px">Continuar</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <!-- Ausente -->
+              <div v-if="resultadoLacunas.ausente?.length">
+                <h4 style="color:var(--red);margin-bottom:10px">❌ Ausente ({{ resultadoLacunas.ausente.length }})</h4>
+                <div class="table-card">
+                  <table class="data-table">
+                    <thead><tr><th>Prioridade</th><th>Tipo</th><th>Título</th><th>Risco</th><th></th></tr></thead>
+                    <tbody>
+                      <tr v-for="(i,k) in resultadoLacunas.ausente" :key="k">
+                        <td><span :style="prioridadeStyle(i.prioridade)" class="badge">{{ i.prioridade }}</span></td>
+                        <td><span class="tech-badge">{{ i.tipo }}</span></td>
+                        <td style="font-weight:500;color:var(--text-1)">{{ i.titulo }}</td>
+                        <td style="color:var(--text-3);font-size:12px">{{ i.risco }}</td>
+                        <td><button class="btn-add" @click="criarApartirDeLacuna(i)" style="font-size:10px;padding:4px 8px">Criar agora</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: RELATÓRIO DE GOVERNANÇA -->
+        <div class="view" :class="{active: view==='relatorio_gov'}">
+          <div class="table-view">
+
+            <!-- Filtros e botões de exportação -->
+            <div class="table-header" style="flex-wrap:wrap;gap:12px;margin-bottom:20px">
+              <h3 style="width:100%">📊 Relatório Consolidado de Governança</h3>
+              <div style="display:flex;gap:10px;flex:1;flex-wrap:wrap">
+                <select class="form-select" v-model="filtroGov.tipo" style="width:auto">
+                  <option value="">Todos os Tipos</option>
+                  <option value="politica">Políticas</option>
+                  <option value="procedimento">Procedimentos</option>
+                </select>
+                <select class="form-select" v-model="filtroGov.status" style="width:auto">
+                  <option value="">Todos os Status</option>
+                  <option value="rascunho">Rascunho</option>
+                  <option value="vigente">Vigente</option>
+                  <option value="em_revisao">Em Revisão</option>
+                  <option value="obsoleta">Obsoleta</option>
+                </select>
+                <select class="form-select" v-model="filtroGov.categoria" style="width:auto">
+                  <option value="">Todas as Categorias</option>
+                  <option v-for="cat in categoriasUnicas" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-add" @click="exportarRelatorioGovCSV"
+                  style="background:linear-gradient(135deg,var(--cyan-dim),#0077aa);color:#000;font-weight:700;border:none">
+                  📥 Exportar CSV
+                </button>
+                <button class="btn-add" @click="exportarRelatorioGovPDF"
+                  style="background:linear-gradient(135deg,#ff4d4d,#cc0000);color:#fff;font-weight:700;border:none">
+                  📄 Exportar PDF
+                </button>
+              </div>
+            </div>
+
+            <!-- Resumo em cards -->
+            <div class="stats-row" style="margin-bottom:20px">
+              <div class="stat-card c1">
+                <div class="stat-label">Total de Políticas</div>
+                <div class="stat-value">{{ politicas.length }}</div>
+              </div>
+              <div class="stat-card c2">
+                <div class="stat-label">Políticas Vigentes</div>
+                <div class="stat-value">{{ politicas.filter(p=>p.status==='vigente').length }}</div>
+              </div>
+              <div class="stat-card c3">
+                <div class="stat-label">Total de Procedimentos</div>
+                <div class="stat-value">{{ procedimentos.length }}</div>
+              </div>
+              <div class="stat-card" style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
+                <div class="stat-label">Procedimentos Vigentes</div>
+                <div class="stat-value" style="color:var(--red)">{{ procedimentos.filter(p=>p.status==='vigente').length }}</div>
+              </div>
+            </div>
+
+            <!-- Tabela consolidada -->
+            <div class="table-card">
+              <table class="data-table" v-if="docsGovFiltrados.length">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Título</th>
+                    <th>Categoria / Tipo</th>
+                    <th>Versão</th>
+                    <th>Status</th>
+                    <th>Atualizado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="doc in docsGovFiltrados" :key="doc._key">
+                    <td>
+                      <span v-if="doc._tipo==='politica'" style="font-size:18px" title="Política">📄</span>
+                      <span v-else style="font-size:18px" title="Procedimento">🔄</span>
+                    </td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ doc.titulo }}</td>
+                    <td><span class="tech-badge">{{ doc.categoria || doc.tipo }}</span></td>
+                    <td style="font-family:var(--mono);font-size:11px">{{ doc.versao ? 'v'+doc.versao : '—' }}</td>
+                    <td><span class="badge" :style="statusStylePolitica(doc.status)">{{ statusLabelPolitica(doc.status) }}</span></td>
+                    <td style="color:var(--text-3);font-size:12px">{{ fmtDate(doc.atualizado_em) }}</td>
+                    <td>
+                      <button v-if="doc._tipo==='politica'" class="btn-del" @click="exportarPoliticaPDF(doc)" style="color:var(--yellow)" title="PDF">📄</button>
+                      <button v-else class="btn-del" @click="exportarProcedimentoPDF(doc)" style="color:var(--yellow)" title="PDF">📄</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">📂</div>
+                <p>Nenhum documento encontrado com os filtros atuais.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div><!-- end content -->
     </main>
+
+    <!-- MODAL: NOVA POLÍTICA MANUAL -->
+    <div class="modal-overlay" v-if="modal==='politica_manual'" @click.self="modal=null">
+      <div class="modal" style="width:560px">
+        <h3>📄 Nova Política</h3>
+        <div class="form-group">
+          <label>Título</label>
+          <input class="form-input" v-model="politicaEditando.titulo" placeholder="Ex: Política de Controle de Acesso" />
+        </div>
+        <div class="form-group">
+          <label>Categoria</label>
+          <select class="form-select" v-model="politicaEditando.categoria">
+            <option value="">Selecione...</option>
+            <option>Segurança da Informação</option>
+            <option>Controle de Acesso</option>
+            <option>Uso Aceitável de Recursos</option>
+            <option>Gestão de Senhas</option>
+            <option>Classificação da Informação</option>
+            <option>Backup e Recuperação</option>
+            <option>Desenvolvimento Seguro</option>
+            <option>LGPD / Privacidade de Dados</option>
+            <option>Outra</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Versão</label>
+          <input class="form-input" v-model="politicaEditando.versao" placeholder="1.0" style="width:100px" />
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select class="form-select" v-model="politicaEditando.status">
+            <option value="rascunho">Rascunho</option>
+            <option value="vigente">Vigente</option>
+            <option value="em_revisao">Em Revisão</option>
+            <option value="obsoleta">Obsoleta</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Conteúdo (Markdown)</label>
+          <textarea class="form-input" v-model="politicaEditando.conteudo" rows="8"
+            placeholder="Escreva o conteúdo da política aqui..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="salvarPolitica">Salvar Política</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: CRIAR POLÍTICA COM IA -->
+    <div class="modal-overlay" v-if="modal==='politica_ia'" @click.self="modal=null">
+      <div class="modal" style="width:560px">
+        <h3>🤖 Criar Política com IA</h3>
+        <div class="form-group">
+          <label>Categoria da Política</label>
+          <select class="form-select" v-model="formIaCategoria">
+            <option value="">Selecione...</option>
+            <option>Segurança da Informação</option>
+            <option>Controle de Acesso</option>
+            <option>Uso Aceitável de Recursos</option>
+            <option>Gestão de Senhas</option>
+            <option>Classificação da Informação</option>
+            <option>Backup e Recuperação</option>
+            <option>Desenvolvimento Seguro</option>
+            <option>LGPD / Privacidade de Dados</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="margin:0">Informações sobre a empresa / contexto</label>
+            <button class="btn-add" @click="buscarPerguntasPoliticaIA" :disabled="carregandoIA"
+              style="font-size:10px;padding:4px 10px">
+              {{ carregandoIA ? '...' : '💡 Ver perguntas sugeridas' }}
+            </button>
+          </div>
+          <div v-if="perguntasIa.length" style="background:var(--bg-base);border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px;color:var(--text-2)">
+            <div v-for="(q,i) in perguntasIa" :key="i" style="margin-bottom:4px">{{ i+1 }}. {{ q }}</div>
+          </div>
+          <textarea class="form-input" v-model="formIaRespostas" rows="8"
+            placeholder="Responda as perguntas acima ou escreva livremente sobre o contexto da empresa..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="gerarPoliticaIA" :disabled="carregandoIA">
+            {{ carregandoIA ? '⏳ Gerando...' : '🤖 Gerar Política' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: EDITOR DE POLÍTICA (criar/editar) -->
+    <div class="modal-overlay" v-if="modal==='politica_editar'" @click.self="null">
+      <div class="modal" style="width:700px;max-width:95vw">
+        <h3>✏️ {{ politicaEditando?.id ? 'Editar' : 'Revisar e Salvar' }} Política</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="form-group" style="margin:0">
+            <label>Título</label>
+            <input class="form-input" v-model="politicaEditando.titulo" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Categoria</label>
+            <input class="form-input" v-model="politicaEditando.categoria" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Versão</label>
+            <input class="form-input" v-model="politicaEditando.versao" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Status</label>
+            <select class="form-select" v-model="politicaEditando.status">
+              <option value="rascunho">Rascunho</option>
+              <option value="vigente">Vigente</option>
+              <option value="em_revisao">Em Revisão</option>
+              <option value="obsoleta">Obsoleta</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Conteúdo (Markdown)</label>
+          <textarea class="form-input" v-model="politicaEditando.conteudo" rows="16"
+            style="font-family:var(--mono);font-size:12px;resize:vertical"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="salvarPolitica">💾 Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: NOVO PROCEDIMENTO COM IA -->
+    <div class="modal-overlay" v-if="modal==='procedimento_ia'" @click.self="modal=null">
+      <div class="modal" style="width:520px">
+        <h3>🤖 Criar Procedimento com IA</h3>
+        <div class="form-group">
+          <label>Tipo de Procedimento</label>
+          <select class="form-select" v-model="formIaTipo">
+            <option value="">Selecione ou escreva abaixo...</option>
+            <option>Resposta a Incidentes</option>
+            <option>Gestão de Patches e Atualizações</option>
+            <option>Onboarding de Colaboradores</option>
+            <option>Offboarding de Colaboradores</option>
+            <option>Backup e Restauração</option>
+            <option>Gestão de Vulnerabilidades</option>
+            <option>Gestão de Acesso</option>
+          </select>
+          <input class="form-input" v-model="formIaTipo" placeholder="Ou digite um tipo personalizado..."
+            style="margin-top:8px" />
+        </div>
+        <div v-if="etapasIaSugeridas.length" style="margin-bottom:16px">
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;margin-bottom:8px">Etapas sugeridas pela IA</label>
+          <div class="table-card" style="max-height:220px;overflow-y:auto">
+            <table class="data-table">
+              <thead><tr><th>Etapa</th><th>Descrição</th></tr></thead>
+              <tbody>
+                <tr v-for="(e,i) in etapasIaSugeridas" :key="i">
+                  <td style="font-weight:500;color:var(--text-1)">{{ e.nome_etapa }}</td>
+                  <td style="font-size:12px;color:var(--text-3)">{{ e.descricao }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-add" @click="gerarEtapasIA" :disabled="carregandoIA"
+            style="border:1px solid rgba(0,229,255,.3);color:var(--cyan)">
+            {{ carregandoIA ? '⏳ Gerando...' : '⚡ Gerar Etapas' }}
+          </button>
+          <button class="btn-save" v-if="etapasIaSugeridas.length" @click="aceitarEtapasIA">
+            ✅ Aceitar e Editar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: EDITOR DE PROCEDIMENTO -->
+    <div class="modal-overlay" v-if="modal==='procedimento_editar'" @click.self="null">
+      <div class="modal" style="width:760px;max-width:95vw">
+        <h3>✏️ {{ procedimentoEditando?.id ? 'Editar' : 'Novo' }} Procedimento</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+          <div class="form-group" style="margin:0;grid-column:span 2">
+            <label>Título</label>
+            <input class="form-input" v-model="formProc.titulo" placeholder="Nome do procedimento" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Status</label>
+            <select class="form-select" v-model="formProc.status">
+              <option value="rascunho">Rascunho</option>
+              <option value="vigente">Vigente</option>
+              <option value="em_revisao">Em Revisão</option>
+              <option value="obsoleta">Obsoleta</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <label style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase">Etapas ({{ formProc.etapas.length }})</label>
+          <button class="btn-add" @click="novaEtapa" style="font-size:11px;padding:5px 12px">+ Nova Etapa</button>
+        </div>
+        <div style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:10px">
+          <div v-for="(etapa, idx) in formProc.etapas" :key="idx"
+            style="background:var(--bg-base);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:11px;font-weight:700;color:var(--cyan)">ETAPA {{ idx + 1 }}</span>
+              <button class="btn-del" @click="removerEtapa(idx)" style="color:var(--red);font-size:14px">✕</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div class="form-group" style="margin:0">
+                <label>Nome da Etapa</label>
+                <input class="form-input" v-model="etapa.nome_etapa" placeholder="Ex: Detecção" />
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Responsável</label>
+                <input class="form-input" v-model="etapa.responsavel" placeholder="Ex: Analista de Segurança" />
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:8px">
+              <label>Como é feito / Descrição</label>
+              <textarea class="form-input" v-model="etapa.descricao" rows="2"
+                placeholder="Descreva como esta etapa é executada..."></textarea>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>SLA / Prazo</label>
+              <input class="form-input" v-model="etapa.sla" placeholder="Ex: Até 1 hora após detecção" />
+            </div>
+          </div>
+          <div v-if="!formProc.etapas.length" class="empty-state" style="padding:30px">
+            <p>Nenhuma etapa adicionada. Clique em "+ Nova Etapa" para começar.</p>
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn-cancel" @click="modal=null; procedimentoEditando=null">Cancelar</button>
+          <button class="btn-save" @click="salvarProcedimento">💾 Salvar Procedimento</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: NOVO PROCEDIMENTO MANUAL -->
+    <div class="modal-overlay" v-if="modal==='procedimento_manual'" @click.self="modal=null">
+      <div class="modal">
+        <h3>🔄 Novo Procedimento</h3>
+        <div class="form-group">
+          <label>Tipo / Nome</label>
+          <input class="form-input" v-model="formProc.titulo" placeholder="Ex: Resposta a Incidentes" @keydown.enter="() => { formProc.tipo = formProc.titulo; modal='procedimento_editar'; }" />
+        </div>
+        <p style="font-size:12px;color:var(--text-3);margin-top:4px">Após confirmar, você adicionará as etapas na tela seguinte.</p>
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="() => { formProc.tipo = formProc.titulo; procedimentoEditando = null; modal='procedimento_editar'; }">Próximo →</button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: NOVO CLIENTE -->
     <div class="modal-overlay" v-if="modal==='cliente'" @click.self="modal=null">
@@ -1274,13 +1800,17 @@
           'Análise de risco dos softwares desatualizados'
         ];
 
-        const viewTitles = { chat: 'Chat com IA', clientes: 'Clientes', softwares: 'Softwares', instancias: 'Instâncias', relatorios: 'Relatórios' };
+        const viewTitles = { chat: 'Chat com IA', clientes: 'Clientes', softwares: 'Softwares', instancias: 'Instâncias', relatorios: 'Relatórios', politicas: 'Políticas', procedimentos: 'Procedimentos', lacunas: 'Análise de Lacunas', relatorio_gov: 'Relatórios de Governança' };
         const viewDesc = {
           chat: 'Converse em linguagem natural para consultar, cadastrar e analisar',
           clientes: 'Gerencie os municípios e entidades atendidas',
           softwares: 'Catálogo de projetos, versões e tecnologias',
           instancias: 'Relação cliente-software com branch e repositório',
-          relatorios: 'Consolidação manual com filtros e exportação CSV'
+          relatorios: 'Consolidação manual com filtros e exportação CSV',
+          politicas: 'Cadastre e gerencie políticas corporativas',
+          procedimentos: 'Procedimentos operacionais com responsáveis por etapa',
+          lacunas: 'IA analisa o que você tem e o que está faltando',
+          relatorio_gov: 'Exportação consolidada de políticas e procedimentos'
         };
 
         const viewBadge = computed(() => {
@@ -1297,13 +1827,46 @@
         const form = ref({ nome: '', tecnologia: '', git_url: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' });
         const filtrosRelatorio = ref({ cliente: '', software: '', branch: '' });
         const menuAtivosAberto = ref(true);
+        const menuGovernancaAberto = ref(true);
+        const filtroGov = ref({ tipo: '', status: '', categoria: '' });
+
+        // ── Estado Governança ──
+        const politicas    = ref([]);
+        const procedimentos = ref([]);
+        const resultadoLacunas   = ref(null);
+        const analisandoLacunas  = ref(false);
+        const politicaEditando   = ref(null);  // política sendo editada no modal
+        const procedimentoEditando = ref(null); // procedimento sendo editado
+        const formPolitica = ref({ titulo: '', categoria: '', versao: '1.0', status: 'rascunho', conteudo: '' });
+        const formProc     = ref({ titulo: '', tipo: '', status: 'rascunho', etapas: [] });
+        const formIaCategoria = ref('');
+        const formIaRespostas = ref('');
+        const formIaTipo     = ref('');
+        const etapasIaSugeridas = ref([]);
+        const perguntasIa    = ref([]);
+        const carregandoIA   = ref(false);
         
         const clienteSelecionado = ref(null);
         const instanciasClienteSelecionado = ref([]);
 
         function resetForm() { form.value = { nome: '', tecnologia: '', git_url: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' }; }
 
-        function openModal(tipo) { resetForm(); modal.value = tipo; }
+        function openModal(tipo) {
+          resetForm();
+          // Inicializa estado para modais de governança
+          if (tipo === 'politica_manual') {
+            politicaEditando.value = { titulo: '', categoria: '', versao: '1.0', status: 'rascunho', conteudo: '' };
+          }
+          if (tipo === 'politica_ia') {
+            formIaCategoria.value = ''; formIaRespostas.value = ''; perguntasIa.value = [];
+          }
+          if (tipo === 'procedimento_manual' || tipo === 'procedimento_ia') {
+            formProc.value = { titulo: '', tipo: '', status: 'rascunho', etapas: [] };
+            etapasIaSugeridas.value = [];
+            if (tipo === 'procedimento_ia') formIaTipo.value = '';
+          }
+          modal.value = tipo;
+        }
 
         function renderMd(text) {
           try { return marked.parse(text || ''); }
@@ -1335,6 +1898,234 @@
           if (v === 'clientes') await loadClientes();
           if (v === 'softwares') await loadSoftwares();
           if (v === 'instancias' || v === 'relatorios') { await loadInstancias(); await loadClientes(); await loadSoftwares(); }
+          if (v === 'politicas') await loadPoliticas();
+          if (v === 'procedimentos') await loadProcedimentos();
+          if (v === 'lacunas' || v === 'relatorio_gov') { await loadPoliticas(); await loadProcedimentos(); }
+        }
+
+        async function loadPoliticas() { politicas.value = await api('/api/politicas'); }
+        async function loadProcedimentos() {
+          const lista = await api('/api/procedimentos');
+          procedimentos.value = lista;
+        }
+
+        // ── Computeds e funções do Relatório de Governança ──
+        const categoriasUnicas = computed(() => {
+          const cats = new Set();
+          politicas.value.forEach(p => { if (p.categoria) cats.add(p.categoria); });
+          procedimentos.value.forEach(p => { if (p.tipo) cats.add(p.tipo); });
+          return [...cats].sort();
+        });
+
+        const docsGovFiltrados = computed(() => {
+          const pol = politicas.value.map(p => ({ ...p, _tipo: 'politica', _key: 'p'+p.id }));
+          const proc = procedimentos.value.map(p => ({ ...p, categoria: p.tipo, _tipo: 'procedimento', _key: 'pr'+p.id }));
+          const todos = [...pol, ...proc];
+          return todos.filter(d => {
+            const mTipo   = !filtroGov.value.tipo     || d._tipo === filtroGov.value.tipo;
+            const mStatus = !filtroGov.value.status   || d.status === filtroGov.value.status;
+            const mCat    = !filtroGov.value.categoria || (d.categoria || d.tipo) === filtroGov.value.categoria;
+            return mTipo && mStatus && mCat;
+          }).sort((a,b) => a.titulo.localeCompare(b.titulo));
+        });
+
+        function exportarRelatorioGovCSV() {
+          const rows = docsGovFiltrados.value;
+          if (!rows.length) return alert('Nenhum documento para exportar.');
+          const headers = ['Tipo', 'Titulo', 'Categoria/Tipo', 'Versao', 'Status', 'Atualizado'];
+          let csv = 'data:text/csv;charset=utf-8,' + headers.join(';') + '\\n';
+          rows.forEach(d => {
+            const line = [
+              d._tipo === 'politica' ? 'Politica' : 'Procedimento',
+              `"${d.titulo}"`,
+              `"${d.categoria || d.tipo || ''}"`  ,
+              `"${d.versao || ''}"`,
+              `"${statusLabelPolitica(d.status)}"`,
+              `"${new Date(d.atualizado_em).toLocaleDateString('pt-BR')}"`
+            ];
+            csv += line.join(';') + '\\n';
+          });
+          const link = document.createElement('a');
+          link.setAttribute('href', encodeURI(csv));
+          link.setAttribute('download', 'relatorio_governanca.csv');
+          document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        function exportarRelatorioGovPDF() {
+          const rows = docsGovFiltrados.value;
+          if (!rows.length) return alert('Nenhum documento para exportar.');
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          const dataAtual = new Date().toLocaleDateString('pt-BR');
+          doc.setFontSize(16); doc.text('Relatório de Governança', 14, 15);
+          doc.setFontSize(10); doc.text(`Gerado em: ${dataAtual}`, 14, 22);
+          doc.setFontSize(9);
+          const filtros = [];
+          if (filtroGov.value.tipo) filtros.push(`Tipo: ${filtroGov.value.tipo}`);
+          if (filtroGov.value.status) filtros.push(`Status: ${statusLabelPolitica(filtroGov.value.status)}`);
+          if (filtroGov.value.categoria) filtros.push(`Categoria: ${filtroGov.value.categoria}`);
+          if (filtros.length) doc.text(`Filtros: ${filtros.join(' | ')}`, 14, 28);
+          const tableRows = rows.map(d => [
+            d._tipo === 'politica' ? 'Política' : 'Procedimento',
+            d.titulo,
+            d.categoria || d.tipo || '',
+            d.versao ? 'v'+d.versao : '—',
+            statusLabelPolitica(d.status),
+            new Date(d.atualizado_em).toLocaleDateString('pt-BR')
+          ]);
+          doc.autoTable({
+            startY: filtros.length ? 32 : 28,
+            head: [['Tipo', 'Título', 'Categoria/Tipo', 'Versão', 'Status', 'Atualizado']],
+            body: tableRows, theme: 'grid',
+            headStyles: { fillColor: [0, 119, 170] },
+            styles: { fontSize: 8 },
+            columnStyles: { 1: { cellWidth: 60 } }
+          });
+          doc.save('relatorio_governanca.pdf');
+        }
+
+        // ── Helpers de Status ──
+        function statusLabelPolitica(s) {
+          return { rascunho: 'Rascunho', vigente: 'Vigente', em_revisao: 'Em Revisão', obsoleta: 'Obsoleta' }[s] || s;
+        }
+        function statusStylePolitica(s) {
+          const map = { vigente: 'background:rgba(0,255,159,.12);color:var(--green);border-color:rgba(0,255,159,.3)', rascunho: 'background:rgba(140,160,200,.1);color:var(--text-2);border-color:var(--border)', em_revisao: 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)', obsoleta: 'background:rgba(255,83,112,.1);color:var(--red);border-color:rgba(255,83,112,.3)' };
+          return map[s] || '';
+        }
+        function prioridadeStyle(p) {
+          return { alta: 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)', media: 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)', baixa: 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' }[p] || '';
+        }
+
+        // ── CRUD Políticas ──
+        function editarPolitica(p) { politicaEditando.value = { ...p }; modal.value = 'politica_editar'; }
+
+        async function salvarPolitica() {
+          const p = politicaEditando.value;
+          if (!p.titulo || !p.categoria) return alert('Título e categoria são obrigatórios.');
+          if (p.id) {
+            await api(`/api/politicas/${p.id}`, { method: 'PUT', body: JSON.stringify(p) });
+          } else {
+            await api('/api/politicas', { method: 'POST', body: JSON.stringify(p) });
+          }
+          modal.value = null; await loadPoliticas();
+        }
+
+        async function gerarPoliticaIA() {
+          if (!formIaCategoria.value) return alert('Informe a categoria.');
+          if (!formIaRespostas.value) return alert('Preencha as informações.');
+          carregandoIA.value = true;
+          try {
+            const res = await api('/api/governanca/politica/gerar', {
+              method: 'POST',
+              body: JSON.stringify({ categoria: formIaCategoria.value, respostas: formIaRespostas.value })
+            });
+            politicaEditando.value = { titulo: `Política de ${formIaCategoria.value}`, categoria: formIaCategoria.value, versao: '1.0', status: 'rascunho', conteudo: res.conteudo };
+            modal.value = 'politica_editar';
+          } finally { carregandoIA.value = false; }
+        }
+
+        async function buscarPerguntasPoliticaIA() {
+          if (!formIaCategoria.value) return alert('Informe a categoria primeiro.');
+          carregandoIA.value = true;
+          try {
+            const res = await api('/api/governanca/politica/perguntas', { method: 'POST', body: JSON.stringify({ categoria: formIaCategoria.value }) });
+            perguntasIa.value = Array.isArray(res.perguntas) ? res.perguntas : [];
+          } finally { carregandoIA.value = false; }
+        }
+
+        // ── CRUD Procedimentos ──
+        function novaEtapa() { formProc.value.etapas.push({ nome_etapa: '', responsavel: '', descricao: '', sla: '' }); }
+        function removerEtapa(idx) { formProc.value.etapas.splice(idx, 1); }
+
+        function editarProcedimento(p) {
+          api(`/api/procedimentos/${p.id}`).then(dados => {
+            procedimentoEditando.value = { ...dados };
+            formProc.value = { titulo: dados.titulo, tipo: dados.tipo, status: dados.status, etapas: dados.etapas || [] };
+            modal.value = 'procedimento_editar';
+          });
+        }
+
+        async function salvarProcedimento() {
+          if (!formProc.value.titulo || !formProc.value.tipo) return alert('Título e tipo são obrigatórios.');
+          const payload = { ...formProc.value };
+          if (procedimentoEditando.value?.id) {
+            await api(`/api/procedimentos/${procedimentoEditando.value.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+          } else {
+            await api('/api/procedimentos', { method: 'POST', body: JSON.stringify(payload) });
+          }
+          modal.value = null; procedimentoEditando.value = null; await loadProcedimentos();
+        }
+
+        async function gerarEtapasIA() {
+          if (!formIaTipo.value) return alert('Informe o tipo de procedimento.');
+          carregandoIA.value = true;
+          try {
+            const res = await api('/api/governanca/procedimento/gerar', { method: 'POST', body: JSON.stringify({ tipo: formIaTipo.value }) });
+            etapasIaSugeridas.value = Array.isArray(res.etapas) ? res.etapas : [];
+          } finally { carregandoIA.value = false; }
+        }
+
+        function aceitarEtapasIA() {
+          formProc.value = { titulo: formIaTipo.value, tipo: formIaTipo.value, status: 'rascunho', etapas: etapasIaSugeridas.value.map(e => ({ ...e })) };
+          procedimentoEditando.value = null;
+          modal.value = 'procedimento_editar';
+        }
+
+        // ── Análise de Lacunas ──
+        async function analisarLacunas() {
+          analisandoLacunas.value = true;
+          resultadoLacunas.value = null;
+          try {
+            resultadoLacunas.value = await api('/api/governanca/lacunas');
+          } finally { analisandoLacunas.value = false; }
+        }
+
+        function criarApartirDeLacuna(item) {
+          if (item.tipo === 'politica') {
+            formIaCategoria.value = item.categoria || item.titulo;
+            openModal('politica_ia');
+            view.value = 'politicas';
+          } else {
+            formIaTipo.value = item.titulo;
+            openModal('procedimento_ia');
+            view.value = 'procedimentos';
+          }
+        }
+
+        // ── Exportar PDF Política ──
+        function exportarPoliticaPDF(p) {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          doc.setFontSize(18); doc.text(p.titulo, 14, 20);
+          doc.setFontSize(10);
+          doc.text(`Categoria: ${p.categoria} | Versão: ${p.versao} | Status: ${statusLabelPolitica(p.status)}`, 14, 30);
+          doc.text(`Atualizado em: ${fmtDate(p.atualizado_em)}`, 14, 36);
+          doc.line(14, 40, 196, 40);
+          const linhas = doc.splitTextToSize(p.conteudo.replace(/#{1,6} /g, '').replace(/\*\*/g, ''), 180);
+          doc.setFontSize(9);
+          doc.text(linhas, 14, 48);
+          doc.save(`${p.titulo.replace(/\s+/g,'_')}.pdf`);
+        }
+
+        // ── Exportar PDF Procedimento ──
+        function exportarProcedimentoPDF(p) {
+          api(`/api/procedimentos/${p.id}`).then(dados => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.text(dados.titulo, 14, 20);
+            doc.setFontSize(10);
+            doc.text(`Tipo: ${dados.tipo} | Status: ${statusLabelPolitica(dados.status)}`, 14, 30);
+            doc.line(14, 34, 196, 34);
+            const rows = (dados.etapas || []).map(e => [e.nome_etapa, e.responsavel, e.descricao, e.sla]);
+            doc.autoTable({
+              startY: 38,
+              head: [['Etapa', 'Responsável', 'Descrição', 'SLA']],
+              body: rows, theme: 'grid',
+              headStyles: { fillColor: [0, 119, 170] },
+              styles: { fontSize: 8 }
+            });
+            doc.save(`${dados.titulo.replace(/\s+/g,'_')}.pdf`);
+          });
         }
 
         const branchesUnicas = computed(() => {
@@ -1494,17 +2285,25 @@
           modal.value = 'instancia';
         }
 
-        function toggleMenuAtivos() {
-          menuAtivosAberto.value = !menuAtivosAberto.value;
-        }
+        function toggleMenuAtivos() { menuAtivosAberto.value = !menuAtivosAberto.value; }
+        function toggleMenuGovernanca() { menuGovernancaAberto.value = !menuGovernancaAberto.value; }
 
         return {
           view, modal, loading, clientes, softwares, instancias, userInput, chatBox,
           messages, hints, form, viewTitles, viewDesc, viewBadge, clientesAtivos,
           clienteSelecionado, instanciasClienteSelecionado, filtrosRelatorio, branchesUnicas, instanciasFiltradas, menuAtivosAberto,
+          menuGovernancaAberto, politicas, procedimentos, resultadoLacunas, analisandoLacunas,
+          politicaEditando, procedimentoEditando, formPolitica, formProc,
+          formIaCategoria, formIaRespostas, formIaTipo, etapasIaSugeridas, perguntasIa, carregandoIA,
           renderMd, tipoLabel, fmtDate, openModal, switchView, sendMessage,
           deletar, saveCliente, saveSoftware, saveInstancia,
-          verDetalhesCliente, irParaNovaInstancia, getTechParaSoftware, exportarCSV, exportarPDF, toggleMenuAtivos
+          verDetalhesCliente, irParaNovaInstancia, getTechParaSoftware, exportarCSV, exportarPDF,
+          toggleMenuAtivos, toggleMenuGovernanca,
+          statusLabelPolitica, statusStylePolitica, prioridadeStyle,
+          editarPolitica, salvarPolitica, gerarPoliticaIA, buscarPerguntasPoliticaIA,
+          novaEtapa, removerEtapa, editarProcedimento, salvarProcedimento, gerarEtapasIA, aceitarEtapasIA,
+          analisarLacunas, criarApartirDeLacuna, exportarPoliticaPDF, exportarProcedimentoPDF,
+          filtroGov, categoriasUnicas, docsGovFiltrados, exportarRelatorioGovCSV, exportarRelatorioGovPDF
         };
       }
     }).mount('#app');
