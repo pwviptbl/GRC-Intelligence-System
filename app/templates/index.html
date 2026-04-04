@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRC Intelligence System</title>
+  <meta name="description"
+    content="Sistema de Governança, Risco e Conformidade assistido por IA Gemini 2.5 Flash Lite." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-base: #070d1a;
+      --bg-surface: #0d1628;
+      --bg-card: #111e35;
+      --bg-hover: #162240;
+      --border: #1e3258;
+      --border-glow: #2a4a8c;
+      --cyan: #00e5ff;
+      --cyan-dim: #00b8d4;
+      --green: #00ff9f;
+      --green-dim: #00c97c;
+      --yellow: #ffd740;
+      --red: #ff5370;
+      --text-1: #e8f0ff;
+      --text-2: #8ca0c8;
+      --text-3: #4a6090;
+      --font: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg-base);
+      color: var(--text-1);
+      display: flex;
+    }
+
+    /* Container raiz do Vue — precisa herdar o flex do body */
+    #app {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-glow);
+      border-radius: 4px;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+    }
+
+    .logo {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-icon {
+      font-size: 26px;
+      margin-bottom: 4px;
+    }
+
+    .logo h1 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .logo p {
+      font-size: 10px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+
+    nav {
+      padding: 16px 12px;
+      flex: 1;
+    }
+
+    .nav-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-3);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0 8px;
+      margin: 16px 0 6px;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      background: none;
+      border: none;
+      color: var(--text-2);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .18s;
+      text-align: left;
+    }
+
+    .nav-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-1);
+    }
+
+    .nav-btn.active {
+      background: rgba(0, 229, 255, .1);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 229, 255, .2);
+    }
+
+    .nav-btn .icon {
+      font-size: 16px;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-3);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .topbar {
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-surface);
+    }
+
+    .topbar h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    .topbar p {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(0, 229, 255, .1);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 229, 255, .25);
+    }
+
+    .content {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .view {
+      display: none;
+      height: 100%;
+    }
+
+    .view.active {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* ── CHAT ── */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .msg {
+      display: flex;
+      gap: 12px;
+      max-width: 820px;
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .msg.ai .msg-avatar {
+      background: rgba(0, 229, 255, .12);
+      border: 1px solid rgba(0, 229, 255, .25);
+    }
+
+    .msg.user .msg-avatar {
+      background: rgba(0, 255, 159, .12);
+      border: 1px solid rgba(0, 255, 159, .25);
+    }
+
+    .msg-bubble {
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      line-height: 1.7;
+    }
+
+    .msg.ai .msg-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-top-left-radius: 2px;
+    }
+
+    .msg.user .msg-bubble {
+      background: rgba(0, 229, 255, .08);
+      border: 1px solid rgba(0, 229, 255, .2);
+      border-top-right-radius: 2px;
+      color: var(--cyan-dim);
+    }
+
+    .msg-bubble table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 10px 0;
+      font-size: 12px;
+    }
+
+    .msg-bubble th {
+      background: var(--bg-hover);
+      color: var(--cyan);
+      padding: 8px 12px;
+      text-align: left;
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+
+    .msg-bubble td {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+    }
+
+    .msg-bubble tr:hover td {
+      background: var(--bg-hover);
+    }
+
+    .msg-bubble code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: rgba(0, 229, 255, .08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--cyan);
+    }
+
+    .msg-bubble pre {
+      background: var(--bg-base);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+
+    .msg-bubble h1,
+    .msg-bubble h2,
+    .msg-bubble h3 {
+      color: var(--cyan);
+      margin: 12px 0 6px;
+    }
+
+    .msg-bubble strong {
+      color: var(--text-1);
+    }
+
+    .msg-bubble blockquote {
+      border-left: 3px solid var(--cyan-dim);
+      padding-left: 12px;
+      color: var(--text-2);
+      margin: 6px 0;
+    }
+
+    .tipo-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .tipo-consulta {
+      background: rgba(0, 229, 255, .15);
+      color: var(--cyan);
+    }
+
+    .tipo-cadastro {
+      background: rgba(0, 255, 159, .15);
+      color: var(--green);
+    }
+
+    .tipo-analise {
+      background: rgba(255, 215, 64, .15);
+      color: var(--yellow);
+    }
+
+    .tipo-erro {
+      background: rgba(255, 83, 112, .15);
+      color: var(--red);
+    }
+
+    .tipo-geral {
+      background: rgba(140, 160, 200, .12);
+      color: var(--text-2);
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 4px 0;
+    }
+
+    .typing-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--cyan-dim);
+      animation: bounce .9s infinite;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation-delay: .15s;
+    }
+
+    .typing-dot:nth-child(3) {
+      animation-delay: .30s;
+    }
+
+    @keyframes bounce {
+
+      0%,
+      80%,
+      100% {
+        transform: scale(1)
+      }
+
+      40% {
+        transform: scale(1.4)
+      }
+    }
+
+    .chat-input-area {
+      padding: 16px 28px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+
+    .chat-form {
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text-1);
+      font-family: var(--font);
+      font-size: 13.5px;
+      outline: none;
+      resize: none;
+      transition: border-color .2s;
+      height: 48px;
+      line-height: 1.5;
+    }
+
+    .chat-input:focus {
+      border-color: var(--cyan-dim);
+    }
+
+    .chat-input::placeholder {
+      color: var(--text-3);
+    }
+
+    .send-btn {
+      padding: 12px 20px;
+      background: linear-gradient(135deg, var(--cyan-dim), #0077aa);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+
+    .send-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(0, 229, 255, .3);
+    }
+
+    .send-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .hints {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .hint-chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      transition: all .15s;
+    }
+
+    .hint-chip:hover {
+      border-color: var(--cyan-dim);
+      color: var(--cyan);
+    }
+
+    /* ── TABELAS (CRUD) ── */
+    .table-view {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .table-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .btn-add {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 255, 159, .3);
+      background: rgba(0, 255, 159, .08);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: var(--font);
+    }
+
+    .btn-add:hover {
+      background: rgba(0, 255, 159, .15);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      background: var(--bg-card);
+      color: var(--text-3);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(30, 50, 88, .5);
+      font-size: 13px;
+      color: var(--text-2);
+      vertical-align: middle;
+    }
+
+    .data-table tr:hover td {
+      background: var(--bg-hover);
+    }
+
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .branch-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(0, 229, 255, .1);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 229, 255, .2);
+    }
+
+    .tech-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(255, 215, 64, .1);
+      color: var(--yellow);
+      border: 1px solid rgba(255, 215, 64, .2);
+    }
+
+    .btn-del {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-3);
+      font-size: 16px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all .15s;
+    }
+
+    .btn-del:hover {
+      background: rgba(255, 83, 112, .12);
+      color: var(--red);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-3);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+    }
+
+    .table-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      border-radius: 14px;
+      padding: 28px;
+      width: 400px;
+      max-width: 90vw;
+    }
+
+    .modal h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-1);
+      font-family: var(--font);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      border-color: var(--cyan-dim);
+    }
+
+    .form-select option {
+      background: var(--bg-card);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .btn-cancel {
+      padding: 8px 16px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px;
+    }
+
+    .btn-save {
+      padding: 8px 20px;
+      background: linear-gradient(135deg, var(--green-dim), #007a50);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+
+    /* ── STAT CARDS (Dashboard) ── */
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .stat-card .stat-label {
+      font-size: 11px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .stat-card .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--mono);
+    }
+
+    .stat-card.c1 .stat-value {
+      color: var(--cyan);
+    }
+
+    .stat-card.c2 .stat-value {
+      color: var(--green);
+    }
+
+    .stat-card.c3 .stat-value {
+      color: var(--yellow);
+    }
+
+    /* Animação de entrada */
+    .msg {
+      animation: fadeInUp .25s ease;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🛡️</div>
+        <h1>GRC Intel</h1>
+        <p>v1.0 · DBSeller</p>
+      </div>
+      <nav>
+        <div class="nav-label">Principal</div>
+        <button class="nav-btn" :class="{active: view==='chat'}" @click="view='chat'" id="nav-chat">
+          <span class="icon">🤖</span> Chat IA
+        </button>
+        <div class="nav-label">Dados</div>
+        <button class="nav-btn" :class="{active: view==='clientes'}" @click="switchView('clientes')" id="nav-clientes">
+          <span class="icon">🏢</span> Clientes
+        </button>
+        <button class="nav-btn" :class="{active: view==='softwares'}" @click="switchView('softwares')"
+          id="nav-softwares">
+          <span class="icon">💾</span> Softwares
+        </button>
+        <button class="nav-btn" :class="{active: view==='instancias'}" @click="switchView('instancias')"
+          id="nav-instancias">
+          <span class="icon">🔗</span> Instâncias
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div><span class="status-dot"></span>API Conectada</div>
+        <div style="margin-top:6px;color:var(--text-3)">Gemini 2.5 Flash Lite</div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <!-- TOPBAR -->
+      <div class="topbar">
+        <div>
+          <h2>{{ viewTitles[view] }}</h2>
+          <p>{{ viewDesc[view] }}</p>
+        </div>
+        <span class="badge">{{ viewBadge }}</span>
+      </div>
+
+      <div class="content">
+
+        <!-- VIEW: CHAT -->
+        <div class="view" :class="{active: view==='chat'}">
+          <div class="chat-messages" ref="chatBox">
+            <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
+              <div class="msg-avatar">{{ m.role==='ai'?'🤖':'👤' }}</div>
+              <div>
+                <span v-if="m.tipo && m.role==='ai'" class="tipo-tag" :class="'tipo-'+m.tipo">
+                  {{ tipoLabel(m.tipo) }}
+                </span>
+                <div class="msg-bubble" v-html="renderMd(m.text)"></div>
+              </div>
+            </div>
+            <div v-if="loading" class="msg ai">
+              <div class="msg-avatar">🤖</div>
+              <div class="msg-bubble">
+                <div class="typing-indicator">
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-area">
+            <div class="chat-form">
+              <textarea class="chat-input" v-model="userInput"
+                placeholder="Pergunte, cadastre ou peça uma análise de risco..."
+                @keydown.enter.exact.prevent="sendMessage" id="chat-input" rows="1"></textarea>
+              <button class="send-btn" @click="sendMessage" :disabled="loading || !userInput.trim()" id="btn-send">
+                Enviar ↑
+              </button>
+            </div>
+            <div class="hints">
+              <span class="hint-chip" v-for="h in hints" :key="h" @click="userInput=h">{{ h }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: CLIENTES -->
+        <div class="view" :class="{active: view==='clientes'}">
+          <div class="table-view">
+            <div class="stats-row">
+              <div class="stat-card c1">
+                <div class="stat-label">Total de Clientes</div>
+                <div class="stat-value">{{ clientes.length }}</div>
+              </div>
+            </div>
+            <div class="table-header">
+              <h3>Clientes Cadastrados</h3>
+              <button class="btn-add" @click="openModal('cliente')" id="btn-add-cliente">+ Novo Cliente</button>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="clientes.length">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nome</th>
+                    <th>Cadastrado em</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="c in clientes" :key="c.id">
+                    <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">{{ c.id }}</td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ c.nome }}</td>
+                    <td>{{ fmtDate(c.criado_em) }}</td>
+                    <td>
+                      <button class="btn-del" @click="verDetalhesCliente(c)" style="color:var(--cyan); margin-right: 8px;" title="Ver Instâncias">🔗</button>
+                      <button class="btn-del" @click="deletar('clientes', c.id)" title="Remover">🗑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">🏢</div>
+                <p>Nenhum cliente cadastrado ainda.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: SOFTWARES -->
+        <div class="view" :class="{active: view==='softwares'}">
+          <div class="table-view">
+            <div class="stats-row">
+              <div class="stat-card c2">
+                <div class="stat-label">Total de Softwares</div>
+                <div class="stat-value">{{ softwares.length }}</div>
+              </div>
+            </div>
+            <div class="table-header">
+              <h3>Softwares Cadastrados</h3>
+              <button class="btn-add" @click="openModal('software')" id="btn-add-software">+ Novo Software</button>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="softwares.length">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nome</th>
+                    <th>Tecnologia</th>
+                    <th>Repositório</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="s in softwares" :key="s.id">
+                    <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">{{ s.id }}</td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ s.nome }}</td>
+                    <td><span class="tech-badge" v-if="s.tecnologia">{{ s.tecnologia }}</span><span v-else
+                        style="color:var(--text-3)">—</span></td>
+                    <td><a v-if="s.git_url" :href="s.git_url" target="_blank"
+                        style="color:var(--cyan-dim);font-size:12px">{{ s.git_url }}</a><span v-else
+                        style="color:var(--text-3)">—</span></td>
+                    <td><button class="btn-del" @click="deletar('softwares', s.id)">🗑</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">💾</div>
+                <p>Nenhum software cadastrado ainda.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: INSTÂNCIAS -->
+        <div class="view" :class="{active: view==='instancias'}">
+          <div class="table-view">
+            <div class="stats-row">
+              <div class="stat-card c3">
+                <div class="stat-label">Total de Instâncias</div>
+                <div class="stat-value">{{ instancias.length }}</div>
+              </div>
+              <div class="stat-card c1">
+                <div class="stat-label">Clientes Ativos</div>
+                <div class="stat-value">{{ clientesAtivos }}</div>
+              </div>
+            </div>
+            <div class="table-header">
+              <h3>Instâncias Cliente-Software</h3>
+              <button class="btn-add" @click="openModal('instancia')" id="btn-add-instancia">+ Nova Instância</button>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="instancias.length">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Software</th>
+                    <th>Branch</th>
+                    <th>URL Custom</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="i in instancias" :key="i.id">
+                    <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">{{ i.id }}</td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ i.cliente_nome }}</td>
+                    <td style="color:var(--text-2)">{{ i.software_nome }}</td>
+                    <td><span class="branch-badge">{{ i.branch }}</span></td>
+                    <td><a v-if="i.git_custom_url" :href="i.git_custom_url" target="_blank"
+                        style="color:var(--cyan-dim);font-size:12px">link</a><span v-else
+                        style="color:var(--text-3)">—</span></td>
+                    <td><button class="btn-del" @click="deletar('instancias', i.id)">🗑</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">🔗</div>
+                <p>Nenhuma instância cadastrada ainda.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end content -->
+    </main>
+
+    <!-- MODAL: NOVO CLIENTE -->
+    <div class="modal-overlay" v-if="modal==='cliente'" @click.self="modal=null">
+      <div class="modal">
+        <h3>🏢 Novo Cliente</h3>
+        <div class="form-group">
+          <label>Nome do Cliente</label>
+          <input class="form-input" v-model="form.nome" placeholder="Ex: Volta Redonda" id="input-cliente-nome"
+            @keydown.enter="saveCliente" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="saveCliente" id="btn-save-cliente">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: NOVO SOFTWARE -->
+    <div class="modal-overlay" v-if="modal==='software'" @click.self="modal=null">
+      <div class="modal">
+        <h3>💾 Novo Software</h3>
+        <div class="form-group">
+          <label>Nome / Versão</label>
+          <input class="form-input" v-model="form.nome" placeholder="Ex: e-Cidade 7.4" id="input-sw-nome" />
+        </div>
+        <div class="form-group">
+          <label>Tecnologia</label>
+          <input class="form-input" v-model="form.tecnologia" placeholder="Ex: PHP 8.2, Java 11" id="input-sw-tech" />
+        </div>
+        <div class="form-group">
+          <label>URL do Repositório (opcional)</label>
+          <input class="form-input" v-model="form.git_url" placeholder="https://github.com/..." id="input-sw-git" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="saveSoftware" id="btn-save-software">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: NOVA INSTÂNCIA -->
+    <div class="modal-overlay" v-if="modal==='instancia'" @click.self="modal=null">
+      <div class="modal">
+        <h3>🔗 Nova Instância</h3>
+        <div class="form-group">
+          <label>Cliente</label>
+          <select class="form-select" v-model="form.cliente_id" id="select-instancia-cliente">
+            <option value="" disabled>Selecione...</option>
+            <option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nome }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Software</label>
+          <select class="form-select" v-model="form.software_id" id="select-instancia-software">
+            <option value="" disabled>Selecione...</option>
+            <option v-for="s in softwares" :key="s.id" :value="s.id">{{ s.nome }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Branch</label>
+          <input class="form-input" v-model="form.branch" placeholder="master" id="input-instancia-branch" />
+        </div>
+        <div class="form-group">
+          <label>URL Custom (opcional)</label>
+          <input class="form-input" v-model="form.git_custom_url" placeholder="Fork específico do cliente"
+            id="input-instancia-git" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="saveInstancia" id="btn-save-instancia">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: DETALHES DO CLIENTE -->
+    <div class="modal-overlay" v-if="modal==='cliente_detalhes'" @click.self="modal=null">
+      <div class="modal" style="width: 600px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+          <h3>🏢 Detalhes do Cliente: <span style="color:var(--text-1)">{{ clienteSelecionado?.nome }}</span></h3>
+          <button class="btn-del" @click="modal=null">✕</button>
+        </div>
+        
+        <div class="table-card" style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table" v-if="instanciasClienteSelecionado.length">
+            <thead>
+              <tr>
+                <th>Software</th>
+                <th>Branch</th>
+                <th>URL Custom</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="i in instanciasClienteSelecionado" :key="i.id">
+                <td style="font-weight:500;color:var(--text-1)">{{ i.software_nome }}</td>
+                <td><span class="branch-badge">{{ i.branch }}</span></td>
+                <td><a v-if="i.git_custom_url" :href="i.git_custom_url" target="_blank"
+                    style="color:var(--cyan-dim);font-size:12px">link</a><span v-else
+                    style="color:var(--text-3)">—</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="empty-state" v-else style="padding: 30px;">
+            <p>Nenhuma instância vinculada a este cliente.</p>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 15px;">
+           <button class="btn-add" @click="irParaNovaInstancia(clienteSelecionado.id)" style="font-size: 11px;">+ Adicionar Vínculo</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, nextTick } = Vue;
+
+    createApp({
+      setup() {
+        const API = '';
+        const view = ref('chat');
+        const modal = ref(null);
+        const loading = ref(false);
+
+        const clientes = ref([]);
+        const softwares = ref([]);
+        const instancias = ref([]);
+
+        const userInput = ref('');
+        const chatBox = ref(null);
+        const messages = ref([{
+          role: 'ai', tipo: 'geral',
+          text: '👋 Olá! Sou o **GRC Assistant**, alimentado pelo Gemini 2.5 Flash Lite.\n\nPosso te ajudar a:\n- **Consultar** clientes, softwares e instâncias em linguagem natural\n- **Cadastrar** novos registros com um simples comando\n- **Analisar riscos** e sugerir ações de segurança\n\nComo posso ajudar?'
+        }]);
+
+        const hints = [
+          'Quais clientes temos cadastrados?',
+          'Adicione o cliente Niterói',
+          'Quais softwares usam PHP 5.6?',
+          'Análise de risco dos softwares desatualizados'
+        ];
+
+        const viewTitles = { chat: 'Chat com IA', clientes: 'Clientes', softwares: 'Softwares', instancias: 'Instâncias' };
+        const viewDesc = {
+          chat: 'Converse em linguagem natural para consultar, cadastrar e analisar',
+          clientes: 'Gerencie os municípios e entidades atendidas',
+          softwares: 'Catálogo de projetos, versões e tecnologias',
+          instancias: 'Relação cliente-software com branch e repositório'
+        };
+
+        const viewBadge = computed(() => {
+          if (view.value === 'chat') return 'Gemini 2.5 Flash Lite';
+          if (view.value === 'clientes') return `${clientes.value.length} registros`;
+          if (view.value === 'softwares') return `${softwares.value.length} registros`;
+          return `${instancias.value.length} vínculos`;
+        });
+
+        const clientesAtivos = computed(() =>
+          new Set(instancias.value.map(i => i.cliente_id)).size
+        );
+
+        const form = ref({ nome: '', tecnologia: '', git_url: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' });
+        
+        const clienteSelecionado = ref(null);
+        const instanciasClienteSelecionado = ref([]);
+
+        function resetForm() { form.value = { nome: '', tecnologia: '', git_url: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' }; }
+
+        function openModal(tipo) { resetForm(); modal.value = tipo; }
+
+        function renderMd(text) {
+          try { return marked.parse(text || ''); }
+          catch { return text; }
+        }
+
+        function tipoLabel(tipo) {
+          return { consulta: '🔍 Consulta', cadastro: '✅ Cadastro', analise: '⚠️ Análise de Risco', erro: '❌ Erro', geral: '💬 Geral' }[tipo] || tipo;
+        }
+
+        function fmtDate(dt) {
+          if (!dt) return '—';
+          return new Date(dt).toLocaleDateString('pt-BR');
+        }
+
+        async function api(path, opts = {}) {
+          const r = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+          if (!r.ok && r.status !== 204) throw new Error(await r.text());
+          if (r.status === 204) return null;
+          return r.json();
+        }
+
+        async function loadClientes() { clientes.value = await api('/api/clientes'); }
+        async function loadSoftwares() { softwares.value = await api('/api/softwares'); }
+        async function loadInstancias() { instancias.value = await api('/api/instancias'); }
+
+        async function switchView(v) {
+          view.value = v;
+          if (v === 'clientes') await loadClientes();
+          if (v === 'softwares') await loadSoftwares();
+          if (v === 'instancias') { await loadInstancias(); await loadClientes(); await loadSoftwares(); }
+        }
+
+        async function sendMessage() {
+          const msg = userInput.value.trim();
+          if (!msg || loading.value) return;
+          userInput.value = '';
+          messages.value.push({ role: 'user', text: msg });
+          loading.value = true;
+          await nextTick();
+          chatBox.value?.scrollTo({ top: chatBox.value.scrollHeight, behavior: 'smooth' });
+          try {
+            const res = await api('/api/chat', { method: 'POST', body: JSON.stringify({ mensagem: msg }) });
+            messages.value.push({ role: 'ai', tipo: res.tipo, text: res.resposta });
+          } catch (e) {
+            messages.value.push({ role: 'ai', tipo: 'erro', text: `❌ Erro de comunicação: ${e.message}` });
+          } finally {
+            loading.value = false;
+            await nextTick();
+            chatBox.value?.scrollTo({ top: chatBox.value.scrollHeight, behavior: 'smooth' });
+          }
+        }
+
+        async function deletar(recurso, id) {
+          if (!confirm('Confirmar exclusão?')) return;
+          await api(`/api/${recurso}/${id}`, { method: 'DELETE' });
+          if (recurso === 'clientes') await loadClientes();
+          if (recurso === 'softwares') await loadSoftwares();
+          if (recurso === 'instancias') await loadInstancias();
+        }
+
+        async function saveCliente() {
+          if (!form.value.nome) return alert('Informe o nome do cliente.');
+          await api('/api/clientes', { method: 'POST', body: JSON.stringify({ nome: form.value.nome }) });
+          modal.value = null; await loadClientes();
+        }
+
+        async function saveSoftware() {
+          if (!form.value.nome) return alert('Informe o nome do software.');
+          await api('/api/softwares', {
+            method: 'POST', body: JSON.stringify({
+              nome: form.value.nome, tecnologia: form.value.tecnologia || null, git_url: form.value.git_url || null
+            })
+          });
+          modal.value = null; await loadSoftwares();
+        }
+
+        async function saveInstancia() {
+          if (!form.value.cliente_id || !form.value.software_id) return alert('Selecione cliente e software.');
+          await api('/api/instancias', {
+            method: 'POST', body: JSON.stringify({
+              cliente_id: form.value.cliente_id, software_id: form.value.software_id,
+              branch: form.value.branch || 'master', git_custom_url: form.value.git_custom_url || null
+            })
+          });
+          modal.value = null; await loadInstancias();
+        }
+
+        async function verDetalhesCliente(c) {
+          clienteSelecionado.value = c;
+          instanciasClienteSelecionado.value = await api(`/api/instancias/cliente/${c.id}`);
+          modal.value = 'cliente_detalhes';
+        }
+
+        async function irParaNovaInstancia(clienteId) {
+          if (!softwares.value.length) await loadSoftwares();
+          resetForm();
+          form.value.cliente_id = clienteId;
+          modal.value = 'instancia';
+        }
+
+        return {
+          view, modal, loading, clientes, softwares, instancias, userInput, chatBox,
+          messages, hints, form, viewTitles, viewDesc, viewBadge, clientesAtivos,
+          clienteSelecionado, instanciasClienteSelecionado,
+          renderMd, tipoLabel, fmtDate, openModal, switchView, sendMessage,
+          deletar, saveCliente, saveSoftware, saveInstancia,
+          verDetalhesCliente, irParaNovaInstancia
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+
+</html>

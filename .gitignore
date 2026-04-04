@@ -1,0 +1,33 @@
+# Ambientes Virtuais
+venv/
+env/
+.venv/
+
+# Variáveis de Ambiente / Chaves de API
+.env
+
+# Banco de Dados SQLite Local
+*.db
+*.sqlite3
+grc.db*
+
+# Arquivos Compilados do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Histórico / Arquivos Temporários
+.cache/
+.pytest_cache/
+*.log
+
+# Pastas de IDEs
+.vscode/
+.idea/
+*.swp
+
+# Pastas e arquivos de build/distribuição
+dist/
+build/
+*.egg-info/
