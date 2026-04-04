@@ -13,6 +13,8 @@
     rel="stylesheet" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
   <style>
     *,
     *::before,
@@ -832,6 +834,10 @@
           id="nav-instancias">
           <span class="icon">🔗</span> Instâncias
         </button>
+        <button class="nav-btn" :class="{active: view==='relatorios'}" @click="switchView('relatorios')"
+          id="nav-relatorios">
+          <span class="icon">📊</span> Relatório
+        </button>
       </nav>
       <div class="sidebar-footer">
         <div><span class="status-dot"></span>API Conectada</div>
@@ -1029,6 +1035,65 @@
           </div>
         </div>
 
+        <!-- VIEW: RELATÓRIOS -->
+        <div class="view" :class="{active: view==='relatorios'}">
+          <div class="table-view">
+            <div class="table-header" style="flex-wrap: wrap; gap: 10px;">
+              <h3 style="width: 100%;">📊 Consolidado de Ativos</h3>
+              <div style="display: flex; gap: 10px; flex: 1;">
+                 <select class="form-select" v-model="filtrosRelatorio.cliente" style="width: auto;">
+                    <option value="">Todos os Clientes</option>
+                    <option v-for="c in clientes" :key="c.id" :value="c.nome">{{ c.nome }}</option>
+                 </select>
+                 <select class="form-select" v-model="filtrosRelatorio.software" style="width: auto;">
+                    <option value="">Todos os Softwares</option>
+                    <option v-for="s in softwares" :key="s.id" :value="s.nome">{{ s.nome }}</option>
+                 </select>
+                 <select class="form-select" v-model="filtrosRelatorio.branch" style="width: auto;">
+                    <option value="">Todas as Branches</option>
+                    <option v-for="b in branchesUnicas" :key="b" :value="b">{{ b }}</option>
+                 </select>
+              </div>
+              <button class="btn-add" @click="exportarCSV" style="background: linear-gradient(135deg, var(--cyan-dim), #0077aa); color: #000; font-weight: 700; border: none;">
+                📥 Exportar CSV
+              </button>
+              <button class="btn-add" @click="exportarPDF" style="background: linear-gradient(135deg, #ff4d4d, #cc0000); color: #fff; font-weight: 700; border: none;">
+                📄 Exportar PDF
+              </button>
+            </div>
+            
+            <div class="table-card">
+              <table class="data-table" v-if="instanciasFiltradas.length">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Software</th>
+                    <th>Branch</th>
+                    <th>Tecnologia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="i in instanciasFiltradas" :key="i.id">
+                    <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">{{ i.id }}</td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ i.cliente_nome }}</td>
+                    <td style="color:var(--text-2)">{{ i.software_nome }}</td>
+                    <td><span class="branch-badge">{{ i.branch }}</span></td>
+                    <td>
+                      <span class="tech-badge" v-if="getTechParaSoftware(i.software_id)">{{ getTechParaSoftware(i.software_id) }}</span>
+                      <span v-else style="color:var(--text-3)">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">📂</div>
+                <p>Nenhum dado encontrado para os filtros atuais.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div><!-- end content -->
     </main>
 
@@ -1173,12 +1238,13 @@
           'Análise de risco dos softwares desatualizados'
         ];
 
-        const viewTitles = { chat: 'Chat com IA', clientes: 'Clientes', softwares: 'Softwares', instancias: 'Instâncias' };
+        const viewTitles = { chat: 'Chat com IA', clientes: 'Clientes', softwares: 'Softwares', instancias: 'Instâncias', relatorios: 'Relatórios' };
         const viewDesc = {
           chat: 'Converse em linguagem natural para consultar, cadastrar e analisar',
           clientes: 'Gerencie os municípios e entidades atendidas',
           softwares: 'Catálogo de projetos, versões e tecnologias',
-          instancias: 'Relação cliente-software com branch e repositório'
+          instancias: 'Relação cliente-software com branch e repositório',
+          relatorios: 'Consolidação manual com filtros e exportação CSV'
         };
 
         const viewBadge = computed(() => {
@@ -1193,6 +1259,7 @@
         );
 
         const form = ref({ nome: '', tecnologia: '', git_url: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' });
+        const filtrosRelatorio = ref({ cliente: '', software: '', branch: '' });
         
         const clienteSelecionado = ref(null);
         const instanciasClienteSelecionado = ref([]);
@@ -1230,7 +1297,96 @@
           view.value = v;
           if (v === 'clientes') await loadClientes();
           if (v === 'softwares') await loadSoftwares();
-          if (v === 'instancias') { await loadInstancias(); await loadClientes(); await loadSoftwares(); }
+          if (v === 'instancias' || v === 'relatorios') { await loadInstancias(); await loadClientes(); await loadSoftwares(); }
+        }
+
+        const branchesUnicas = computed(() => {
+           return [...new Set(instancias.value.map(i => i.branch))].filter(Boolean).sort();
+        });
+
+        const instanciasFiltradas = computed(() => {
+           return instancias.value.filter(i => {
+              const mCliente = !filtrosRelatorio.value.cliente || i.cliente_nome === filtrosRelatorio.value.cliente;
+              const mSoftware = !filtrosRelatorio.value.software || i.software_nome === filtrosRelatorio.value.software;
+              const mBranch = !filtrosRelatorio.value.branch || i.branch === filtrosRelatorio.value.branch;
+              return mCliente && mSoftware && mBranch;
+           });
+        });
+
+        function getTechParaSoftware(software_id) {
+           const s = softwares.value.find(sw => sw.id === software_id);
+           return s ? s.tecnologia : '';
+        }
+
+        function exportarCSV() {
+           const rows = instanciasFiltradas.value.map(i => {
+              return {
+                 id: i.id,
+                 cliente: i.cliente_nome,
+                 software: i.software_nome,
+                 branch: i.branch,
+                 tecnologia: getTechParaSoftware(i.software_id),
+                 url_custom: i.git_custom_url || ''
+              };
+           });
+           
+           if (!rows.length) return alert('Nenhum dado para exportar.');
+           
+           const headers = ['ID', 'Cliente', 'Software', 'Branch', 'Tecnologia', 'URL Custom'];
+           let csvContent = "data:text/csv;charset=utf-8," + headers.join(";") + "\\n";
+           
+           rows.forEach(r => {
+             const row = [r.id, `"${r.cliente}"`, `"${r.software}"`, `"${r.branch}"`, `"${r.tecnologia || ''}"`, `"${r.url_custom}"`];
+             csvContent += row.join(";") + "\\n";
+           });
+           
+           const encodedUri = encodeURI(csvContent);
+           const link = document.createElement("a");
+           link.setAttribute("href", encodedUri);
+           link.setAttribute("download", "relatorio_ativos.csv");
+           document.body.appendChild(link);
+           link.click();
+           document.body.removeChild(link);
+        }
+
+        function exportarPDF() {
+           const { jsPDF } = window.jspdf;
+           const doc = new jsPDF();
+           
+           const dataAtual = new Date().toLocaleDateString('pt-BR');
+           doc.setFontSize(16);
+           doc.text('Relatório Consolidado de Ativos', 14, 15);
+           doc.setFontSize(10);
+           doc.text(`Gerado em: ${dataAtual}`, 14, 22);
+
+           if (filtrosRelatorio.value.cliente || filtrosRelatorio.value.software || filtrosRelatorio.value.branch) {
+             let filtrosStr = [];
+             if (filtrosRelatorio.value.cliente) filtrosStr.push(`Cliente: ${filtrosRelatorio.value.cliente}`);
+             if (filtrosRelatorio.value.software) filtrosStr.push(`Software: ${filtrosRelatorio.value.software}`);
+             if (filtrosRelatorio.value.branch) filtrosStr.push(`Branch: ${filtrosRelatorio.value.branch}`);
+             doc.setFontSize(9);
+             doc.text(`Filtros: ${filtrosStr.join(' | ')}`, 14, 28);
+           }
+
+           const rows = instanciasFiltradas.value.map(i => [
+               i.cliente_nome,
+               i.software_nome,
+               i.branch,
+               getTechParaSoftware(i.software_id)
+           ]);
+           
+           if (!rows.length) return alert('Nenhum dado para exportar.');
+
+           doc.autoTable({
+               startY: filtrosRelatorio.value.cliente || filtrosRelatorio.value.software || filtrosRelatorio.value.branch ? 32 : 28,
+               head: [['Cliente', 'Software', 'Branch', 'Tecnologia']],
+               body: rows,
+               theme: 'grid',
+               headStyles: { fillColor: [0, 119, 170] },
+               styles: { fontSize: 8 },
+           });
+
+           doc.save('relatorio_ativos.pdf');
         }
 
         async function sendMessage() {
@@ -1304,10 +1460,10 @@
         return {
           view, modal, loading, clientes, softwares, instancias, userInput, chatBox,
           messages, hints, form, viewTitles, viewDesc, viewBadge, clientesAtivos,
-          clienteSelecionado, instanciasClienteSelecionado,
+          clienteSelecionado, instanciasClienteSelecionado, filtrosRelatorio, branchesUnicas, instanciasFiltradas,
           renderMd, tipoLabel, fmtDate, openModal, switchView, sendMessage,
           deletar, saveCliente, saveSoftware, saveInstancia,
-          verDetalhesCliente, irParaNovaInstancia
+          verDetalhesCliente, irParaNovaInstancia, getTechParaSoftware, exportarCSV, exportarPDF
         };
       }
     }).mount('#app');
