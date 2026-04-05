@@ -2035,7 +2035,7 @@
     </div>
 
     <!-- MODAL: NOVA POLÍTICA MANUAL -->
-    <div class="modal-overlay" v-if="modal==='politica_manual'" @click.self="modal=null">
+    <div class="modal-overlay" v-if="modal==='politica_manual' || modal==='politica_editar'" @click.self="modal=null">
       <div class="modal" style="width:560px">
         <h3>📄 Nova Política</h3>
         <div class="form-group">
@@ -3011,7 +3011,12 @@
         }
 
         // ── CRUD Políticas ──
-        function editarPolitica(p) { politicaEditando.value = { ...p }; modal.value = 'politica_editar'; }
+        function editarPolitica(p) {
+          api(`/api/politicas/${p.id}`).then(dados => {
+            politicaEditando.value = { ...dados };
+            modal.value = 'politica_editar';
+          });
+        }
 
         async function salvarPolitica() {
           const p = politicaEditando.value;
@@ -3108,17 +3113,20 @@
 
         // ── Exportar PDF Política ──
         function exportarPoliticaPDF(p) {
-          const { jsPDF } = window.jspdf;
-          const doc = new jsPDF();
-          doc.setFontSize(18); doc.text(p.titulo, 14, 20);
-          doc.setFontSize(10);
-          doc.text(`Categoria: ${p.categoria} | Versão: ${p.versao} | Status: ${statusLabelPolitica(p.status)}`, 14, 30);
-          doc.text(`Atualizado em: ${fmtDate(p.atualizado_em)}`, 14, 36);
-          doc.line(14, 40, 196, 40);
-          const linhas = doc.splitTextToSize(p.conteudo.replace(/#{1,6} /g, '').replace(/\*\*/g, ''), 180);
-          doc.setFontSize(9);
-          doc.text(linhas, 14, 48);
-          doc.save(`${p.titulo.replace(/\s+/g,'_')}.pdf`);
+          api(`/api/politicas/${p.id}`).then(dados => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.text(dados.titulo, 14, 20);
+            doc.setFontSize(10);
+            doc.text(`Categoria: ${dados.categoria} | Versão: ${dados.versao} | Status: ${statusLabelPolitica(dados.status)}`, 14, 30);
+            doc.text(`Atualizado em: ${fmtDate(dados.atualizado_em)}`, 14, 36);
+            doc.line(14, 40, 196, 40);
+            const contentStr = dados.conteudo || '';
+            const linhas = doc.splitTextToSize(contentStr.replace(/#{1,6} /g, '').replace(/\*\*/g, ''), 180);
+            doc.setFontSize(9);
+            doc.text(linhas, 14, 48);
+            doc.save(`${dados.titulo.replace(/\s+/g,'_')}.pdf`);
+          });
         }
 
         // ── Exportar PDF Procedimento ──
