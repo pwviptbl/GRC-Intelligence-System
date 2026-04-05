@@ -14,7 +14,7 @@ def resumo():
         # Ativos
         total_clientes   = conn.execute("SELECT COUNT(*) FROM clientes").fetchone()[0]
         total_softwares  = conn.execute("SELECT COUNT(*) FROM softwares").fetchone()[0]
-        total_instancias = conn.execute("SELECT COUNT(*) FROM instancias").fetchone()[0]
+        total_instancias = conn.execute("SELECT COUNT(*) FROM instancias_cliente").fetchone()[0]
 
         # Governança
         total_politicas     = conn.execute("SELECT COUNT(*) FROM politicas").fetchone()[0]
