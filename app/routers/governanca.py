@@ -8,6 +8,81 @@ from app.services import gemini_service
 governanca_bp = Blueprint("governanca", __name__, url_prefix="/api/governanca")
 
 
+@governanca_bp.post("/risco/analisar")
+def analisar_risco():
+    """
+    Analisa um risco descrito pelo usuário com base no contexto completo do sistema.
+    Retorna classificação, causa raiz, políticas/procedimentos relacionados e plano de ação.
+    """
+    data      = request.get_json(silent=True) or {}
+    descricao = data.get("descricao", "")
+    origem    = data.get("origem", "")
+
+    # Lê o contexto completo do sistema para a IA
+    with get_db() as conn:
+        politicas = conn.execute(
+            "SELECT titulo, categoria, status FROM politicas"
+        ).fetchall()
+        procedimentos = conn.execute(
+            "SELECT titulo, tipo, status FROM procedimentos"
+        ).fetchall()
+        softwares = conn.execute(
+            "SELECT nome, tecnologia FROM softwares"
+        ).fetchall()
+        riscos_abertos = conn.execute(
+            "SELECT titulo, criticidade, status FROM riscos WHERE status != 'fechado'"
+        ).fetchall()
+
+    ctx_politicas = "\n".join(
+        f"- [{p['status']}] {p['titulo']} ({p['categoria']})" for p in politicas
+    ) or "Nenhuma política cadastrada."
+
+    ctx_procedimentos = "\n".join(
+        f"- [{p['status']}] {p['titulo']} ({p['tipo']})" for p in procedimentos
+    ) or "Nenhum procedimento cadastrado."
+
+    ctx_softwares = "\n".join(
+        f"- {s['nome']} ({s['tecnologia'] or 'tecnologia não informada'})" for s in softwares
+    ) or "Nenhum software cadastrado."
+
+    ctx_riscos = "\n".join(
+        f"- [{r['criticidade']}] {r['titulo']} (status: {r['status']})" for r in riscos_abertos
+    ) or "Nenhum risco aberto."
+
+    prompt = (
+        "Você é um especialista em GRC (Governança, Risco e Conformidade) de uma software house "
+        "brasileira chamada DBSeller que fornece sistemas para municípios e entidades públicas.\n\n"
+        "## Contexto do Sistema\n"
+        f"### Políticas cadastradas:\n{ctx_politicas}\n\n"
+        f"### Procedimentos cadastrados:\n{ctx_procedimentos}\n\n"
+        f"### Softwares/ativos em uso:\n{ctx_softwares}\n\n"
+        f"### Riscos já abertos (para evitar duplicatas):\n{ctx_riscos}\n\n"
+        "## Risco a analisar\n"
+        f"**Origem informada:** {origem or 'Não especificada'}\n"
+        f"**Descrição:** {descricao}\n\n"
+        "## Sua tarefa\n"
+        "Analise este risco e retorne APENAS um JSON com esta estrutura exata:\n"
+        "{\n"
+        '  "titulo": "Título conciso do risco",\n'
+        '  "probabilidade": "Alta|Media|Baixa",\n'
+        '  "impacto": "Alto|Medio|Baixo",\n'
+        '  "criticidade": "Critico|Alto|Medio|Baixo",\n'
+        '  "origem": "Técnico|Processo|Humano|Conformidade|Físico|Terceiro",\n'
+        '  "causa_raiz": "Breve descrição da causa raiz",\n'
+        '  "politica_ref": "Nome da política já cadastrada que cobre isso, ou vazio",\n'
+        '  "procedimento_ref": "Nome do procedimento já cadastrado relacionado, ou vazio",\n'
+        '  "politica_sugerida": "Nome de política que deveria existir mas não existe (ou vazio)",\n'
+        '  "procedimento_sugerido": "Nome de procedimento que deveria existir (ou vazio)",\n'
+        '  "plano_acao": "Plano de ação em 3 a 5 passos numerados",\n'
+        '  "justificativa": "Explicação da classificação em 2-3 frases"\n'
+        "}"
+    )
+
+    resultado = gemini_service.processar_governanca_json(prompt)
+    return jsonify(resultado)
+
+
+
 @governanca_bp.post("/politica/gerar")
 def gerar_politica():
     """

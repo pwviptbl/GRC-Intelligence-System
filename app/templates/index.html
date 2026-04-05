@@ -837,21 +837,85 @@
         transform: translateY(0)
       }
     }
+
+    /* ── LOGIN ── */
+    .login-overlay {
+      position: fixed; inset: 0; background: var(--bg-base);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .login-box {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 40px; width: 380px; text-align: center;
+      box-shadow: 0 0 60px rgba(0,229,255,.08);
+    }
+    .login-box h1 { font-size: 14px; color: var(--cyan); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+    .login-box .login-icon { font-size: 48px; margin-bottom: 16px; }
+    .login-box p { font-size: 11px; color: var(--text-3); margin-bottom: 24px; }
+    .login-box .form-group { margin-bottom: 14px; text-align: left; }
+    .login-box .btn-login {
+      width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 700;
+      background: linear-gradient(135deg, var(--cyan-dim), var(--cyan)); color: #000;
+      cursor: pointer; font-size: 13px; letter-spacing: .5px; transition: .2s;
+    }
+    .login-box .btn-login:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,229,255,.3); }
+    .login-error { color: var(--red); font-size: 12px; margin-top: 10px; }
+    .user-info {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      background: rgba(0,229,255,.04); border-radius: 8px; margin-bottom: 8px;
+      border: 1px solid rgba(0,229,255,.1); cursor: pointer;
+    }
+    .user-info:hover { background: rgba(0,229,255,.08); }
   </style>
 </head>
 
 <body>
   <div id="app">
 
+    <!-- TELA DE LOGIN -->
+    <div class="login-overlay" v-if="!autenticado">
+      <div class="login-box">
+        <div class="login-icon">🛡️</div>
+        <h1>GRC Intelligence System</h1>
+        <p>DBSeller · Governança, Risco e Conformidade</p>
+        <div class="form-group">
+          <label>Usuário</label>
+          <input class="form-input" v-model="loginForm.username" placeholder="admin"
+            @keydown.enter="fazerLogin" id="input-login-user" />
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input class="form-input" type="password" v-model="loginForm.senha" placeholder="••••••••"
+            @keydown.enter="fazerLogin" id="input-login-senha" />
+        </div>
+        <button class="btn-login" @click="fazerLogin" :disabled="loginLoading">
+          {{ loginLoading ? 'Entrando...' : 'Entrar' }}
+        </button>
+        <div class="login-error" v-if="loginErro">{{ loginErro }}</div>
+      </div>
+    </div>
+
+    <!-- APP PRINCIPAL (só visível após login) -->
+    <template v-if="autenticado">
+
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="logo">
         <div class="logo-icon">🛡️</div>
         <h1>GRC Intel</h1>
-        <p>v1.0 · DBSeller</p>
+        <p>v2.0 · DBSeller</p>
       </div>
       <nav>
+        <div class="user-info" @click="modal='alterar_senha'" title="Alterar senha">
+          <span style="font-size:18px">👤</span>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-1)">{{ usuarioLogado.nome }}</div>
+            <div style="font-size:10px;color:var(--text-3)">{{ usuarioLogado.username }}</div>
+          </div>
+        </div>
         <div class="nav-label">Principal</div>
+        <button class="nav-btn" :class="{active: view==='dashboard'}" @click="switchView('dashboard')" id="nav-dashboard">
+          <span class="icon">🏠</span> Dashboard
+        </button>
         <button class="nav-btn" :class="{active: view==='chat'}" @click="view='chat'" id="nav-chat">
           <span class="icon">🤖</span> Chat IA
         </button>
@@ -893,10 +957,43 @@
             <span class="icon" style="opacity: 0.8;">📊</span> Relatórios
           </button>
         </div>
+
+        <div class="nav-folder" @click="toggleMenuRiscos" style="margin-top: 8px;">
+          <span style="display: flex; align-items: center; gap: 6px;"><span class="icon" style="font-size: 14px;">⚠️</span> Riscos</span>
+          <span style="font-size: 10px; color: var(--text-3);">{{ menuRiscosAberto ? '▼' : '►' }}</span>
+        </div>
+        <div class="nav-submenu-group" v-show="menuRiscosAberto">
+          <button class="nav-btn submenu" :class="{active: view==='riscos'}" @click="switchView('riscos')" id="nav-riscos">
+            <span class="icon" style="opacity: 0.8;">📋</span> Registro de Riscos
+          </button>
+          <button class="nav-btn submenu" :class="{active: view==='relatorio_riscos'}" @click="switchView('relatorio_riscos')" id="nav-relatorio-riscos">
+            <span class="icon" style="opacity: 0.8;">📊</span> Relatórios
+          </button>
+        </div>
+
+        <div class="nav-label" style="margin-top:14px">Operacional</div>
+        <button class="nav-btn" :class="{active: view==='incidentes'}" @click="switchView('incidentes')" id="nav-incidentes">
+          <span class="icon">🚨</span> Incidentes
+        </button>
+        <button class="nav-btn" :class="{active: view==='plano_acoes'}" @click="switchView('plano_acoes')" id="nav-acoes">
+          <span class="icon">✅</span> Plano de Ação
+        </button>
+        <button class="nav-btn" :class="{active: view==='lgpd'}" @click="switchView('lgpd')" id="nav-lgpd">
+          <span class="icon">📋</span> LGPD
+        </button>
+        <button class="nav-btn" :class="{active: view==='treinamentos'}" @click="switchView('treinamentos')" id="nav-treinamentos">
+          <span class="icon">🎓</span> Treinamentos
+        </button>
+        <button class="nav-btn" :class="{active: view==='maturidade'}" @click="switchView('maturidade')" id="nav-maturidade">
+          <span class="icon">📊</span> Maturidade
+        </button>
       </nav>
       <div class="sidebar-footer">
         <div><span class="status-dot"></span>API Conectada</div>
         <div style="margin-top:6px;color:var(--text-3)">Gemini 2.5 Flash Lite</div>
+        <button @click="fazerLogout" style="margin-top:10px;background:rgba(255,83,112,.1);border:1px solid rgba(255,83,112,.2);color:var(--red);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;width:100%">
+          🚪 Sair
+        </button>
       </div>
     </aside>
 
@@ -1405,8 +1502,537 @@
           </div>
         </div>
 
+        <!-- VIEW: REGISTRO DE RISCOS -->
+        <div class="view" :class="{active: view==='riscos'}">
+          <div class="table-view">
+
+            <!-- Cards de resumo -->
+            <div class="stats-row">
+              <div class="stat-card" style="flex:1;background:rgba(255,83,112,.08);border:1px solid rgba(255,83,112,.25);border-radius:12px;padding:18px 20px">
+                <div class="stat-label">Crítico</div>
+                <div class="stat-value" style="color:var(--red)">{{ riscos.filter(r=>r.criticidade==='Critico').length }}</div>
+              </div>
+              <div class="stat-card" style="flex:1;background:rgba(255,150,50,.08);border:1px solid rgba(255,150,50,.25);border-radius:12px;padding:18px 20px">
+                <div class="stat-label">Alto</div>
+                <div class="stat-value" style="color:#ff9632">{{ riscos.filter(r=>r.criticidade==='Alto').length }}</div>
+              </div>
+              <div class="stat-card c3">
+                <div class="stat-label">Médio</div>
+                <div class="stat-value">{{ riscos.filter(r=>r.criticidade==='Medio').length }}</div>
+              </div>
+              <div class="stat-card c2">
+                <div class="stat-label">Baixo</div>
+                <div class="stat-value">{{ riscos.filter(r=>r.criticidade==='Baixo').length }}</div>
+              </div>
+              <div class="stat-card c1">
+                <div class="stat-label">Abertos</div>
+                <div class="stat-value">{{ riscos.filter(r=>r.status!=='fechado').length }}</div>
+              </div>
+            </div>
+
+            <div class="table-header" style="margin-top:20px">
+              <h3>📋 Registro de Riscos</h3>
+              <button class="btn-add" @click="openModal('risco')" id="btn-add-risco">+ Registrar Risco</button>
+            </div>
+
+            <div class="table-card">
+              <table class="data-table" v-if="riscos.length">
+                <thead>
+                  <tr>
+                    <th>Criticidade</th><th>Título</th><th>Origem</th><th>Ativo Afetado</th><th>Status</th><th>Registrado</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="r in riscos" :key="r.id">
+                    <td><span class="badge" :style="criticidadeStyle(r.criticidade)">{{ r.criticidade }}</span></td>
+                    <td style="font-weight:500;color:var(--text-1);max-width:260px">{{ r.titulo }}</td>
+                    <td><span class="tech-badge">{{ r.origem }}</span></td>
+                    <td style="color:var(--text-3);font-size:12px">{{ r.ativo_afetado || '—' }}</td>
+                    <td><span class="badge" :style="statusRiscoStyle(r.status)">{{ statusRiscoLabel(r.status) }}</span></td>
+                    <td style="color:var(--text-3);font-size:12px">{{ fmtDate(r.criado_em) }}</td>
+                    <td style="display:flex;gap:4px">
+                      <button class="btn-del" @click="editarRisco(r)" style="color:var(--cyan)" title="Editar / Ver">✏️</button>
+                      <button class="btn-del" @click="exportarRiscoPDF(r)" style="color:var(--yellow)" title="PDF">📄</button>
+                      <button class="btn-del" @click="deletar('riscos', r.id); loadRiscos()" title="Remover">🗑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">⚠️</div>
+                <p>Nenhum risco registrado. Clique em "+ Registrar Risco" para começar.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: RELATÓRIO DE RISCOS -->
+        <div class="view" :class="{active: view==='relatorio_riscos'}">
+          <div class="table-view">
+            <div class="table-header" style="flex-wrap:wrap;gap:12px;margin-bottom:20px">
+              <h3 style="width:100%">📊 Relatório de Riscos</h3>
+              <div style="display:flex;gap:10px;flex:1;flex-wrap:wrap">
+                <select class="form-select" v-model="filtroRiscos.criticidade" style="width:auto">
+                  <option value="">Todas as Criticidades</option>
+                  <option value="Critico">Crítico</option>
+                  <option value="Alto">Alto</option>
+                  <option value="Medio">Médio</option>
+                  <option value="Baixo">Baixo</option>
+                </select>
+                <select class="form-select" v-model="filtroRiscos.status" style="width:auto">
+                  <option value="">Todos os Status</option>
+                  <option value="aberto">Aberto</option>
+                  <option value="em_tratamento">Em Tratamento</option>
+                  <option value="monitorando">Monitorando</option>
+                  <option value="fechado">Fechado</option>
+                </select>
+                <select class="form-select" v-model="filtroRiscos.origem" style="width:auto">
+                  <option value="">Todas as Origens</option>
+                  <option>Técnico</option><option>Processo</option><option>Humano</option>
+                  <option>Conformidade</option><option>Físico</option><option>Terceiro</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-add" @click="exportarRiscosCSV"
+                  style="background:linear-gradient(135deg,var(--cyan-dim),#0077aa);color:#000;font-weight:700;border:none">
+                  📥 CSV
+                </button>
+                <button class="btn-add" @click="exportarRiscosPDF"
+                  style="background:linear-gradient(135deg,#ff4d4d,#cc0000);color:#fff;font-weight:700;border:none">
+                  📄 PDF
+                </button>
+              </div>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="riscosFiltrados.length">
+                <thead>
+                  <tr><th>Criticidade</th><th>Título</th><th>Origem</th><th>Ativo</th><th>Prob.</th><th>Impacto</th><th>Status</th><th>Registrado</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="r in riscosFiltrados" :key="r.id">
+                    <td><span class="badge" :style="criticidadeStyle(r.criticidade)">{{ r.criticidade }}</span></td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ r.titulo }}</td>
+                    <td><span class="tech-badge">{{ r.origem }}</span></td>
+                    <td style="color:var(--text-3);font-size:12px">{{ r.ativo_afetado || '—' }}</td>
+                    <td style="font-size:12px;color:var(--text-2)">{{ r.probabilidade }}</td>
+                    <td style="font-size:12px;color:var(--text-2)">{{ r.impacto }}</td>
+                    <td><span class="badge" :style="statusRiscoStyle(r.status)">{{ statusRiscoLabel(r.status) }}</span></td>
+                    <td style="color:var(--text-3);font-size:12px">{{ fmtDate(r.criado_em) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else>
+                <div class="empty-icon">📂</div>
+                <p>Nenhum risco encontrado com os filtros atuais.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: DASHBOARD -->
+        <div class="view" :class="{active: view==='dashboard'}">
+          <div class="table-view" v-if="dashData">
+            <!-- Row 1: Cards principais -->
+            <div class="stats-row" style="margin-bottom:20px">
+              <div class="stat-card c1"><div class="stat-label">Clientes</div><div class="stat-value">{{ dashData.ativos.clientes }}</div></div>
+              <div class="stat-card c2"><div class="stat-label">Softwares</div><div class="stat-value">{{ dashData.ativos.softwares }}</div></div>
+              <div class="stat-card c3"><div class="stat-label">Instâncias</div><div class="stat-value">{{ dashData.ativos.instancias }}</div></div>
+              <div class="stat-card" style="flex:1;background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:18px 20px">
+                <div class="stat-label">Políticas Vigentes</div>
+                <div class="stat-value" style="color:var(--cyan)">{{ dashData.governanca.politicas_vigentes }}/{{ dashData.governanca.politicas }}</div>
+              </div>
+            </div>
+
+            <!-- Row 2: Riscos e Incidentes -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+              <div class="table-card" style="padding:20px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">⚠️ Riscos Abertos</div>
+                <div style="display:flex;gap:10px;margin-bottom:12px">
+                  <span class="badge" style="background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)">{{ dashData.riscos.criticos }} Críticos</span>
+                  <span class="badge" style="background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)">{{ dashData.riscos.altos }} Altos</span>
+                  <span class="badge" style="background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)">{{ dashData.riscos.medios }} Médios</span>
+                  <span class="badge" style="background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)">{{ dashData.riscos.baixos }} Baixos</span>
+                </div>
+                <div v-for="r in dashData.ultimos_riscos" :key="r.id" style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:12px">
+                  <span style="color:var(--text-1)">{{ r.titulo }}</span>
+                  <span class="badge" :style="criticidadeStyle(r.criticidade)">{{ r.criticidade }}</span>
+                </div>
+              </div>
+              <div class="table-card" style="padding:20px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">🚨 Incidentes</div>
+                <div style="font-size:28px;font-weight:700;color:var(--red);margin-bottom:8px">{{ dashData.incidentes.abertos }}</div>
+                <div style="font-size:12px;color:var(--text-3);margin-bottom:12px">abertos de {{ dashData.incidentes.total }} total</div>
+                <div v-for="i in dashData.ultimos_incidentes" :key="i.id" style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:12px">
+                  <span style="color:var(--text-1)">{{ i.titulo }}</span>
+                  <span class="tech-badge">{{ i.severidade }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 3: Plano de Ação e LGPD -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="table-card" style="padding:20px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">✅ Plano de Ação</div>
+                <div style="display:flex;gap:12px">
+                  <div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--red)">{{ dashData.plano_acoes.pendentes }}</div><div style="font-size:10px;color:var(--text-3)">Pendentes</div></div>
+                  <div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--yellow)">{{ dashData.plano_acoes.em_andamento }}</div><div style="font-size:10px;color:var(--text-3)">Em Andamento</div></div>
+                  <div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--green)">{{ dashData.plano_acoes.concluidas }}</div><div style="font-size:10px;color:var(--text-3)">Concluídas</div></div>
+                </div>
+              </div>
+              <div class="table-card" style="padding:20px">
+                <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">📋 Conformidade LGPD</div>
+                <div style="display:flex;align-items:center;gap:16px">
+                  <div style="font-size:36px;font-weight:700" :style="{color: dashData.lgpd.percentual >= 70 ? 'var(--green)' : dashData.lgpd.percentual >= 40 ? 'var(--yellow)' : 'var(--red)'}">{{ dashData.lgpd.percentual }}%</div>
+                  <div style="font-size:11px;color:var(--text-3)">{{ dashData.lgpd.conforme }} conformes de {{ dashData.lgpd.total }} itens<br>{{ dashData.lgpd.nao_avaliado }} não avaliados</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="empty-state" v-else style="margin-top:40px">
+            <div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+            <p>Carregando dashboard...</p>
+          </div>
+        </div>
+
+        <!-- VIEW: INCIDENTES -->
+        <div class="view" :class="{active: view==='incidentes'}">
+          <div class="table-view">
+            <div class="table-header">
+              <h3>🚨 Registro de Incidentes</h3>
+              <button class="btn-add" @click="openModal('incidente')">+ Registrar Incidente</button>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="incidentes.length">
+                <thead><tr><th>Severidade</th><th>Título</th><th>Detectado por</th><th>Status</th><th>Data</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="i in incidentes" :key="i.id">
+                    <td><span class="badge" :style="criticidadeStyle(i.severidade)">{{ i.severidade }}</span></td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ i.titulo }}</td>
+                    <td style="font-size:12px;color:var(--text-3)">{{ i.detectado_por || '—' }}</td>
+                    <td><span class="badge" :style="statusRiscoStyle(i.status)">{{ statusIncidenteLabel(i.status) }}</span></td>
+                    <td style="font-size:12px;color:var(--text-3)">{{ i.data_deteccao || fmtDate(i.criado_em) }}</td>
+                    <td style="display:flex;gap:4px">
+                      <button class="btn-del" @click="editarIncidente(i)" style="color:var(--cyan)">✏️</button>
+                      <button class="btn-del" @click="deletar('incidentes', i.id); loadIncidentes()">🗑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else><div class="empty-icon">🚨</div><p>Nenhum incidente registrado.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: PLANO DE AÇÃO -->
+        <div class="view" :class="{active: view==='plano_acoes'}">
+          <div class="table-view">
+            <div class="table-header">
+              <h3>✅ Plano de Ação Consolidado</h3>
+              <button class="btn-add" @click="openModal('acao')">+ Nova Ação</button>
+            </div>
+            <div class="stats-row" style="margin-bottom:16px">
+              <div class="stat-card" style="flex:1;background:rgba(255,83,112,.08);border:1px solid rgba(255,83,112,.25);border-radius:12px;padding:14px"><div class="stat-label">Pendentes</div><div class="stat-value" style="color:var(--red)">{{ acoes.filter(a=>a.status==='pendente').length }}</div></div>
+              <div class="stat-card" style="flex:1;background:rgba(255,215,64,.08);border:1px solid rgba(255,215,64,.25);border-radius:12px;padding:14px"><div class="stat-label">Em Andamento</div><div class="stat-value" style="color:var(--yellow)">{{ acoes.filter(a=>a.status==='em_andamento').length }}</div></div>
+              <div class="stat-card" style="flex:1;background:rgba(0,255,159,.08);border:1px solid rgba(0,255,159,.25);border-radius:12px;padding:14px"><div class="stat-label">Concluídas</div><div class="stat-value" style="color:var(--green)">{{ acoes.filter(a=>a.status==='concluida').length }}</div></div>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="acoes.length">
+                <thead><tr><th>Prioridade</th><th>Título</th><th>Origem</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="a in acoes" :key="a.id">
+                    <td><span class="badge" :style="criticidadeStyle(a.prioridade.charAt(0).toUpperCase()+a.prioridade.slice(1))">{{ a.prioridade }}</span></td>
+                    <td style="font-weight:500;color:var(--text-1)">{{ a.titulo }}</td>
+                    <td style="font-size:12px;color:var(--text-3)">{{ a.origem || '—' }}</td>
+                    <td style="font-size:12px;color:var(--text-2)">{{ a.responsavel || '—' }}</td>
+                    <td>
+                      <select class="form-select" :value="a.status" @change="atualizarStatusAcao(a.id, $event.target.value)" style="font-size:11px;padding:4px 6px;width:auto">
+                        <option value="pendente">Pendente</option>
+                        <option value="em_andamento">Em Andamento</option>
+                        <option value="concluida">Concluída</option>
+                      </select>
+                    </td>
+                    <td style="display:flex;gap:4px">
+                      <button class="btn-del" @click="editarAcao(a)" style="color:var(--cyan)">✏️</button>
+                      <button class="btn-del" @click="deletar('plano-acoes', a.id); loadAcoes()">🗑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else><div class="empty-icon">✅</div><p>Nenhuma ação registrada.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: LGPD -->
+        <div class="view" :class="{active: view==='lgpd'}">
+          <div class="table-view">
+            <div class="table-header" style="flex-wrap:wrap;gap:12px">
+              <h3>📋 Conformidade LGPD</h3>
+              <div style="display:flex;gap:8px">
+                <select class="form-select" v-model="filtroLgpd.categoria" style="width:auto">
+                  <option value="">Todas as Categorias</option>
+                  <option v-for="cat in categoriasLgpd" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+                <select class="form-select" v-model="filtroLgpd.conforme" style="width:auto">
+                  <option value="">Todos os Status</option>
+                  <option value="conforme">Conforme</option>
+                  <option value="parcial">Parcial</option>
+                  <option value="nao_conforme">Não Conforme</option>
+                  <option value="nao_avaliado">Não Avaliado</option>
+                </select>
+                <button class="btn-add" @click="exportarLgpdPDF"
+                  style="background:linear-gradient(135deg,#ff4d4d,#cc0000);color:#fff;font-weight:700;font-size:11px;border:none">📄 PDF</button>
+              </div>
+            </div>
+            <div class="stats-row" style="margin-bottom:16px">
+              <div class="stat-card" style="flex:1;background:rgba(0,255,159,.08);border:1px solid rgba(0,255,159,.25);border-radius:12px;padding:14px"><div class="stat-label">Conforme</div><div class="stat-value" style="color:var(--green)">{{ lgpdItens.filter(i=>i.conforme==='conforme').length }}</div></div>
+              <div class="stat-card" style="flex:1;background:rgba(255,215,64,.08);border:1px solid rgba(255,215,64,.25);border-radius:12px;padding:14px"><div class="stat-label">Parcial</div><div class="stat-value" style="color:var(--yellow)">{{ lgpdItens.filter(i=>i.conforme==='parcial').length }}</div></div>
+              <div class="stat-card" style="flex:1;background:rgba(255,83,112,.08);border:1px solid rgba(255,83,112,.25);border-radius:12px;padding:14px"><div class="stat-label">Não Conforme</div><div class="stat-value" style="color:var(--red)">{{ lgpdItens.filter(i=>i.conforme==='nao_conforme').length }}</div></div>
+              <div class="stat-card" style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:14px"><div class="stat-label">Não Avaliado</div><div class="stat-value">{{ lgpdItens.filter(i=>i.conforme==='nao_avaliado').length }}</div></div>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="lgpdItensFiltrados.length">
+                <thead><tr><th>Artigo</th><th>Descrição</th><th>Categoria</th><th>Status</th><th>Observação</th></tr></thead>
+                <tbody>
+                  <tr v-for="item in lgpdItensFiltrados" :key="item.id">
+                    <td style="font-weight:600;color:var(--cyan);font-size:12px;white-space:nowrap">{{ item.artigo }}</td>
+                    <td style="font-size:12px;color:var(--text-1)">{{ item.descricao }}</td>
+                    <td><span class="tech-badge">{{ item.categoria }}</span></td>
+                    <td>
+                      <select class="form-select" :value="item.conforme" @change="atualizarLgpd(item.id, 'conforme', $event.target.value)" style="font-size:10px;padding:4px;width:auto">
+                        <option value="nao_avaliado">Não Avaliado</option>
+                        <option value="conforme">Conforme</option>
+                        <option value="parcial">Parcial</option>
+                        <option value="nao_conforme">Não Conforme</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input class="form-input" :value="item.observacao" @blur="atualizarLgpd(item.id, 'observacao', $event.target.value)" placeholder="Observação..." style="font-size:11px;padding:4px 8px" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: TREINAMENTOS -->
+        <div class="view" :class="{active: view==='treinamentos'}">
+          <div class="table-view">
+            <div class="table-header">
+              <h3>🎓 Controle de Treinamentos</h3>
+              <button class="btn-add" @click="openModal('treinamento')">+ Novo Treinamento</button>
+            </div>
+            <div class="table-card">
+              <table class="data-table" v-if="treinamentosLista.length">
+                <thead><tr><th>Treinamento</th><th>Categoria</th><th>Obrigatório</th><th>Participantes</th><th>Concluídos</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="t in treinamentosLista" :key="t.id">
+                    <td style="font-weight:500;color:var(--text-1)">{{ t.titulo }}</td>
+                    <td><span class="tech-badge">{{ t.categoria }}</span></td>
+                    <td>{{ t.obrigatorio ? '✅ Sim' : '—' }}</td>
+                    <td style="font-family:var(--mono);font-size:12px">{{ t.total_registros || 0 }}</td>
+                    <td><span class="badge" :style="t.total_registros > 0 && t.concluidos == t.total_registros ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)'">{{ t.concluidos || 0 }}/{{ t.total_registros || 0 }}</span></td>
+                    <td style="display:flex;gap:4px">
+                      <button class="btn-del" @click="editarTreinamento(t)" style="color:var(--cyan)">✏️</button>
+                      <button class="btn-del" @click="deletar('treinamentos', t.id); loadTreinamentos()">🗑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty-state" v-else><div class="empty-icon">🎓</div><p>Nenhum treinamento cadastrado.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW: MATURIDADE -->
+        <div class="view" :class="{active: view==='maturidade'}">
+          <div class="table-view" v-if="maturidadeData">
+            <div style="text-align:center;margin-bottom:30px">
+              <h3 style="margin-bottom:16px">📊 Score de Maturidade GRC</h3>
+              <div style="font-size:72px;font-weight:800;letter-spacing:-2px" :style="{color: maturidadeData.cor}">{{ maturidadeData.score }}</div>
+              <div style="font-size:14px;font-weight:600;margin-top:4px" :style="{color: maturidadeData.cor}">{{ maturidadeData.nivel }}</div>
+              <div style="width:100%;max-width:400px;margin:20px auto;height:10px;background:var(--bg-base);border-radius:5px;overflow:hidden">
+                <div :style="{width: maturidadeData.score+'%', height:'100%', background:'linear-gradient(90deg,'+maturidadeData.cor+','+maturidadeData.cor+'80)', borderRadius:'5px', transition:'.5s'}"></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:800px;margin:0 auto">
+              <div v-for="(v,k) in maturidadeData.detalhes" :key="k" class="table-card" style="padding:16px;text-align:center">
+                <div style="font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:8px">{{ k.replace('_',' ') }}</div>
+                <div style="font-size:28px;font-weight:700;color:var(--cyan)">{{ v.score }}<span style="font-size:14px;color:var(--text-3)">/{{ v.max }}</span></div>
+                <div style="width:100%;height:4px;background:var(--bg-base);border-radius:2px;margin:8px 0;overflow:hidden">
+                  <div :style="{width: (v.score/v.max*100)+'%', height:'100%', background:'var(--cyan)', borderRadius:'2px'}"></div>
+                </div>
+                <div style="font-size:10px;color:var(--text-3)">{{ v.desc }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div><!-- end content -->
     </main>
+
+    <!-- MODAL: NOVO RISCO / EDITAR RISCO -->
+    <div class="modal-overlay" v-if="modal==='risco' || modal==='risco_editar'" @click.self="null">
+      <div class="modal" style="width:780px;max-width:96vw">
+        <h3>⚠️ {{ riscoEditando?.id ? 'Editar Risco' : 'Registrar Novo Risco' }}</h3>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+          <!-- Coluna Esquerda: Formulário -->
+          <div>
+            <div class="form-group">
+              <label>Título</label>
+              <input class="form-input" v-model="formRisco.titulo" placeholder="Ex: Conta admin compartilhada entre colaboradores" />
+            </div>
+            <div class="form-group">
+              <label>Descrição detalhada do problema</label>
+              <textarea class="form-input" v-model="formRisco.descricao" rows="4"
+                placeholder="Descreva o problema com todos os detalhes que tiver..."></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="form-group" style="margin:0">
+                <label>Origem</label>
+                <select class="form-select" v-model="formRisco.origem">
+                  <option>Técnico</option><option>Processo</option><option>Humano</option>
+                  <option>Conformidade</option><option>Físico</option><option>Terceiro</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Status</label>
+                <select class="form-select" v-model="formRisco.status">
+                  <option value="aberto">Aberto</option>
+                  <option value="em_tratamento">Em Tratamento</option>
+                  <option value="monitorando">Monitorando</option>
+                  <option value="fechado">Fechado</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Probabilidade</label>
+                <select class="form-select" v-model="formRisco.probabilidade">
+                  <option value="Alta">Alta</option>
+                  <option value="Media">Média</option>
+                  <option value="Baixa">Baixa</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Impacto</label>
+                <select class="form-select" v-model="formRisco.impacto">
+                  <option value="Alto">Alto</option>
+                  <option value="Medio">Médio</option>
+                  <option value="Baixo">Baixo</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Ativo / Área Afetada</label>
+              <input class="form-input" v-model="formRisco.ativo_afetado" placeholder="Ex: Servidor de produção, RH, Todos os usuários" />
+            </div>
+            <div class="form-group">
+              <label>Responsável pelo tratamento</label>
+              <input class="form-input" v-model="formRisco.responsavel" placeholder="Ex: Analista de Segurança, Gerência de TI" />
+            </div>
+            <div class="form-group">
+              <label>Política de referência</label>
+              <input class="form-input" v-model="formRisco.politica_ref" placeholder="Ex: Política de Controle de Acesso" />
+            </div>
+            <div class="form-group">
+              <label>Procedimento relacionado</label>
+              <input class="form-input" v-model="formRisco.procedimento_ref" placeholder="Ex: Gestão de Acesso" />
+            </div>
+            <div class="form-group">
+              <label>Plano de Ação</label>
+              <textarea class="form-input" v-model="formRisco.plano_acao" rows="4"
+                placeholder="1. Criar contas individuais&#10;2. Revogar acesso admin compartilhado&#10;3. ..."></textarea>
+            </div>
+
+            <!-- Botão IA opcional -->
+            <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+              <button class="btn-add" @click="analisarRiscoIA" :disabled="analisandoRisco"
+                style="background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);color:var(--cyan);width:100%">
+                {{ analisandoRisco ? '⏳ Analisando com IA...' : '🤖 Analisar com IA (opcional)' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Coluna Direita: Sugestão IA + Histórico -->
+          <div style="display:flex;flex-direction:column;gap:12px">
+
+            <!-- Painel de sugestão IA -->
+            <div v-if="sugestaoIA" style="background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;margin-bottom:10px">🤖 Sugestão da IA</div>
+              <div style="font-size:12px;margin-bottom:6px"><strong>Título:</strong> {{ sugestaoIA.titulo }}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                <span class="badge" :style="criticidadeStyle(sugestaoIA.criticidade)">{{ sugestaoIA.criticidade }}</span>
+                <span class="tech-badge">Prob: {{ sugestaoIA.probabilidade }}</span>
+                <span class="tech-badge">Impacto: {{ sugestaoIA.impacto }}</span>
+                <span class="tech-badge">{{ sugestaoIA.origem }}</span>
+              </div>
+              <div v-if="sugestaoIA.causa_raiz" style="font-size:12px;color:var(--text-2);margin-bottom:6px">
+                <strong>Causa raiz:</strong> {{ sugestaoIA.causa_raiz }}
+              </div>
+              <div v-if="sugestaoIA.justificativa" style="font-size:11px;color:var(--text-3);margin-bottom:8px">
+                {{ sugestaoIA.justificativa }}
+              </div>
+              <div v-if="sugestaoIA.plano_acao" style="font-size:12px;color:var(--text-2);margin-bottom:8px">
+                <strong>Plano sugerido:</strong><br>
+                <span style="white-space:pre-line">{{ sugestaoIA.plano_acao }}</span>
+              </div>
+              <div v-if="sugestaoIA.politica_sugerida" style="font-size:11px;color:var(--yellow);margin-bottom:4px">
+                ⚠️ Política sugerida: {{ sugestaoIA.politica_sugerida }}
+              </div>
+              <div v-if="sugestaoIA.procedimento_sugerido" style="font-size:11px;color:var(--yellow);margin-bottom:8px">
+                ⚠️ Procedimento sugerido: {{ sugestaoIA.procedimento_sugerido }}
+              </div>
+              <button class="btn-save" @click="aplicarSugestaoIA" style="width:100%;font-size:12px;padding:8px">
+                ✅ Aplicar sugestões ao formulário
+              </button>
+            </div>
+
+            <div v-if="analisandoRisco" style="background:var(--bg-base);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center">
+              <div class="typing-indicator" style="justify-content:center;margin-bottom:8px">
+                <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+              </div>
+              <p style="font-size:12px;color:var(--text-3)">IA analisando o contexto completo do sistema...</p>
+            </div>
+
+            <!-- Histórico de Ações -->
+            <div v-if="riscoEditando?.id" style="flex:1;display:flex;flex-direction:column">
+              <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:8px">
+                📅 Histórico de Ações ({{ riscoEditando.historico?.length || 0 }})
+              </div>
+              <div style="flex:1;overflow-y:auto;max-height:220px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                <div v-for="h in riscoEditando.historico" :key="h.id"
+                  style="background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="color:var(--cyan);font-weight:600">{{ h.autor }}</span>
+                    <span style="color:var(--text-3)">{{ fmtDate(h.criado_em) }}</span>
+                  </div>
+                  <div style="color:var(--text-2)">{{ h.comentario }}</div>
+                </div>
+                <div v-if="!riscoEditando.historico?.length" style="color:var(--text-3);font-size:12px;text-align:center;padding:16px">
+                  Nenhuma ação registrada ainda.
+                </div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <input class="form-input" v-model="novoComentario" placeholder="Registrar uma ação, atualização ou observação..."
+                  @keydown.enter="adicionarHistorico" style="flex:1;font-size:12px" />
+                <button class="btn-save" @click="adicionarHistorico" style="padding:8px 14px;font-size:12px">+</button>
+              </div>
+            </div>
+
+            <div v-if="!riscoEditando?.id" style="background:var(--bg-base);border:1px dashed var(--border);border-radius:10px;padding:20px;text-align:center">
+              <p style="font-size:12px;color:var(--text-3)">O histórico de ações ficará disponível após salvar o risco.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn-cancel" @click="modal=null; riscoEditando=null">Cancelar</button>
+          <button class="btn-save" @click="salvarRisco">💾 Salvar Risco</button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: NOVA POLÍTICA MANUAL -->
     <div class="modal-overlay" v-if="modal==='politica_manual'" @click.self="modal=null">
@@ -1770,17 +2396,197 @@
       </div>
     </div>
 
+    <!-- MODAL: ALTERAR SENHA -->
+    <div class="modal-overlay" v-if="modal==='alterar_senha'" @click.self="modal=null">
+      <div class="modal" style="width:380px">
+        <h3>🔑 Alterar Senha</h3>
+        <div class="form-group"><label>Senha Atual</label><input class="form-input" type="password" v-model="senhaForm.atual" /></div>
+        <div class="form-group"><label>Nova Senha</label><input class="form-input" type="password" v-model="senhaForm.nova" /></div>
+        <div class="form-group"><label>Confirmar Nova Senha</label><input class="form-input" type="password" v-model="senhaForm.confirmar" /></div>
+        <div class="login-error" v-if="senhaErro">{{ senhaErro }}</div>
+        <div style="color:var(--green);font-size:12px;margin-top:6px" v-if="senhaSucesso">{{ senhaSucesso }}</div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="modal=null">Cancelar</button>
+          <button class="btn-save" @click="alterarSenha">💾 Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: NOVO/EDITAR INCIDENTE -->
+    <div class="modal-overlay" v-if="modal==='incidente' || modal==='incidente_editar'" @click.self="null">
+      <div class="modal" style="width:680px;max-width:96vw">
+        <h3>🚨 {{ incidenteEditando?.id ? 'Editar' : 'Novo' }} Incidente</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" style="margin:0;grid-column:span 2">
+            <label>Título</label>
+            <input class="form-input" v-model="formIncidente.titulo" placeholder="O que aconteceu?" />
+          </div>
+          <div class="form-group" style="margin:0"><label>Severidade</label>
+            <select class="form-select" v-model="formIncidente.severidade">
+              <option value="Critica">Crítica</option><option value="Alta">Alta</option>
+              <option value="Media">Média</option><option value="Baixa">Baixa</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Status</label>
+            <select class="form-select" v-model="formIncidente.status">
+              <option value="aberto">Aberto</option><option value="investigando">Investigando</option>
+              <option value="contido">Contido</option><option value="resolvido">Resolvido</option>
+              <option value="fechado">Fechado</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Detectado por</label><input class="form-input" v-model="formIncidente.detectado_por" placeholder="Nome ou sistema" /></div>
+          <div class="form-group" style="margin:0"><label>Data Detecção</label><input class="form-input" type="date" v-model="formIncidente.data_deteccao" /></div>
+          <div class="form-group" style="margin:0;grid-column:span 2"><label>Risco Vinculado</label><input class="form-input" v-model="formIncidente.risco_vinculado" placeholder="Nome do risco relacionado (se houver)" /></div>
+        </div>
+        <div class="form-group"><label>Descrição</label>
+          <textarea class="form-input" v-model="formIncidente.descricao" rows="3" placeholder="Detalhes do incidente..."></textarea>
+        </div>
+        <div class="form-group"><label>Lições Aprendidas</label>
+          <textarea class="form-input" v-model="formIncidente.licoes_aprendidas" rows="3" placeholder="O que pode ser melhorado?"></textarea>
+        </div>
+
+        <!-- Timeline -->
+        <div v-if="incidenteEditando?.id">
+          <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin:14px 0 8px">📅 Timeline de Resposta ({{ incidenteEditando.timeline?.length || 0 }})</div>
+          <div style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+            <div v-for="t in incidenteEditando.timeline" :key="t.id" style="background:var(--bg-base);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;display:flex;justify-content:space-between">
+              <span style="color:var(--text-1)">{{ t.acao }}</span>
+              <span style="color:var(--text-3)">{{ t.responsavel }} · {{ fmtDate(t.criado_em) }}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <input class="form-input" v-model="novaTimelineAcao" placeholder="Ação realizada..." style="flex:1;font-size:12px" @keydown.enter="adicionarTimeline" />
+            <input class="form-input" v-model="novaTimelineResp" placeholder="Responsável" style="width:140px;font-size:12px" />
+            <button class="btn-save" @click="adicionarTimeline" style="padding:6px 12px;font-size:12px">+</button>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn-cancel" @click="modal=null; incidenteEditando=null">Cancelar</button>
+          <button class="btn-save" @click="salvarIncidente">💾 Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: NOVA/EDITAR AÇÃO -->
+    <div class="modal-overlay" v-if="modal==='acao' || modal==='acao_editar'" @click.self="modal=null">
+      <div class="modal" style="width:480px">
+        <h3>✅ {{ acaoEditando?.id ? 'Editar' : 'Nova' }} Ação</h3>
+        <div class="form-group"><label>Título</label><input class="form-input" v-model="formAcao.titulo" placeholder="O que precisa ser feito?" /></div>
+        <div class="form-group"><label>Descrição</label><textarea class="form-input" v-model="formAcao.descricao" rows="2"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="form-group" style="margin:0"><label>Origem</label><input class="form-input" v-model="formAcao.origem" placeholder="Ex: Risco #5, Incidente, LGPD" /></div>
+          <div class="form-group" style="margin:0"><label>Responsável</label><input class="form-input" v-model="formAcao.responsavel" /></div>
+          <div class="form-group" style="margin:0"><label>Prioridade</label>
+            <select class="form-select" v-model="formAcao.prioridade"><option value="critica">Crítica</option><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Status</label>
+            <select class="form-select" v-model="formAcao.status"><option value="pendente">Pendente</option><option value="em_andamento">Em Andamento</option><option value="concluida">Concluída</option></select>
+          </div>
+        </div>
+        <div class="modal-actions"><button class="btn-cancel" @click="modal=null; acaoEditando=null">Cancelar</button><button class="btn-save" @click="salvarAcao">💾 Salvar</button></div>
+      </div>
+    </div>
+
+    <!-- MODAL: NOVO/EDITAR TREINAMENTO -->
+    <div class="modal-overlay" v-if="modal==='treinamento' || modal==='treinamento_editar'" @click.self="null">
+      <div class="modal" style="width:600px">
+        <h3>🎓 {{ treinamentoEditando?.id ? 'Editar' : 'Novo' }} Treinamento</h3>
+        <div class="form-group"><label>Título</label><input class="form-input" v-model="formTreino.titulo" placeholder="Ex: Conscientização em Phishing" /></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="form-group" style="margin:0"><label>Categoria</label>
+            <select class="form-select" v-model="formTreino.categoria"><option>Segurança</option><option>LGPD</option><option>Processos</option><option>Técnico</option></select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Obrigatório</label>
+            <select class="form-select" v-model="formTreino.obrigatorio"><option :value="true">Sim</option><option :value="false">Não</option></select>
+          </div>
+        </div>
+        <div class="form-group"><label>Descrição</label><textarea class="form-input" v-model="formTreino.descricao" rows="2"></textarea></div>
+
+        <!-- Participantes -->
+        <div v-if="treinamentoEditando?.id">
+          <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin:8px 0">Participantes ({{ treinamentoEditando.registros?.length || 0 }})</div>
+          <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+            <div v-for="r in treinamentoEditando.registros" :key="r.id" style="display:flex;align-items:center;gap:8px;background:var(--bg-base);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px">
+              <span style="flex:1;color:var(--text-1)">{{ r.colaborador }}</span>
+              <select class="form-select" :value="r.status" @change="atualizarRegistroTreino(r.id, $event.target.value)" style="font-size:10px;padding:2px 4px;width:auto">
+                <option value="pendente">Pendente</option><option value="concluido">Concluído</option>
+              </select>
+              <button class="btn-del" @click="deletarRegistroTreino(r.id)" style="font-size:12px">✕</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <input class="form-input" v-model="novoParticipante" placeholder="Nome do colaborador..." style="flex:1;font-size:12px" @keydown.enter="adicionarParticipante" />
+            <button class="btn-save" @click="adicionarParticipante" style="padding:6px 12px;font-size:12px">+</button>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn-cancel" @click="modal=null; treinamentoEditando=null">Cancelar</button>
+          <button class="btn-save" @click="salvarTreinamento">💾 Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    </template><!-- fim do app autenticado -->
+
   </div>
 
   <script>
-    const { createApp, ref, computed, nextTick } = Vue;
+    const { createApp, ref, computed, nextTick, onMounted } = Vue;
 
     createApp({
       setup() {
         const API = '';
-        const view = ref('chat');
+        const view = ref('dashboard');
         const modal = ref(null);
         const loading = ref(false);
+
+        // ── Auth ──
+        const autenticado = ref(false);
+        const usuarioLogado = ref({ username: '', nome: '' });
+        const loginForm = ref({ username: '', senha: '' });
+        const loginLoading = ref(false);
+        const loginErro = ref('');
+        const senhaForm = ref({ atual: '', nova: '', confirmar: '' });
+        const senhaErro = ref('');
+        const senhaSucesso = ref('');
+
+        async function verificarAuth() {
+          try {
+            const res = await fetch(API + '/api/auth/me');
+            if (res.ok) { 
+              const data = await res.json(); 
+              autenticado.value = true; 
+              usuarioLogado.value = data; 
+              switchView('dashboard');
+            }
+          } catch(e) {}
+        }
+        async function fazerLogin() {
+          loginErro.value = ''; loginLoading.value = true;
+          try {
+            const res = await fetch(API + '/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(loginForm.value) });
+            const data = await res.json();
+            if (res.ok) { autenticado.value = true; usuarioLogado.value = data; loginForm.value = { username:'', senha:'' }; switchView('dashboard'); }
+            else loginErro.value = data.erro || 'Erro ao entrar.';
+          } catch(e) { loginErro.value = 'Erro de conexão.'; }
+          finally { loginLoading.value = false; }
+        }
+        async function fazerLogout() {
+          await fetch(API + '/api/auth/logout', { method:'POST' });
+          autenticado.value = false; usuarioLogado.value = { username:'', nome:'' }; view.value = 'dashboard';
+        }
+        async function alterarSenha() {
+          senhaErro.value = ''; senhaSucesso.value = '';
+          if (senhaForm.value.nova !== senhaForm.value.confirmar) { senhaErro.value = 'As senhas não coincidem.'; return; }
+          const res = await fetch(API + '/api/auth/senha', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ senha_atual:senhaForm.value.atual, senha_nova:senhaForm.value.nova }) });
+          const data = await res.json();
+          if (res.ok) { senhaSucesso.value = data.mensagem; senhaForm.value = { atual:'', nova:'', confirmar:'' }; }
+          else senhaErro.value = data.erro;
+        }
+
+        onMounted(() => { verificarAuth(); });
 
         const clientes = ref([]);
         const softwares = ref([]);
@@ -1800,8 +2606,9 @@
           'Análise de risco dos softwares desatualizados'
         ];
 
-        const viewTitles = { chat: 'Chat com IA', clientes: 'Clientes', softwares: 'Softwares', instancias: 'Instâncias', relatorios: 'Relatórios', politicas: 'Políticas', procedimentos: 'Procedimentos', lacunas: 'Análise de Lacunas', relatorio_gov: 'Relatórios de Governança' };
+        const viewTitles = { dashboard: 'Dashboard', chat: 'Chat com IA', clientes: 'Clientes', softwares: 'Softwares', instancias: 'Instâncias', relatorios: 'Relatórios', politicas: 'Políticas', procedimentos: 'Procedimentos', lacunas: 'Análise de Lacunas', relatorio_gov: 'Relatórios de Governança', riscos: 'Registro de Riscos', relatorio_riscos: 'Relatório de Riscos', incidentes: 'Incidentes', plano_acoes: 'Plano de Ação', lgpd: 'Conformidade LGPD', treinamentos: 'Treinamentos', maturidade: 'Score de Maturidade' };
         const viewDesc = {
+          dashboard: 'Visão geral do sistema de GRC',
           chat: 'Converse em linguagem natural para consultar, cadastrar e analisar',
           clientes: 'Gerencie os municípios e entidades atendidas',
           softwares: 'Catálogo de projetos, versões e tecnologias',
@@ -1810,14 +2617,26 @@
           politicas: 'Cadastre e gerencie políticas corporativas',
           procedimentos: 'Procedimentos operacionais com responsáveis por etapa',
           lacunas: 'IA analisa o que você tem e o que está faltando',
-          relatorio_gov: 'Exportação consolidada de políticas e procedimentos'
+          relatorio_gov: 'Exportação consolidada de políticas e procedimentos',
+          riscos: 'Registre e acompanhe riscos e ameaças da organização',
+          relatorio_riscos: 'Exportação consolidada de riscos com filtros',
+          incidentes: 'Registro e acompanhamento de incidentes de segurança',
+          plano_acoes: 'Ações pendentes consolidadas de todas as origens',
+          lgpd: 'Checklist de conformidade com a Lei Geral de Proteção de Dados',
+          treinamentos: 'Controle de treinamentos e participação de colaboradores',
+          maturidade: 'Score de maturidade calculado com base no sistema'
         };
 
         const viewBadge = computed(() => {
+          if (view.value === 'dashboard') return 'Painel Executivo';
           if (view.value === 'chat') return 'Gemini 2.5 Flash Lite';
           if (view.value === 'clientes') return `${clientes.value.length} registros`;
           if (view.value === 'softwares') return `${softwares.value.length} registros`;
-          return `${instancias.value.length} vínculos`;
+          if (view.value === 'riscos') return `${riscos.value.length} riscos`;
+          if (view.value === 'incidentes') return `${incidentes.value.length} incidentes`;
+          if (view.value === 'plano_acoes') return `${acoes.value.length} ações`;
+          if (view.value === 'lgpd') return `${lgpdItens.value.length} itens`;
+          return '';
         });
 
         const clientesAtivos = computed(() =>
@@ -1829,6 +2648,34 @@
         const menuAtivosAberto = ref(true);
         const menuGovernancaAberto = ref(true);
         const filtroGov = ref({ tipo: '', status: '', categoria: '' });
+        const menuRiscosAberto = ref(true);
+
+        // ── Estado Riscos ──
+        const riscos           = ref([]);
+        const riscoEditando    = ref(null);
+        const filtroRiscos     = ref({ criticidade: '', status: '', origem: '' });
+        const formRisco        = ref({ titulo: '', descricao: '', origem: 'Técnico', ativo_afetado: '', probabilidade: 'Media', impacto: 'Medio', status: 'aberto', politica_ref: '', procedimento_ref: '', plano_acao: '', responsavel: '' });
+        const novoComentario   = ref('');
+        const analisandoRisco  = ref(false);
+        const sugestaoIA       = ref(null);
+
+        // ── Estado Novos Módulos ──
+        const dashData          = ref(null);
+        const maturidadeData    = ref(null);
+        const incidentes        = ref([]);
+        const incidenteEditando = ref(null);
+        const formIncidente     = ref({ titulo:'', descricao:'', severidade:'Media', status:'aberto', detectado_por:'', data_deteccao:'', risco_vinculado:'', licoes_aprendidas:'' });
+        const novaTimelineAcao  = ref('');
+        const novaTimelineResp  = ref('');
+        const acoes             = ref([]);
+        const acaoEditando      = ref(null);
+        const formAcao          = ref({ titulo:'', descricao:'', origem:'', responsavel:'', prioridade:'media', status:'pendente' });
+        const lgpdItens         = ref([]);
+        const filtroLgpd        = ref({ categoria: '', conforme: '' });
+        const treinamentosLista = ref([]);
+        const treinamentoEditando = ref(null);
+        const formTreino        = ref({ titulo:'', descricao:'', categoria:'Segurança', obrigatorio:false });
+        const novoParticipante  = ref('');
 
         // ── Estado Governança ──
         const politicas    = ref([]);
@@ -1865,6 +2712,10 @@
             etapasIaSugeridas.value = [];
             if (tipo === 'procedimento_ia') formIaTipo.value = '';
           }
+          if (tipo === 'risco') {
+            formRisco.value = { titulo: '', descricao: '', origem: 'Técnico', ativo_afetado: '', probabilidade: 'Media', impacto: 'Medio', status: 'aberto', politica_ref: '', procedimento_ref: '', plano_acao: '', responsavel: '' };
+            riscoEditando.value = null; sugestaoIA.value = null; novoComentario.value = '';
+          }
           modal.value = tipo;
         }
 
@@ -1893,20 +2744,183 @@
         async function loadSoftwares() { softwares.value = await api('/api/softwares'); }
         async function loadInstancias() { instancias.value = await api('/api/instancias'); }
 
+        async function loadPoliticas() { politicas.value = await api('/api/politicas'); }
+        async function loadProcedimentos() { procedimentos.value = await api('/api/procedimentos'); }
+        async function loadRiscos() { riscos.value = await api('/api/riscos'); }
+        async function loadIncidentes() { incidentes.value = await api('/api/incidentes'); }
+        async function loadAcoes() { acoes.value = await api('/api/plano-acoes'); }
+        async function loadLgpd() { lgpdItens.value = await api('/api/lgpd'); }
+        async function loadTreinamentos() { treinamentosLista.value = await api('/api/treinamentos'); }
+        async function loadDashboard() { dashData.value = await api('/api/dashboard'); }
+        async function loadMaturidade() { maturidadeData.value = await api('/api/dashboard/maturidade'); }
+
         async function switchView(v) {
           view.value = v;
+          if (v === 'dashboard') await loadDashboard();
           if (v === 'clientes') await loadClientes();
           if (v === 'softwares') await loadSoftwares();
           if (v === 'instancias' || v === 'relatorios') { await loadInstancias(); await loadClientes(); await loadSoftwares(); }
           if (v === 'politicas') await loadPoliticas();
           if (v === 'procedimentos') await loadProcedimentos();
           if (v === 'lacunas' || v === 'relatorio_gov') { await loadPoliticas(); await loadProcedimentos(); }
+          if (v === 'riscos' || v === 'relatorio_riscos') await loadRiscos();
+          if (v === 'incidentes') await loadIncidentes();
+          if (v === 'plano_acoes') await loadAcoes();
+          if (v === 'lgpd') await loadLgpd();
+          if (v === 'treinamentos') await loadTreinamentos();
+          if (v === 'maturidade') await loadMaturidade();
         }
 
-        async function loadPoliticas() { politicas.value = await api('/api/politicas'); }
-        async function loadProcedimentos() {
-          const lista = await api('/api/procedimentos');
-          procedimentos.value = lista;
+        // ── Helpers ──
+        function criticidadeStyle(c) {
+          return { Critico: 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)', Alto: 'background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)', Medio: 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)', Baixo: 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' }[c] || '';
+        }
+        function statusRiscoLabel(s) {
+          return { aberto: 'Aberto', em_tratamento: 'Em Tratamento', monitorando: 'Monitorando', fechado: 'Fechado' }[s] || s;
+        }
+        function statusRiscoStyle(s) {
+          return { aberto: 'background:rgba(255,83,112,.1);color:var(--red);border-color:rgba(255,83,112,.3)', em_tratamento: 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)', monitorando: 'background:rgba(0,229,255,.08);color:var(--cyan);border-color:rgba(0,229,255,.25)', fechado: 'background:rgba(0,255,159,.08);color:var(--green);border-color:rgba(0,255,159,.2)' }[s] || '';
+        }
+
+        // ── CRUD Riscos ──
+        function editarRisco(r) {
+          api(`/api/riscos/${r.id}`).then(dados => {
+            riscoEditando.value = { ...dados };
+            formRisco.value = { ...dados };
+            sugestaoIA.value = null; novoComentario.value = '';
+            modal.value = 'risco_editar';
+          });
+        }
+
+        async function salvarRisco() {
+          if (!formRisco.value.titulo) return alert('Título é obrigatório.');
+          const payload = { ...formRisco.value };
+          // Remove campos de controle interno
+          delete payload.historico; delete payload._tipo; delete payload._key;
+          if (riscoEditando.value?.id) {
+            await api(`/api/riscos/${riscoEditando.value.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+          } else {
+            await api('/api/riscos', { method: 'POST', body: JSON.stringify(payload) });
+          }
+          modal.value = null; riscoEditando.value = null; await loadRiscos();
+        }
+
+        async function adicionarHistorico() {
+          if (!novoComentario.value.trim() || !riscoEditando.value?.id) return;
+          await api(`/api/riscos/${riscoEditando.value.id}/historico`, {
+            method: 'POST',
+            body: JSON.stringify({ comentario: novoComentario.value })
+          });
+          novoComentario.value = '';
+          // Recarrega o risco para mostrar o novo item no histórico
+          const atualizado = await api(`/api/riscos/${riscoEditando.value.id}`);
+          riscoEditando.value = atualizado;
+        }
+
+        async function analisarRiscoIA() {
+          if (!formRisco.value.descricao) return alert('Preencha a descrição do risco antes de analisar.');
+          analisandoRisco.value = true; sugestaoIA.value = null;
+          try {
+            const res = await api('/api/governanca/risco/analisar', {
+              method: 'POST',
+              body: JSON.stringify({ descricao: formRisco.value.descricao, origem: formRisco.value.origem })
+            });
+            sugestaoIA.value = res;
+          } finally { analisandoRisco.value = false; }
+        }
+
+        function aplicarSugestaoIA() {
+          if (!sugestaoIA.value) return;
+          const s = sugestaoIA.value;
+          formRisco.value.titulo          = s.titulo          || formRisco.value.titulo;
+          formRisco.value.probabilidade   = s.probabilidade   || formRisco.value.probabilidade;
+          formRisco.value.impacto         = s.impacto         || formRisco.value.impacto;
+          formRisco.value.origem          = s.origem          || formRisco.value.origem;
+          formRisco.value.plano_acao      = s.plano_acao      || formRisco.value.plano_acao;
+          formRisco.value.politica_ref    = s.politica_ref    || formRisco.value.politica_ref;
+          formRisco.value.procedimento_ref= s.procedimento_ref|| formRisco.value.procedimento_ref;
+          sugestaoIA.value = null;
+        }
+
+        // ── Computed Relatório de Riscos ──
+        const riscosFiltrados = computed(() => {
+          return riscos.value.filter(r => {
+            const mC = !filtroRiscos.value.criticidade || r.criticidade === filtroRiscos.value.criticidade;
+            const mS = !filtroRiscos.value.status     || r.status      === filtroRiscos.value.status;
+            const mO = !filtroRiscos.value.origem     || r.origem      === filtroRiscos.value.origem;
+            return mC && mS && mO;
+          });
+        });
+
+        function exportarRiscosCSV() {
+          const rows = riscosFiltrados.value;
+          if (!rows.length) return alert('Nenhum risco para exportar.');
+          const headers = ['ID', 'Criticidade', 'Titulo', 'Origem', 'Ativo Afetado', 'Probabilidade', 'Impacto', 'Status', 'Responsavel', 'Registrado'];
+          let csv = 'data:text/csv;charset=utf-8,' + headers.join(';') + '\\n';
+          rows.forEach(r => {
+            csv += [r.id, r.criticidade, `"${r.titulo}"`, r.origem, `"${r.ativo_afetado||''}"`, r.probabilidade, r.impacto, statusRiscoLabel(r.status), `"${r.responsavel||''}"`, new Date(r.criado_em).toLocaleDateString('pt-BR')].join(';') + '\\n';
+          });
+          const link = document.createElement('a');
+          link.setAttribute('href', encodeURI(csv));
+          link.setAttribute('download', 'relatorio_riscos.csv');
+          document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
+        function exportarRiscosPDF() {
+          const rows = riscosFiltrados.value;
+          if (!rows.length) return alert('Nenhum risco para exportar.');
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          doc.setFontSize(16); doc.text('Relatório de Riscos', 14, 15);
+          doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 22);
+          doc.autoTable({
+            startY: 28,
+            head: [['Criticidade', 'Título', 'Origem', 'Status', 'Responsável']],
+            body: rows.map(r => [r.criticidade, r.titulo, r.origem, statusRiscoLabel(r.status), r.responsavel || '—']),
+            theme: 'grid',
+            headStyles: { fillColor: [0, 119, 170] },
+            styles: { fontSize: 8 },
+            columnStyles: { 1: { cellWidth: 70 } }
+          });
+          doc.save('relatorio_riscos.pdf');
+        }
+
+        function exportarRiscoPDF(r) {
+          api(`/api/riscos/${r.id}`).then(dados => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(16); doc.text(dados.titulo, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Criticidade: ${dados.criticidade} | Origem: ${dados.origem} | Status: ${statusRiscoLabel(dados.status)}`, 14, 23);
+            doc.text(`Probabilidade: ${dados.probabilidade} | Impacto: ${dados.impacto} | Registrado: ${new Date(dados.criado_em).toLocaleDateString('pt-BR')}`, 14, 29);
+            if (dados.ativo_afetado) doc.text(`Ativo Afetado: ${dados.ativo_afetado}`, 14, 35);
+            if (dados.responsavel)   doc.text(`Responsável: ${dados.responsavel}`, 14, 41);
+            doc.line(14, 45, 196, 45);
+            let y = 50;
+            if (dados.descricao) {
+              doc.setFontSize(11); doc.text('Descrição', 14, y); y += 6;
+              doc.setFontSize(9);
+              const linhas = doc.splitTextToSize(dados.descricao, 180);
+              doc.text(linhas, 14, y); y += linhas.length * 5 + 6;
+            }
+            if (dados.plano_acao) {
+              doc.setFontSize(11); doc.text('Plano de Ação', 14, y); y += 6;
+              doc.setFontSize(9);
+              const linhas = doc.splitTextToSize(dados.plano_acao, 180);
+              doc.text(linhas, 14, y); y += linhas.length * 5 + 6;
+            }
+            if (dados.historico?.length) {
+              doc.autoTable({
+                startY: y,
+                head: [['Data', 'Autor', 'Comentario']],
+                body: dados.historico.map(h => [new Date(h.criado_em).toLocaleDateString('pt-BR'), h.autor, h.comentario]),
+                theme: 'grid',
+                headStyles: { fillColor: [50, 50, 100] },
+                styles: { fontSize: 8 }
+              });
+            }
+            doc.save(`risco_${dados.id}_${dados.titulo.replace(/\s+/g,'_')}.pdf`);
+          });
         }
 
         // ── Computeds e funções do Relatório de Governança ──
@@ -2237,6 +3251,92 @@
           }
         }
 
+        // ── CRUD Incidentes ──
+        function statusIncidenteLabel(s) {
+          return { aberto: 'Aberto', investigando: 'Investigando', contido: 'Contido', resolvido: 'Resolvido', fechado: 'Fechado' }[s] || s;
+        }
+        function editarIncidente(i) {
+          api(`/api/incidentes/${i.id}`).then(d => {
+            incidenteEditando.value = d; formIncidente.value = { ...d };
+            novaTimelineAcao.value = ''; novaTimelineResp.value = '';
+            modal.value = 'incidente_editar';
+          });
+        }
+        async function salvarIncidente() {
+          if (!formIncidente.value.titulo) return alert('Título é obrigatório.');
+          const p = { ...formIncidente.value }; delete p.timeline;
+          if (incidenteEditando.value?.id) await api(`/api/incidentes/${incidenteEditando.value.id}`, { method:'PUT', body:JSON.stringify(p) });
+          else await api('/api/incidentes', { method:'POST', body:JSON.stringify(p) });
+          modal.value = null; incidenteEditando.value = null; await loadIncidentes();
+        }
+        async function adicionarTimeline() {
+          if (!novaTimelineAcao.value.trim() || !incidenteEditando.value?.id) return;
+          await api(`/api/incidentes/${incidenteEditando.value.id}/timeline`, { method:'POST', body:JSON.stringify({ acao:novaTimelineAcao.value, responsavel:novaTimelineResp.value }) });
+          novaTimelineAcao.value = ''; novaTimelineResp.value = '';
+          incidenteEditando.value = await api(`/api/incidentes/${incidenteEditando.value.id}`);
+        }
+
+        // ── CRUD Ações ──
+        function editarAcao(a) { acaoEditando.value = a; formAcao.value = { ...a }; modal.value = 'acao_editar'; }
+        async function salvarAcao() {
+          if (!formAcao.value.titulo) return alert('Título é obrigatório.');
+          if (acaoEditando.value?.id) await api(`/api/plano-acoes/${acaoEditando.value.id}`, { method:'PUT', body:JSON.stringify(formAcao.value) });
+          else await api('/api/plano-acoes', { method:'POST', body:JSON.stringify(formAcao.value) });
+          modal.value = null; acaoEditando.value = null; await loadAcoes();
+        }
+        async function atualizarStatusAcao(id, status) {
+          await api(`/api/plano-acoes/${id}`, { method:'PUT', body:JSON.stringify({ status }) });
+          await loadAcoes();
+        }
+
+        // ── CRUD Treinamentos ──
+        function editarTreinamento(t) {
+          api(`/api/treinamentos/${t.id}`).then(d => {
+            treinamentoEditando.value = d; formTreino.value = { ...d };
+            novoParticipante.value = ''; modal.value = 'treinamento_editar';
+          });
+        }
+        async function salvarTreinamento() {
+          if (!formTreino.value.titulo) return alert('Título é obrigatório.');
+          if (treinamentoEditando.value?.id) await api(`/api/treinamentos/${treinamentoEditando.value.id}`, { method:'PUT', body:JSON.stringify(formTreino.value) });
+          else await api('/api/treinamentos', { method:'POST', body:JSON.stringify(formTreino.value) });
+          modal.value = null; treinamentoEditando.value = null; await loadTreinamentos();
+        }
+        async function adicionarParticipante() {
+          if (!novoParticipante.value.trim() || !treinamentoEditando.value?.id) return;
+          await api(`/api/treinamentos/${treinamentoEditando.value.id}/registros`, { method:'POST', body:JSON.stringify({ colaborador:novoParticipante.value }) });
+          novoParticipante.value = '';
+          treinamentoEditando.value = await api(`/api/treinamentos/${treinamentoEditando.value.id}`);
+        }
+        async function atualizarRegistroTreino(id, status) {
+          await api(`/api/treinamentos/registros/${id}`, { method:'PUT', body:JSON.stringify({ status }) });
+          treinamentoEditando.value = await api(`/api/treinamentos/${treinamentoEditando.value.id}`);
+        }
+        async function deletarRegistroTreino(id) {
+          if(!confirm('Remover participante?')) return;
+          await api(`/api/treinamentos/registros/${id}`, { method:'DELETE' });
+          treinamentoEditando.value = await api(`/api/treinamentos/${treinamentoEditando.value.id}`);
+        }
+
+        // ── LGPD ──
+        const categoriasLgpd = computed(() => [...new Set(lgpdItens.value.map(i => i.categoria))]);
+        const lgpdItensFiltrados = computed(() => lgpdItens.value.filter(i => {
+          return (!filtroLgpd.value.categoria || i.categoria === filtroLgpd.value.categoria) &&
+                 (!filtroLgpd.value.conforme || i.conforme === filtroLgpd.value.conforme);
+        }));
+        async function atualizarLgpd(id, campo, valor) {
+          await api(`/api/lgpd/${id}`, { method:'PUT', body:JSON.stringify({ [campo]:valor }) });
+          await loadLgpd();
+        }
+        function exportarLgpdPDF() {
+          const { jsPDF } = window.jspdf; const doc = new jsPDF();
+          doc.setFontSize(16); doc.text('Relatório de Conformidade LGPD', 14, 15);
+          doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 22);
+          const rows = lgpdItensFiltrados.value.map(i => [i.artigo, i.descricao, i.categoria, i.conforme.replace('_',' '), i.observacao]);
+          doc.autoTable({ startY:30, head:[['Artigo', 'Descrição', 'Categoria', 'Status', 'Obs']], body:rows, theme:'grid', styles:{fontSize:8} });
+          doc.save('conformidade-lgpd.pdf');
+        }
+
         async function deletar(recurso, id) {
           if (!confirm('Confirmar exclusão?')) return;
           await api(`/api/${recurso}/${id}`, { method: 'DELETE' });
@@ -2287,23 +3387,43 @@
 
         function toggleMenuAtivos() { menuAtivosAberto.value = !menuAtivosAberto.value; }
         function toggleMenuGovernanca() { menuGovernancaAberto.value = !menuGovernancaAberto.value; }
+        function toggleMenuRiscos() { menuRiscosAberto.value = !menuRiscosAberto.value; }
 
         return {
-          view, modal, loading, clientes, softwares, instancias, userInput, chatBox,
-          messages, hints, form, viewTitles, viewDesc, viewBadge, clientesAtivos,
-          clienteSelecionado, instanciasClienteSelecionado, filtrosRelatorio, branchesUnicas, instanciasFiltradas, menuAtivosAberto,
+          view, modal, loading, userInput, chatBox, messages, hints, form, viewTitles, viewDesc, viewBadge,
+          
+          // Auth
+          autenticado, usuarioLogado, loginForm, loginLoading, loginErro, fazerLogin, fazerLogout,
+          senhaForm, senhaErro, senhaSucesso, alterarSenha,
+
+          // Ativos
+          clientes, softwares, instancias, clientesAtivos, clienteSelecionado, instanciasClienteSelecionado,
+          filtrosRelatorio, branchesUnicas, instanciasFiltradas, menuAtivosAberto,
+          toggleMenuAtivos, verDetalhesCliente, irParaNovaInstancia, getTechParaSoftware, exportarCSV, exportarPDF,
+          saveCliente, saveSoftware, saveInstancia,
+
+          // Gov
           menuGovernancaAberto, politicas, procedimentos, resultadoLacunas, analisandoLacunas,
-          politicaEditando, procedimentoEditando, formPolitica, formProc,
+          politicaEditando, procedimentoEditando, formPolitica, formProc, filtroGov, categoriasUnicas, docsGovFiltrados,
           formIaCategoria, formIaRespostas, formIaTipo, etapasIaSugeridas, perguntasIa, carregandoIA,
-          renderMd, tipoLabel, fmtDate, openModal, switchView, sendMessage,
-          deletar, saveCliente, saveSoftware, saveInstancia,
-          verDetalhesCliente, irParaNovaInstancia, getTechParaSoftware, exportarCSV, exportarPDF,
-          toggleMenuAtivos, toggleMenuGovernanca,
-          statusLabelPolitica, statusStylePolitica, prioridadeStyle,
+          toggleMenuGovernanca, statusLabelPolitica, statusStylePolitica, prioridadeStyle,
           editarPolitica, salvarPolitica, gerarPoliticaIA, buscarPerguntasPoliticaIA,
           novaEtapa, removerEtapa, editarProcedimento, salvarProcedimento, gerarEtapasIA, aceitarEtapasIA,
-          analisarLacunas, criarApartirDeLacuna, exportarPoliticaPDF, exportarProcedimentoPDF,
-          filtroGov, categoriasUnicas, docsGovFiltrados, exportarRelatorioGovCSV, exportarRelatorioGovPDF
+          analisarLacunas, criarApartirDeLacuna, exportarPoliticaPDF, exportarProcedimentoPDF, exportarRelatorioGovCSV, exportarRelatorioGovPDF,
+
+          // Riscos
+          menuRiscosAberto, toggleMenuRiscos, riscos, riscoEditando, formRisco, filtroRiscos, novoComentario, analisandoRisco, sugestaoIA,
+          criticidadeStyle, statusRiscoLabel, statusRiscoStyle, riscosFiltrados, editarRisco, salvarRisco, adicionarHistorico, analisarRiscoIA, aplicarSugestaoIA, exportarRiscosCSV, exportarRiscosPDF, exportarRiscoPDF,
+
+          // Novos Modulos
+          dashData, maturidadeData, 
+          incidentes, incidenteEditando, formIncidente, novaTimelineAcao, novaTimelineResp, editarIncidente, salvarIncidente, adicionarTimeline, statusIncidenteLabel,
+          acoes, acaoEditando, formAcao, editarAcao, salvarAcao, atualizarStatusAcao,
+          treinamentosLista, treinamentoEditando, formTreino, novoParticipante, editarTreinamento, salvarTreinamento, adicionarParticipante, atualizarRegistroTreino, deletarRegistroTreino,
+          lgpdItens, filtroLgpd, categoriasLgpd, lgpdItensFiltrados, atualizarLgpd, exportarLgpdPDF,
+
+          // Gen
+          renderMd, tipoLabel, fmtDate, openModal, switchView, sendMessage, deletar
         };
       }
     }).mount('#app');
