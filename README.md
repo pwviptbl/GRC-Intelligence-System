@@ -63,4 +63,23 @@ Com base nos dados, a IA poderá sugerir ações:
 - **Expansão:** Adicionar a tabela de vulnerabilidades para cruzamento com os softwares.
 
 ---
-> **Nota de Desenvolvimento:** Este documenta apenas o início do projeto, sendo que a arquitetura e as funcionalidades irão escalonar e evoluir conforme as necessidades de segurança.
+> **Nota de Desenvolvimento:** Este documenta apenas o início do projeto, sendo que a arquitetura e as funcionalidades irão escalonar e evoluir conforme as necessidades de segurança. O sistema foi integralmente expandido e hoje em dia conta com Módulos Operacionais como Riscos, LGPD, Treinamentos e Ações.
+
+## 6. Inicialização (Deploy Local)
+Para iniciar a ferramenta com auto-configuração, instâncias lógicas, e sem se preocupar em ficar disparando o flask e seus parâmetros toda vez, utilize o nosso automatizador nativo:
+
+```bash
+# Executado a partir da pasta raiz:
+./deploy.sh
+```
+
+*(Caso não possua nenhum arquivo de configuração `.env`, ele criará um base automaticamente contendo a pré-senha de `admin` que poderá ser editada a posteriori).*
+
+### Scripts Úteis ⚙️
+A pasta [`scripts/`](/scripts/README.md) conta com três funcionalidades criadas propositalmente à parte da aplicação primária, utilizadas para manutenção:
+
+1.   **`popular_banco.py`** → Insere dados artificiais detalhados no projeto pra fins de validação visual e testes do Dashboard e Filtros. 
+2.   **`resetar_banco.py`** → Zera toda a database atual, gerando um layout absolutamente limpo usando o esquema do backend, mantendo o "Admin". 
+3.  **`reset_senha.py`** → Acesso break-glass em caso de estarem bloqueados para fora da ferramenta via Dashboard.
+
+_Para mais detalhes, confira o **[📄 README dos Scripts](scripts/README.md)**._
