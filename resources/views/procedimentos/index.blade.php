@@ -10,12 +10,12 @@
     showViewModal: false,
     editMode: false,
     formAction: '{{ route('procedimentos.store') }}',
-    form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
+    form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
     viewProc: { titulo: '', tipo: '', status: '', etapas: [] },
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ nome_etapa: '', responsavel: '', descricao: '', sla: '' }] };
+        this.form = { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] };
         this.formAction = '{{ route('procedimentos.store') }}';
         this.showModal = true;
     },
@@ -23,6 +23,10 @@
     openEdit(p) {
         this.editMode = true;
         this.form = { ...p };
+        // Garante que as etapas sejam carregadas se existirem
+        if (!this.form.etapas || this.form.etapas.length === 0) {
+            this.form.etapas = [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }];
+        }
         this.formAction = `/procedimentos/${p.id}`;
         this.showModal = true;
     },
@@ -33,7 +37,7 @@
     },
 
     addEtapa() {
-        this.form.etapas.push({ nome_etapa: '', responsavel: '', descricao: '', sla: '' });
+        this.form.etapas.push({ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' });
     },
 
     removeEtapa(index) {
@@ -52,7 +56,7 @@
                 <div style="display:flex;justify-content:space-between;margin-bottom:12px">
                     <span class="tech-badge">{{ strtoupper($proc->tipo) }}</span>
                     <div style="display:flex; gap:8px; align-items:center">
-                        <button @click="openEdit({{ $proc->toJson() }})" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:12px" title="Editar">🖊️</button>
+                        <button @click="openEdit({{ $proc->load('etapas')->toJson() }})" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:12px" title="Editar">🖊️</button>
                         <form action="{{ route('procedimentos.destroy', $proc) }}" method="POST" style="margin:0" onsubmit="return confirm('Excluir este procedimento?')">
                             @csrf @method('DELETE')
                             <button type="submit" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:12px">🗑</button>
@@ -140,23 +144,18 @@
                     <div class="form-group">
                         <label>Tipo</label>
                         <select name="tipo" x-model="form.tipo" class="form-select">
-                            <option value="Operacional">Operacional</option>
-                            <option value="Incidente">Incidente</option>
-                            <option value="Administrativo">Administrativo</option>
-                            <option value="Segurança">Segurança</option>
+                            <option>Operacional</option><option>Incidente</option><option>Segurança</option><option>Administrativo</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Status</label>
                         <select name="status" x-model="form.status" class="form-select">
-                            <option value="rascunho">Rascunho</option>
-                            <option value="publicado">Publicado</option>
-                            <option value="arquivado">Arquivado</option>
+                            <option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="arquivado">Arquivado</option>
                         </select>
                     </div>
                 </div>
 
-                <div style="margin-top:25px" x-show="!editMode">
+                <div style="margin-top:25px">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
                         <h4 style="color:var(--cyan); margin:0; font-size:14px">Etapas do Processo</h4>
                         <button type="button" @click="addEtapa()" class="btn-save" style="font-size:10px; padding:4px 10px; background:rgba(0,255,159,0.1); color:var(--green)">+ Adicionar Etapa</button>
@@ -169,10 +168,11 @@
                                     <span style="font-size:11px; font-weight:bold; color:var(--text-3)" x-text="'Etapa #' + (index + 1)"></span>
                                     <button type="button" @click="removeEtapa(index)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:14px" x-show="form.etapas.length > 1">🗑</button>
                                 </div>
+                                <input type="hidden" :name="'etapas['+index+'][id]'" x-model="etapa.id">
                                 <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px">
                                     <div class="form-group">
                                         <label>Nome da Etapa</label>
-                                        <input type="text" :name="'etapas['+index+'][nome_etapa]'" x-model="etapa.nome_etapa" class="form-input" :required="!editMode" />
+                                        <input type="text" :name="'etapas['+index+'][nome_etapa]'" x-model="etapa.nome_etapa" class="form-input" required />
                                     </div>
                                     <div class="form-group">
                                         <label>Responsável</label>
@@ -185,14 +185,12 @@
                                 </div>
                                 <div class="form-group" style="margin-top:10px">
                                     <label>Descrição da Tarefa</label>
-                                    <textarea :name="'etapas['+index+'][descricao]'" x-model="etapa.descricao" class="form-input" rows="2" :required="!editMode"></textarea>
+                                    <textarea :name="'etapas['+index+'][descricao]'" x-model="etapa.descricao" class="form-input" rows="2" required></textarea>
                                 </div>
                             </div>
                         </template>
                     </div>
                 </div>
-
-                <p style="font-size:11px; color:var(--text-3); margin-top:20px" x-show="editMode">Nota: A edição de etapas individuais será implementada em uma versão futura.</p>
 
                 <div class="modal-actions" style="margin-top:25px">
                     <button type="button" class="btn-cancel" @click="showModal = false">Cancelar</button>

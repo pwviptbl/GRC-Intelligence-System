@@ -84,11 +84,43 @@ class ProcedimentoController extends Controller
             'titulo' => 'required|string|max:255',
             'tipo' => 'required|string',
             'status' => 'required|string',
+            'etapas' => 'required|array|min:1',
+            'etapas.*.id' => 'nullable|integer',
+            'etapas.*.nome_etapa' => 'required|string|max:255',
+            'etapas.*.responsavel' => 'nullable|string',
+            'etapas.*.descricao' => 'required|string',
+            'etapas.*.sla' => 'nullable|string',
         ]);
 
-        $procedimento->update($validated);
+        $procedimento->update([
+            'titulo' => $validated['titulo'],
+            'tipo' => $validated['tipo'],
+            'status' => $validated['status'],
+        ]);
 
-        return redirect()->back()->with('success', 'Procedimento atualizado com sucesso!');
+        // Sincronização de Etapas
+        $etapaIdsEnviados = collect($validated['etapas'])->pluck('id')->filter()->toArray();
+        
+        // Remove etapas que não vieram no request
+        $procedimento->etapas()->whereNotIn('id', $etapaIdsEnviados)->delete();
+
+        foreach ($validated['etapas'] as $index => $etapaData) {
+            $data = [
+                'ordem' => $index + 1,
+                'nome_etapa' => $etapaData['nome_etapa'],
+                'responsavel' => $etapaData['responsavel'] ?? '',
+                'descricao' => $etapaData['descricao'],
+                'sla' => $etapaData['sla'] ?? '',
+            ];
+
+            if (!empty($etapaData['id'])) {
+                $procedimento->etapas()->where('id', $etapaData['id'])->update($data);
+            } else {
+                $procedimento->etapas()->create($data);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Procedimento e etapas atualizados!');
     }
 
     /**
