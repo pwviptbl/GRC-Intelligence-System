@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Procedimento;
+use App\Services\GeminiService;
 use Illuminate\Http\Request;
 
 class ProcedimentoController extends Controller

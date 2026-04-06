@@ -125,6 +125,9 @@ class GeminiService
                 $contexto = !empty($sql) ? "\n\n**Dados analisados:**\n" . $this->executeSql($sql) . "\n\n---\n" : "";
                 return ['resposta' => $contexto . $analise, 'tipo' => 'analise'];
 
+            case 'procedimento_json':
+                return $data;
+
             default:
                 return ['resposta' => $data['resposta'] ?? 'Sem resposta.', 'tipo' => 'geral'];
         }
