@@ -75,6 +75,38 @@ class ProcedimentoController extends Controller
         //
     }
 
+    public function generateIA(Request $request, GeminiService $gemini)
+    {
+        $titulo = $request->input('titulo');
+        
+        $prompt = "Crie um procedimento operacional padrão para o título: '{$titulo}'. 
+        Responda OBRIGATORIAMENTE em JSON no seguinte formato:
+        {
+          \"tipo\": \"procedimento_json\",
+          \"etapas\": [
+            {\"nome_etapa\": \"...\", \"responsavel\": \"...\", \"sla\": \"...\", \"descricao\": \"...\"}
+          ]
+        }
+        Não use Markdown no JSON. Seja técnico.";
+        
+        $response = $gemini->chat($prompt);
+        
+        // Se a resposta vier dentro de uma chave 'resposta' (texto puro) ao invés do JSON de etapas
+        if (isset($response['resposta']) && !isset($response['etapas'])) {
+            // Tenta extrair JSON do texto caso a IA tenha vacilado
+            preg_match('/\{.*\}/s', $response['resposta'], $matches);
+            if (!empty($matches)) {
+                $json = json_decode($matches[0], true);
+                if (isset($json['etapas'])) {
+                    return response()->json(['etapas' => $json['etapas']]);
+                }
+            }
+            return response()->json(['error' => 'Formato inválido'], 500);
+        }
+        
+        return response()->json($response);
+    }
+
     /**
      * Update the specified resource in storage.
      */

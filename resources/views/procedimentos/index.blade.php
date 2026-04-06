@@ -9,6 +9,7 @@
     showModal: false, 
     showViewModal: false,
     editMode: false,
+    generating: false,
     formAction: '{{ route('procedimentos.store') }}',
     form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
     viewProc: { titulo: '', tipo: '', status: '', etapas: [] },
@@ -23,7 +24,6 @@
     openEdit(p) {
         this.editMode = true;
         this.form = { ...p };
-        // Garante que as etapas sejam carregadas se existirem
         if (!this.form.etapas || this.form.etapas.length === 0) {
             this.form.etapas = [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }];
         }
@@ -34,6 +34,29 @@
     openView(p) {
         this.viewProc = p;
         this.showViewModal = true;
+    },
+
+    async generateEtapas() {
+        if(!this.form.titulo) return alert('Dê um título para que a IA possa sugerir as etapas!');
+        this.generating = true;
+        try {
+            const res = await fetch('{{ route('procedimentos.generate') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ titulo: this.form.titulo })
+            });
+            const data = await res.json();
+            
+            if(data.etapas) {
+                this.form.etapas = data.etapas;
+            } else {
+                alert('A IA não conseguiu gerar etapas estruturadas. Tente um título mais claro.');
+            }
+        } catch(e) { 
+            console.error(e);
+            alert('Erro ao consultar IA. Verifique os logs do sistema ou sua chave da API.'); 
+        }
+        this.generating = false;
     },
 
     addEtapa() {
@@ -157,7 +180,12 @@
 
                 <div style="margin-top:25px">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-                        <h4 style="color:var(--cyan); margin:0; font-size:14px">Etapas do Processo</h4>
+                        <div style="display:flex; align-items:center; gap:15px">
+                            <h4 style="color:var(--cyan); margin:0; font-size:14px">Etapas do Processo</h4>
+                            <button type="button" @click="generateEtapas()" x-show="!editMode" class="btn-save" style="font-size:10px; padding:4px 10px; background:rgba(0,229,255,0.1); border-color:rgba(0,229,255,0.2); color:var(--cyan)" :disabled="generating">
+                                <span x-text="generating ? '⏳ Gerando etapas...' : '🤖 Sugerir Etapas via IA'"></span>
+                            </button>
+                        </div>
                         <button type="button" @click="addEtapa()" class="btn-save" style="font-size:10px; padding:4px 10px; background:rgba(0,255,159,0.1); color:var(--green)">+ Adicionar Etapa</button>
                     </div>
 

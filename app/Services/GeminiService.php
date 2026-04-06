@@ -253,6 +253,17 @@ Para saudações ou dúvidas simples.
 {"tipo": "geral", "resposta": "Sua resposta em texto simples"}
 ```
 
+### 5. PROCEDIMENTO (tipo: "procedimento_json")
+Para gerar etapas estruturadas de um processo.
+```json
+{
+  "tipo": "procedimento_json",
+  "etapas": [
+    {"nome_etapa": "...", "responsavel": "...", "sla": "...", "descricao": "..."}
+  ]
+}
+```
+
 REGRAS: Responda APENAS em JSON válido. Idioma: Português do Brasil. Seja preciso com nomes de clientes e softwares. Gere políticas em texto simples profissional.
 EOD;
     }

@@ -32,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/politicas/generate', [PoliticaController::class, 'generateIA'])->name('politicas.generate');
     Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
     Route::resource('procedimentos', ProcedimentoController::class);
+    Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');
     
     // Riscos e Incidentes
     Route::resource('riscos', RiscoController::class);
