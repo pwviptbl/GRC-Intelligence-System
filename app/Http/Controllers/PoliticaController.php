@@ -69,6 +69,18 @@ class PoliticaController extends Controller
         return response()->json(['sugestoes' => $sugestoes]);
     }
 
+    public function print(Politica $politica)
+    {
+        $politicas = collect([$politica]);
+        return view('politicas.print', compact('politicas'));
+    }
+
+    public function printAll()
+    {
+        $politicas = Politica::latest()->get();
+        return view('politicas.print', compact('politicas'));
+    }
+
     public function destroy(Politica $politica)
     {
         $politica->delete();

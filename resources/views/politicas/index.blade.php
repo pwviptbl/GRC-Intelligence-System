@@ -72,6 +72,9 @@
     <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="color:var(--text-1); font-size:16px">📄 Políticas Corporativas</h3>
         <div style="display:flex; gap:10px">
+            <a href="{{ route('politicas.export.all') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
+                <span>📄 Exportar Todas</span>
+            </a>
             <button class="btn-save" @click="getSuggestions()" style="font-size:11px; background:rgba(0,255,159,0.1); border:1px solid rgba(0,255,159,0.3); color:var(--green)">🤖 Sugestões IA</button>
             <button class="btn-add" @click="openCreate()">+ Nova Política</button>
         </div>
@@ -97,6 +100,7 @@
                     <td><span class="badge">{{ $p->status }}</span></td>
                     <td>
                         <div style="display:flex;gap:12px;align-items:center">
+                            <a href="{{ route('politicas.export', $p) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
                             <button @click="openView({{ $p->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
                             <button @click="openEdit({{ $p->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
                             <form action="{{ route('politicas.destroy', $p) }}" method="POST" style="margin:0">

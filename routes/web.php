@@ -29,6 +29,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Governança
     Route::resource('politicas', PoliticaController::class);
+    Route::get('/politicas/export/all', [PoliticaController::class, 'printAll'])->name('politicas.export.all');
+    Route::get('/politicas/export/{politica}', [PoliticaController::class, 'print'])->name('politicas.export');
     Route::post('/politicas/generate', [PoliticaController::class, 'generateIA'])->name('politicas.generate');
     Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
     Route::resource('procedimentos', ProcedimentoController::class);
