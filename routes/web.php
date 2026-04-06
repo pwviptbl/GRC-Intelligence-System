@@ -41,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Riscos e Incidentes
     Route::resource('riscos', RiscoController::class);
+    Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
+    Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
     Route::post('/riscos/analyze', [RiscoController::class, 'analyzeIA'])->name('riscos.analyze');
     Route::resource('incidentes', IncidenteController::class);
     Route::resource('plano_acoes', PlanoAcaoController::class);

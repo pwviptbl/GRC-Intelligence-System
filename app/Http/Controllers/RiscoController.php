@@ -48,6 +48,18 @@ class RiscoController extends Controller
         return response()->json(['plano_acao' => $plano]);
     }
 
+    public function print(Risco $risco)
+    {
+        $riscos = collect([$risco]);
+        return view('riscos.print', compact('riscos'));
+    }
+
+    public function printAll()
+    {
+        $riscos = Risco::latest()->get();
+        return view('riscos.print', compact('riscos'));
+    }
+
     protected function calcularCriticidade($prob, $imp)
     {
         $matriz = [
