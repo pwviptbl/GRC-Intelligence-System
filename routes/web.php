@@ -44,11 +44,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
     Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
     Route::post('/riscos/analyze', [RiscoController::class, 'analyzeIA'])->name('riscos.analyze');
+    
     Route::resource('incidentes', IncidenteController::class);
+    Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
+    Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
+    
     Route::resource('plano_acoes', PlanoAcaoController::class);
+    Route::get('/plano_acoes/export/all', [PlanoAcaoController::class, 'printAll'])->name('plano_acoes.export.all');
+    Route::get('/plano_acoes/export/{plano_aco}', [PlanoAcaoController::class, 'print'])->name('plano_acoes.export');
 
     // Conformidade
     Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
+    Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');
+    Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
     Route::patch('/lgpd/{item}', [LgpdController::class, 'update'])->name('lgpd.update');
     Route::resource('treinamentos', TreinamentoController::class);
 

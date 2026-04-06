@@ -127,23 +127,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 8. LGPD Checklist
-        $itens_lgpd = [
-            ["Art. 37", "Registro das operações de tratamento de dados", "Governança"],
-            ["Art. 38", "Relatório de impacto à proteção de dados pessoais", "Governança"],
-            ["Art. 41", "Encarregado de proteção de dados (DPO)", "Governança"],
-            ["Art. 46", "Medidas de segurança para proteção de dados pessoais", "Segurança"],
-            ["Art. 48", "Comunicação de incidentes de segurança à ANPD", "Incidentes"],
-        ];
-        foreach ($itens_lgpd as $item) {
-            LgpdItem::create([
-                'artigo' => $item[0],
-                'descricao' => $item[1],
-                'categoria' => $item[2],
-                'conforme' => 'nao_avaliado',
-                'observacao' => '',
-                'evidencia' => ''
-            ]);
-        }
+        $this->call(LgpdSeeder::class);
 
         // 9. Treinamentos
         $t1 = Treinamento::create([

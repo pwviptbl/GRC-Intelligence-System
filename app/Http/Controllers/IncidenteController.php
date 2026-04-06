@@ -15,8 +15,30 @@ class IncidenteController extends Controller
 
     public function store(Request $request)
     {
-        Incidente::create($request->all());
+        $data = $request->all();
+        $data['licoes_aprendidas'] = $data['licoes_aprendidas'] ?? '';
+        Incidente::create($data);
         return redirect()->back()->with('success', 'Incidente registrado.');
+    }
+
+    public function update(Request $request, Incidente $incidente)
+    {
+        $data = $request->all();
+        $data['licoes_aprendidas'] = $data['licoes_aprendidas'] ?? '';
+        $incidente->update($data);
+        return redirect()->back()->with('success', 'Incidente atualizado com sucesso!');
+    }
+
+    public function print(Incidente $incidente)
+    {
+        $incidentes = collect([$incidente]);
+        return view('incidentes.print', compact('incidentes'));
+    }
+
+    public function printAll()
+    {
+        $incidentes = Incidente::latest()->get();
+        return view('incidentes.print', compact('incidentes'));
     }
 
     public function destroy(Incidente $incidente)
