@@ -29,7 +29,34 @@ class ProcedimentoController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'tipo' => 'required|string',
+            'status' => 'required|string',
+            'etapas' => 'required|array|min:1',
+            'etapas.*.nome_etapa' => 'required|string|max:255',
+            'etapas.*.responsavel' => 'nullable|string',
+            'etapas.*.descricao' => 'required|string',
+            'etapas.*.sla' => 'nullable|string',
+        ]);
+
+        $procedimento = Procedimento::create([
+            'titulo' => $validated['titulo'],
+            'tipo' => $validated['tipo'],
+            'status' => $validated['status'],
+        ]);
+
+        foreach ($validated['etapas'] as $index => $etapa) {
+            $procedimento->etapas()->create([
+                'ordem' => $index + 1,
+                'nome_etapa' => $etapa['nome_etapa'],
+                'responsavel' => $etapa['responsavel'] ?? '',
+                'descricao' => $etapa['descricao'],
+                'sla' => $etapa['sla'] ?? '',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Procedimento e etapas criados com sucesso!');
     }
 
     /**
@@ -51,9 +78,17 @@ class ProcedimentoController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Procedimento $procedimento)
     {
-        //
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'tipo' => 'required|string',
+            'status' => 'required|string',
+        ]);
+
+        $procedimento->update($validated);
+
+        return redirect()->back()->with('success', 'Procedimento atualizado com sucesso!');
     }
 
     /**

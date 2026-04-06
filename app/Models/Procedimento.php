@@ -6,5 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Procedimento extends Model
 {
-    //
+    protected $fillable = ['titulo', 'tipo', 'status'];
+
+    public function etapas()
+    {
+        return $this->hasMany(ProcedimentoEtapa::class);
+    }
 }
