@@ -32,7 +32,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/politicas/generate', [PoliticaController::class, 'generateIA'])->name('politicas.generate');
     Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
     Route::resource('procedimentos', ProcedimentoController::class);
+    Route::get('/procedimentos/export/all', [ProcedimentoController::class, 'printAll'])->name('procedimentos.export.all');
+    Route::get('/procedimentos/export/{procedimento}', [ProcedimentoController::class, 'print'])->name('procedimentos.export');
     Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');
+    Route::post('/procedimentos/suggest', [ProcedimentoController::class, 'suggestIA'])->name('procedimentos.suggest');
     
     // Riscos e Incidentes
     Route::resource('riscos', RiscoController::class);

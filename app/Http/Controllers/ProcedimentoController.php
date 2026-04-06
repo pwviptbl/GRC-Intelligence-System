@@ -108,6 +108,33 @@ class ProcedimentoController extends Controller
         return response()->json($response);
     }
 
+    public function suggestIA(GeminiService $gemini)
+    {
+        $procedimentosAtuais = \App\Models\Procedimento::pluck('titulo')->toArray();
+        $softwares = \App\Models\Software::pluck('nome')->toArray();
+        
+        $contexto = "Softwares no inventário: " . implode(', ', $softwares) . ". ";
+        $contexto .= "Procedimentos já documentados: " . implode(', ', $procedimentosAtuais) . ". ";
+        
+        $prompt = $contexto . "Com base nesses softwares e procedimentos, sugira 3 novos procedimentos operacionais (POPs) que seriam importantes para manter a segurança, backup ou operação desses ativos. Para cada sugestão, dê um título curto e uma justificativa técnica de 1 frase. Responda em texto simples, sem Markdown.";
+        
+        $sugestoes = $gemini->generateGovernance($prompt);
+        
+        return response()->json(['sugestoes' => $sugestoes]);
+    }
+
+    public function print(Procedimento $procedimento)
+    {
+        $procedimentos = collect([$procedimento->load('etapas')]);
+        return view('procedimentos.print', compact('procedimentos'));
+    }
+
+    public function printAll()
+    {
+        $procedimentos = Procedimento::with('etapas')->latest()->get();
+        return view('procedimentos.print', compact('procedimentos'));
+    }
+
     /**
      * Update the specified resource in storage.
      */

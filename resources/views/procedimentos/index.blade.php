@@ -5,17 +5,36 @@
 @section('badge', $procedimentos->count() . ' Procedimentos')
 
 @section('content')
-<div class="table-view" x-data="{ 
-    showModal: false, 
+<div class="table-view" x-data="{
+    showModal: false,
     showViewModal: false,
+    showSuggest: false,
     editMode: false,
     generating: false,
+    suggesting: false,
+    suggestions: '',
     formAction: '{{ route('procedimentos.store') }}',
     form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
     viewProc: { titulo: '', tipo: '', status: '', etapas: [] },
 
-    openCreate() {
-        this.editMode = false;
+    async getSuggestions() {
+        this.suggesting = true;
+        try {
+            const res = await fetch('{{ route('procedimentos.suggest') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            const data = await res.json();
+            this.suggestions = data.sugestoes;
+            this.showSuggest = true;
+        } catch(e) {
+            console.error(e);
+            alert('Erro ao buscar sugestões.');
+        }
+        this.suggesting = false;
+    },
+
+    openCreate() {        this.editMode = false;
         this.form = { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] };
         this.formAction = '{{ route('procedimentos.store') }}';
         this.showModal = true;
@@ -69,7 +88,25 @@
 }">
     <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="color:var(--text-1); font-size:16px">📋 Registro de Procedimentos</h3>
-        <button class="btn-add" @click="openCreate()">+ Novo Procedimento</button>
+        <div style="display:flex; gap:10px">
+            <a href="{{ route('procedimentos.export.all') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
+                <span>📄 Exportar Todos</span>
+            </a>
+            <button class="btn-secondary" @click="getSuggestions()" :disabled="suggesting" style="padding:10px 20px; border-radius:8px; background:rgba(0,255,255,0.05); color:var(--cyan); border:1px solid var(--cyan); cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px">
+                <span x-show="!suggesting">💡 Sugerir Novos</span>
+                <span x-show="suggesting">⌛ Consultando...</span>
+            </button>
+            <button class="btn-add" @click="openCreate()">+ Novo Procedimento</button>
+        </div>
+    </div>
+
+    <!-- Sugestões da IA -->
+    <div x-show="showSuggest" x-transition style="margin-bottom:25px; background:rgba(0,255,255,0.05); border:1px solid rgba(0,255,255,0.1); border-radius:12px; padding:20px; position:relative">
+        <button @click="showSuggest = false" style="position:absolute; top:15px; right:15px; background:none; border:none; color:var(--text-3); cursor:pointer">✕</button>
+        <h4 style="color:var(--cyan); margin-bottom:15px; display:flex; align-items:center; gap:10px">
+            <span>✨ Sugestões da Inteligência Artificial</span>
+        </h4>
+        <div style="color:var(--text-2); font-size:13px; line-height:1.6; white-space: pre-line" x-text="suggestions"></div>
     </div>
 
     <div class="grid-view" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px">
@@ -79,6 +116,7 @@
                 <div style="display:flex;justify-content:space-between;margin-bottom:12px">
                     <span class="tech-badge">{{ strtoupper($proc->tipo) }}</span>
                     <div style="display:flex; gap:8px; align-items:center">
+                        <a href="{{ route('procedimentos.export', $proc) }}" target="_blank" style="text-decoration:none; font-size:12px" title="Exportar PDF">📄</a>
                         <button @click="openEdit({{ $proc->load('etapas')->toJson() }})" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:12px" title="Editar">🖊️</button>
                         <form action="{{ route('procedimentos.destroy', $proc) }}" method="POST" style="margin:0" onsubmit="return confirm('Excluir este procedimento?')">
                             @csrf @method('DELETE')
