@@ -17,11 +17,23 @@ class RiscoController extends Controller
     public function store(Request $request)
     {
         $dados = $request->all();
-        $dados['criticidade'] = $this->calcularCriticidade($dados['probabilidade'], $dados['impacto']);
+        $dados['criticidade'] = $this->calcularCriticidade($dados['probabilidade'] ?? 'Media', $dados['impacto'] ?? 'Medio');
+        $dados['plano_acao'] = $dados['plano_acao'] ?? '';
         
         Risco::create($dados);
 
         return redirect()->back()->with('success', 'Risco registrado com sucesso!');
+    }
+
+    public function update(Request $request, Risco $risco)
+    {
+        $dados = $request->all();
+        $dados['criticidade'] = $this->calcularCriticidade($dados['probabilidade'] ?? 'Media', $dados['impacto'] ?? 'Medio');
+        $dados['plano_acao'] = $dados['plano_acao'] ?? '';
+        
+        $risco->update($dados);
+
+        return redirect()->back()->with('success', 'Risco atualizado com sucesso!');
     }
 
     public function analyzeIA(Request $request, GeminiService $gemini)
