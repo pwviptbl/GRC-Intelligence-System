@@ -1,85 +1,52 @@
-# GRC Intelligence System (Nome Provisório)
+# GRC Intelligence System 🛡️
 
-## 1. Descrição e Objetivo
-O objetivo deste projeto é desenvolver uma ferramenta local de Governança, Risco e Conformidade (GRC) assistida por Inteligência Artificial (IA). O sistema visa centralizar a gestão de ativos, softwares, clientes e vulnerabilidades da DBSeller, permitindo que um Analista de Segurança utilize linguagem natural para consultar o estado atual da infraestrutura ("Onde estamos") e receber recomendações estratégicas ("Para onde vamos").
+Sistema de Governança, Risco e Conformidade (GRC) assistido por Inteligência Artificial, focado na gestão de ativos, softwares, riscos e conformidade LGPD da DBSeller.
 
-Diferente de ferramentas de GRC tradicionais e estáticas, este software utiliza o **Gemini 2.5 Flash Lite** para interpretar comandos, realizar cadastros automáticos e analisar o contexto de segurança (ex: sugerir treinamentos de phishing com base em tendências de ativos).
+## 🚀 Tecnologias
+- **Backend:** Laravel 11 (PHP 8.2+)
+- **Frontend:** Alpine.js + TailwindCSS (Vite)
+- **Banco de Dados:** PostgreSQL (Docker)
+- **IA:** Google Gemini 2.0 Flash Lite
+- **Infraestrutura:** Docker + Laravel Sail
 
-## 2. Stack Tecnológica
-A escolha das tecnologias foca em performance, ambiente local Linux e facilidade de manutenção para um desenvolvedor com background em PHP e Python.
-
-- **Linguagem Backend:** Python (Flask).
-- **Frontend:** Vue.js (utilizando Fetch API).
-- **Banco de Dados:** SQLite (Armazenamento local, sem dependência de servidores externos).
-- **IA:** Google Gemini 2.5 Flash Lite (integração via API).
-- **Ambiente:** Otimizado para Linux.
-
-## 3. Modelagem de Dados (Banco de Dados Local)
-O modelo foi desenhado para suportar a variação de versões de software e especificidades por cliente.
-
-### Tabela: `clientes`
-Armazena as entidades atendidas pela DBSeller.
-- `id`: INTEGER PRIMARY KEY (Auto-increment)
-- `nome`: TEXT (Ex: "Niterói", "Volta Redonda")
-
-### Tabela: `softwares`
-Armazena os projetos base e suas versões/tecnologias específicas.
-- `id`: INTEGER PRIMARY KEY (Auto-increment)
-- `nome`: TEXT (Ex: "e-Cidade 7.4", "e-Cidade 5.6")
-- `git_url`: TEXT (URL base do repositório para aquela versão/projeto)
-
-### Tabela: `instancias_cliente` (Tabela de Ligação)
-Conecta clientes aos softwares, definindo a branch específica de cada um.
-- `id`: INTEGER PRIMARY KEY
-- `cliente_id`: INTEGER (FK -> clientes.id)
-- `software_id`: INTEGER (FK -> softwares.id)
-- `git_custom_url`: TEXT (Caso o cliente tenha um fork específico, opcional)
-- `branch`: TEXT (Ex: "master", "homolog", "v1.2-niteroi")
-
-## 4. Funcionalidades de IA (Gemini Integration)
-
-### A. Cadastro Inteligente
-A IA deve ser capaz de interpretar frases como:
-> *"Adicione para o cliente Volta Redonda o e-Cidade 7.4 na branch produção"*
-
-**Ação:** O sistema busca o ID de Volta Redonda e do e-Cidade 7.4 e cria o registro na tabela `instancias_cliente`.
-
-### B. Consulta em Linguagem Natural
-O usuário poderá perguntar:
-> *"Quais clientes usam o Portal Transparência na branch Master?"*
-
-**Ação:** A IA traduz a pergunta em um SELECT SQL complexo unindo as três tabelas e retorna a lista formatada.
-
-### C. Análise de Risco e Próximos Passos
-Com base nos dados, a IA poderá sugerir ações:
-> *"Com base nos softwares PHP 5.6 ativos, o que devo fazer?"*
-
-**Recomendação da IA:** *"Clientes X e Y utilizam versão obsoleta. Priorizar atualização de ambiente ou aplicar patch de segurança específico."*
-
-## 5. Próximos Passos (Workflow)
-- **Backend:** Criar a estrutura Flask e as migrações SQLite.
-- **Integração IA:** Configurar o cliente da API do Gemini para conversão de texto em SQL (Text-to-SQL).
-- **Frontend:** Desenvolver a interface Vue.js para o chat e visualização das tabelas.
-- **Expansão:** Adicionar a tabela de vulnerabilidades para cruzamento com os softwares.
-
----
-> **Nota de Desenvolvimento:** Este documenta apenas o início do projeto, sendo que a arquitetura e as funcionalidades irão escalonar e evoluir conforme as necessidades de segurança. O sistema foi integralmente expandido e hoje em dia conta com Módulos Operacionais como Riscos, LGPD, Treinamentos e Ações.
-
-## 6. Inicialização (Deploy Local)
-Para iniciar a ferramenta com auto-configuração, instâncias lógicas, e sem se preocupar em ficar disparando o flask e seus parâmetros toda vez, utilize o nosso automatizador nativo:
+## 📦 Como Iniciar (One-Click Deploy)
+Para subir o ambiente completo (Containers, Banco, Assets e IA), execute na raiz:
 
 ```bash
-# Executado a partir da pasta raiz:
-./deploy.sh
+bash deploy.sh
+```
+*O script cuidará de tudo e informará quando o sistema estiver pronto em `http://localhost`.*
+
+---
+
+## 🗄️ Gestão do Banco de Dados
+
+### Popular com Dados de Teste
+Para inserir dados artificiais (Clientes, Softwares, Riscos, etc.) para validação visual:
+```bash
+cd grc-laravel && ./vendor/bin/sail artisan db:seed
 ```
 
-*(Caso não possua nenhum arquivo de configuração `.env`, ele criará um base automaticamente contendo a pré-senha de `admin` que poderá ser editada a posteriori).*
+### Reset Geral (Limpeza e Repopulação)
+Caso queira zerar o sistema e começar do zero com os dados iniciais de fábrica:
+```bash
+cd grc-laravel && ./vendor/bin/sail artisan grc:reset
+```
+> **Nota:** Este comando solicitará a senha de administrador para confirmar a destruição dos dados atuais. (Senha padrão: `admin123`).
 
-### Scripts Úteis ⚙️
-A pasta [`scripts/`](/scripts/README.md) conta com três funcionalidades criadas propositalmente à parte da aplicação primária, utilizadas para manutenção:
+---
 
-1.   **`popular_banco.py`** → Insere dados artificiais detalhados no projeto pra fins de validação visual e testes do Dashboard e Filtros. 
-2.   **`resetar_banco.py`** → Zera toda a database atual, gerando um layout absolutamente limpo usando o esquema do backend, mantendo o "Admin". 
-3.  **`reset_senha.py`** → Acesso break-glass em caso de estarem bloqueados para fora da ferramenta via Dashboard.
+## 🤖 Funcionalidades de IA
+O sistema utiliza o **Gemini** para:
+- **Chat GRC:** Consultas em linguagem natural sobre ativos e riscos.
+- **Cadastro via IA:** "Cadastre o cliente X com o software Y na branch Master".
+- **Gerador de Políticas:** Rascunhos automáticos de documentos de governança em Markdown.
+- **Análise de Risco:** Sugestões automáticas de planos de ação para mitigar riscos técnicos.
 
-_Para mais detalhes, confira o **[📄 README dos Scripts](scripts/README.md)**._
+## 👤 Acesso Padrão
+- **URL:** `http://localhost`
+- **Usuário:** `admin@admin.com`
+- **Senha:** `admin123`
+
+---
+*DBSeller GRC Intelligence System v2.0*
