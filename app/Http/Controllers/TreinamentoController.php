@@ -8,60 +8,99 @@ use Illuminate\Http\Request;
 
 class TreinamentoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $treinamentos = Treinamento::with('registros')->latest()->get();
         return view('treinamentos.index', compact('treinamentos'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'descricao' => 'required|string',
+            'categoria' => 'required|string',
+            'obrigatorio' => 'boolean',
+            'alunos' => 'nullable|string' // Lista de alunos separada por virgula ou nova linha
+        ]);
+
+        $treinamento = Treinamento::create([
+            'titulo' => $validated['titulo'],
+            'descricao' => $validated['descricao'],
+            'categoria' => $validated['categoria'],
+            'obrigatorio' => $request->has('obrigatorio')
+        ]);
+
+        if (!empty($validated['alunos'])) {
+            $alunos = preg_split('/[,\n\r]+/', $validated['alunos']);
+            foreach ($alunos as $aluno) {
+                if (trim($aluno)) {
+                    TreinamentoRegistro::create([
+                        'treinamento_id' => $treinamento->id,
+                        'colaborador' => trim($aluno),
+                        'status' => 'pendente'
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->back()->with('success', 'Treinamento e alunos registrados!');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, Treinamento $treinamento)
     {
-        //
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'descricao' => 'required|string',
+            'categoria' => 'required|string',
+            'obrigatorio' => 'boolean'
+        ]);
+
+        $treinamento->update($validated);
+
+        return redirect()->back()->with('success', 'Treinamento atualizado!');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function print(Treinamento $treinamento)
     {
-        //
+        $treinamentos = collect([$treinamento->load('registros')]);
+        return view('treinamentos.print', compact('treinamentos'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function printAll()
     {
-        //
+        $treinamentos = Treinamento::with('registros')->latest()->get();
+        return view('treinamentos.print', compact('treinamentos'));
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function destroy(Treinamento $treinamento)
     {
-        //
+        $treinamento->delete();
+        return redirect()->back()->with('success', 'Treinamento removido.');
+    }
+
+    // Adiciona alunos a um treinamento existente
+    public function addAlunos(Request $request, Treinamento $treinamento)
+    {
+        $alunosRaw = $request->input('alunos');
+        if (!empty($alunosRaw)) {
+            $alunos = preg_split('/[,\n\r]+/', $alunosRaw);
+            foreach ($alunos as $aluno) {
+                if (trim($aluno)) {
+                    TreinamentoRegistro::firstOrCreate([
+                        'treinamento_id' => $treinamento->id,
+                        'colaborador' => trim($aluno)
+                    ]);
+                }
+            }
+        }
+        return redirect()->back()->with('success', 'Lista de alunos atualizada!');
+    }
+
+    // Atualiza status de um aluno
+    public function updateRegistro(Request $request, TreinamentoRegistro $registro)
+    {
+        $registro->update($request->only('status', 'data_conclusao'));
+        return response()->json(['success' => true]);
     }
 }

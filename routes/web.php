@@ -58,7 +58,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');
     Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
     Route::patch('/lgpd/{item}', [LgpdController::class, 'update'])->name('lgpd.update');
+    
     Route::resource('treinamentos', TreinamentoController::class);
+    Route::get('/treinamentos/export/all', [TreinamentoController::class, 'printAll'])->name('treinamentos.export.all');
+    Route::get('/treinamentos/export/{treinamento}', [TreinamentoController::class, 'print'])->name('treinamentos.export');
+    Route::post('/treinamentos/{treinamento}/alunos', [TreinamentoController::class, 'addAlunos'])->name('treinamentos.add_alunos');
+    Route::patch('/treinamentos/registro/{registro}', [TreinamentoController::class, 'updateRegistro'])->name('treinamentos.update_registro');
 
     // Chat IA
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
