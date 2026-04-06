@@ -1,52 +1,58 @@
-# GRC Intelligence System 🛡️
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-Sistema de Governança, Risco e Conformidade (GRC) assistido por Inteligência Artificial, focado na gestão de ativos, softwares, riscos e conformidade LGPD da DBSeller.
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-## 🚀 Tecnologias
-- **Backend:** Laravel 11 (PHP 8.2+)
-- **Frontend:** Alpine.js + TailwindCSS (Vite)
-- **Banco de Dados:** PostgreSQL (Docker)
-- **IA:** Google Gemini 2.0 Flash Lite
-- **Infraestrutura:** Docker + Laravel Sail
+## About Laravel
 
-## 📦 Como Iniciar (One-Click Deploy)
-Para subir o ambiente completo (Containers, Banco, Assets e IA), execute na raiz:
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
+
+## Learning Laravel
+
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+
+In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+
+You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+
+## Agentic Development
+
+Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
 
 ```bash
-bash deploy.sh
-```
-*O script cuidará de tudo e informará quando o sistema estiver pronto em `http://localhost`.*
+composer require laravel/boost --dev
 
----
-
-## 🗄️ Gestão do Banco de Dados
-
-### Popular com Dados de Teste
-Para inserir dados artificiais (Clientes, Softwares, Riscos, etc.) para validação visual:
-```bash
-cd grc-laravel && ./vendor/bin/sail artisan db:seed
+php artisan boost:install
 ```
 
-### Reset Geral (Limpeza e Repopulação)
-Caso queira zerar o sistema e começar do zero com os dados iniciais de fábrica:
-```bash
-cd grc-laravel && ./vendor/bin/sail artisan grc:reset
-```
-> **Nota:** Este comando solicitará a senha de administrador para confirmar a destruição dos dados atuais. (Senha padrão: `admin123`).
+Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
----
+## Contributing
 
-## 🤖 Funcionalidades de IA
-O sistema utiliza o **Gemini** para:
-- **Chat GRC:** Consultas em linguagem natural sobre ativos e riscos.
-- **Cadastro via IA:** "Cadastre o cliente X com o software Y na branch Master".
-- **Gerador de Políticas:** Rascunhos automáticos de documentos de governança em Markdown.
-- **Análise de Risco:** Sugestões automáticas de planos de ação para mitigar riscos técnicos.
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
 
-## 👤 Acesso Padrão
-- **URL:** `http://localhost`
-- **Usuário:** `admin@admin.com`
-- **Senha:** `admin123`
+## Code of Conduct
 
----
-*DBSeller GRC Intelligence System v2.0*
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+
+## Security Vulnerabilities
+
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+
+## License
+
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

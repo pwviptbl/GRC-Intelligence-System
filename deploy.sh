@@ -11,17 +11,16 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Iniciando GRC Intelligence System (Versão Laravel)...${NC}"
 
-# 1. Verifica/Cria .env na pasta grc-laravel
-if [ ! -f grc-laravel/.env ]; then
-    echo -e "${YELLOW}⚠️  Arquivo .env não encontrado em grc-laravel!${NC}"
-    cp grc-laravel/.env.example grc-laravel/.env
+# 1. Verifica/Cria .env
+if [ ! -f .env ]; then
+    echo -e "${YELLOW}⚠️  Arquivo .env não encontrado!${NC}"
+    cp .env.example .env
     echo -e "${GREEN}✅ Arquivo .env criado a partir do .example.${NC}"
-    echo -e "${YELLOW}👉 Lembre-se de configurar sua GEMINI_API_KEY no grc-laravel/.env!${NC}"
+    echo -e "${YELLOW}👉 Lembre-se de configurar sua GEMINI_API_KEY no .env!${NC}"
 fi
 
 # 2. Sobe os containers usando o Sail (Docker Compose)
 echo -e "${BLUE}📦 Subindo containers via Docker Compose...${NC}"
-cd grc-laravel
 ./vendor/bin/sail up -d
 
 # 3. Aguarda o PostgreSQL ficar pronto
@@ -55,6 +54,6 @@ echo -e "--------------------------------------------------------"
 echo -e "${GREEN}🔥 Sistema GRC Intelligence Online!${NC}"
 echo -e "Acesse em: ${BLUE}http://localhost${NC}"
 echo -e "Usuário: ${YELLOW}admin@admin.com${NC} | Senha: ${YELLOW}admin123${NC}"
-echo -e "Para ver os logs, use: ${BLUE}cd grc-laravel && ./vendor/bin/sail logs -f${NC}"
-echo -e "Para parar o sistema, use: ${BLUE}cd grc-laravel && ./vendor/bin/sail stop${NC}"
+echo -e "Para ver os logs, use: ${BLUE}./vendor/bin/sail logs -f${NC}"
+echo -e "Para parar o sistema, use: ${BLUE}./vendor/bin/sail stop${NC}"
 echo -e "--------------------------------------------------------"
