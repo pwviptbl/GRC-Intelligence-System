@@ -26,13 +26,13 @@
         <p>v2.0 · DBSeller (Laravel)</p>
       </div>
       <nav>
-        <div class="user-info" title="Perfil">
+        <a href="{{ route('profile.edit') }}" class="user-info" title="Perfil">
           <span style="font-size:18px">👤</span>
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--text-1)">{{ auth()->user()->nome ?? 'Usuário' }}</div>
             <div style="font-size:10px;color:var(--text-3)">{{ auth()->user()->username ?? 'admin' }}</div>
           </div>
-        </div>
+        </a>
 
         <div class="nav-label">Principal</div>
         <a href="{{ route('dashboard') }}" class="nav-btn" :class="{ 'active': view === 'dashboard' }">

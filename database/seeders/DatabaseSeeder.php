@@ -15,14 +15,26 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 0. Usuário Admin
-        User::create([
-            'nome' => 'Administrador',
-            'name' => 'Administrador',
-            'username' => 'admin',
-            'email' => 'admin@admin.com',
-            'password' => Hash::make('admin123'),
-        ]);
+        // 0. Usuário Admin (Garante que não duplique)
+        User::updateOrCreate(
+            ['username' => 'admin'],
+            [
+                'nome' => 'Administrador',
+                'name' => 'Administrador',
+                'email' => 'admin@admin.com',
+                'password' => Hash::make('admin123'),
+            ]
+        );
+
+        // Limpa tabelas antes de repopular para evitar lixo em execuções repetidas
+        DB::statement('TRUNCATE TABLE clientes CASCADE');
+        DB::statement('TRUNCATE TABLE software CASCADE');
+        DB::statement('TRUNCATE TABLE politicas CASCADE');
+        DB::statement('TRUNCATE TABLE riscos CASCADE');
+        DB::statement('TRUNCATE TABLE incidentes CASCADE');
+        DB::statement('TRUNCATE TABLE plano_acaos CASCADE');
+        DB::statement('TRUNCATE TABLE lgpd_items CASCADE');
+        DB::statement('TRUNCATE TABLE treinamentos CASCADE');
 
         // 1. Clientes
         $clientes = ['Prefeitura de SP', 'Câmara Mun. BH', 'Instituto XYZ', 'Secretaria Finanças RJ', 'Autarquia de Água'];
