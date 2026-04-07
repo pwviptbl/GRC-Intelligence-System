@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GRC Intelligence System</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
   <meta name="description" content="Sistema de Governança, Risco e Conformidade" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
@@ -13,6 +14,19 @@
 
   @vite(['resources/css/grc.css', 'resources/js/app.js'])
   <style>
+    :root {
+      --bg-base: #070d1a;
+      --bg-surface: #0d1628;
+      --border: #1e3258;
+      --text-1: #e8f0ff;
+      --text-2: #8ca0c8;
+      --text-3: #4a6090;
+      --cyan: #00e5ff;
+      --red: #ff5370;
+      --green: #00ff9f;
+      --yellow: #ffd740;
+    }
+    body { background: var(--bg-base); color: var(--text-1); margin: 0; display: flex; font-family: 'Inter', sans-serif; }
     .sidebar {
       height: 100vh !important;
       display: flex !important;
@@ -21,14 +35,32 @@
       top: 0; left: 0;
       width: 220px;
       z-index: 1000;
-      background: #0d1628 !important; /* Cor var(--bg-surface) */
+      background: #0d1628 !important; 
+      border-right: 1px solid var(--border);
     }
-    .main { margin-left: 220px !important; }
+    .main { margin-left: 220px !important; flex: 1; min-height: 100vh; background: var(--bg-base); }
     nav { 
       flex: 1 !important; 
       overflow-y: auto !important; 
-      margin-bottom: 80px !important; 
+      margin-bottom: 100px !important; 
+      padding: 10px 10px 40px 10px !important;
     }
+    .nav-btn { display: flex; align-items: center; padding: 10px; color: var(--text-2); text-decoration: none; font-size: 14px; border-radius: 6px; }
+    .nav-btn.active { background: rgba(0, 229, 255, 0.1); color: var(--cyan); }
+    .nav-label { padding: 15px 10px 5px; color: var(--text-3); font-size: 11px; text-transform: uppercase; font-weight: bold; }
+    .nav-folder {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 10px !important;
+      cursor: pointer !important;
+      color: var(--text-2) !important;
+      font-size: 13px !important;
+      font-weight: 500 !important;
+      user-select: none !important;
+    }
+    .nav-folder:hover { color: var(--text-1); background: rgba(255,255,255,0.03); border-radius: 6px; }
+    .nav-btn.submenu { padding-left: 32px !important; font-size: 13px !important; opacity: 0.9; }
     .sidebar-footer {
       position: absolute !important;
       bottom: 0 !important;
@@ -36,7 +68,9 @@
       background: #0d1628 !important;
       padding: 15px !important;
       border-top: 1px solid #1e3258 !important;
+      box-sizing: border-box;
     }
+    .topbar { background: var(--bg-surface); padding: 20px; border-bottom: 1px solid var(--border); }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -51,7 +85,6 @@
 
     <aside class="sidebar">
       <div class="logo">
-        <div class="logo-icon">🛡️</div>
         <h1>GRC Intel</h1>
         <p>{{ config('app.company') }}</p>
       </div>
