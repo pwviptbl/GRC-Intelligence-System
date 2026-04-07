@@ -85,8 +85,8 @@
                 <div class="indicator-name">Governança e Políticas</div>
                 <div class="indicator-desc">Percentual de ativos com políticas vigentes mapeadas.</div>
             </div>
-            <div class="indicator-bar"><div class="indicator-fill" style="width: {{ $planos['percentual'] }}%; background: #06b6d4;"></div></div>
-            <div style="font-weight: 800; width: 40px;">{{ $planos['percentual'] }}%</div>
+            <div class="indicator-bar"><div class="indicator-fill" style="width: {{ $governanca['percentual'] }}%; background: #06b6d4;"></div></div>
+            <div style="font-weight: 800; width: 40px;">{{ $governanca['percentual'] }}%</div>
         </div>
 
         <div class="indicator-row">

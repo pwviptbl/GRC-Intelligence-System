@@ -25,7 +25,7 @@ class DashboardController extends Controller
 
         $governanca = [
             'politicas' => Politica::count(),
-            'politicas_vigentes' => Politica::where('status', 'vigente')->count(),
+            'politicas_vigentes' => Politica::where('status', 'publicado')->count(),
         ];
 
         $riscos = [
@@ -36,7 +36,7 @@ class DashboardController extends Controller
         ];
 
         $incidentes = [
-            'abertos' => Incidente::where('status', 'aberto')->count(),
+            'abertos' => Incidente::where('status', '!=', 'fechado')->count(),
             'total' => Incidente::count(),
         ];
 
@@ -79,8 +79,12 @@ class DashboardController extends Controller
                 'total_abertos' => \App\Models\Risco::where('status', '!=', 'fechado')->count(),
             ],
             'incidentes' => [
-                'abertos' => \App\Models\Incidente::where('status', 'aberto')->count(),
+                'abertos' => \App\Models\Incidente::where('status', '!=', 'fechado')->count(),
                 'total_ano' => \App\Models\Incidente::whereYear('created_at', now()->year)->count(),
+            ],
+            'governanca' => [
+                'publicadas' => \App\Models\Politica::where('status', 'publicado')->count(),
+                'total' => \App\Models\Politica::count() ?: 1,
             ],
             'lgpd' => [
                 'percentual' => 0,
@@ -98,6 +102,7 @@ class DashboardController extends Controller
         ];
 
         $data['lgpd']['percentual'] = round(($data['lgpd']['conforme'] / $data['lgpd']['total']) * 100);
+        $data['governanca']['percentual'] = round(($data['governanca']['publicadas'] / $data['governanca']['total']) * 100);
         $data['treinamentos']['percentual'] = round(($data['treinamentos']['concluidos'] / $data['treinamentos']['total']) * 100);
         $data['planos']['percentual'] = round(($data['planos']['concluidos'] / $data['planos']['total']) * 100);
 
@@ -117,7 +122,7 @@ class DashboardController extends Controller
     {
         $ativos = \App\Models\Software::count();
         $riscosCriticos = \App\Models\Risco::where('criticidade', 'Critico')->where('status', '!=', 'fechado')->count();
-        $incidentesAbertos = \App\Models\Incidente::where('status', 'aberto')->count();
+        $incidentesAbertos = \App\Models\Incidente::where('status', '!=', 'fechado')->count();
         $lgpdConforme = \App\Models\LgpdItem::where('conforme', 'conforme')->count();
         $lgpdTotal = \App\Models\LgpdItem::count() ?: 1;
         $lgpdPerc = round(($lgpdConforme / $lgpdTotal) * 100);
