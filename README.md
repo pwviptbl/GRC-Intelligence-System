@@ -29,16 +29,16 @@ php artisan migrate
 ```
 
 ### 📑 Popular Dados de Sistema (Essencial)
-Para criar o usuário administrador inicial (**admin@admin.com / admin123**), execute:
+Para criar o usuário administrador inicial (**admin@admin.com / admin123**) e o Guia LGPD:
 ```bash
-php artisan db:seed --class=AdminSeeder
+./vendor/bin/sail artisan db:seed --class=AdminSeeder
+./vendor/bin/sail artisan db:seed --class=LgpdSeeder
 ```
 
-### 🧪 Popular Dados de Auditoria e Teste (Opcional)
-Para carregar o Guia LGPD e dados fictícios para demonstração:
+### 🧪 Popular Dados de Demonstração (Opcional)
+Para carregar dados fictícios (Clientes, Riscos, Softwares, etc.) para teste da Dashboard:
 ```bash
-php artisan db:seed --class=LgpdSeeder
-php artisan db:seed (Rodará todos os testes)
+./vendor/bin/sail artisan db:seed
 ```
 
 ## 🐳 Docker (Laravel Sail)
