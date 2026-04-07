@@ -28,16 +28,17 @@ php artisan key:generate
 php artisan migrate
 ```
 
-### 📑 Popular Dados de Auditoria (LGPD)
-Para carregar o **Guia de Auditoria LGPD** com os artigos, descrições educativas e padrões do sistema, execute:
-
+### 📑 Popular Dados de Sistema (Essencial)
+Para criar o usuário administrador inicial (**admin@admin.com / admin123**), execute:
 ```bash
-php artisan db:seed --class=LgpdSeeder
+php artisan db:seed --class=AdminSeeder
 ```
 
-Caso queira resetar **todo o sistema** para o padrão de fábrica (limpar tudo e repopular):
+### 🧪 Popular Dados de Auditoria e Teste (Opcional)
+Para carregar o Guia LGPD e dados fictícios para demonstração:
 ```bash
-php artisan migrate:fresh --seed
+php artisan db:seed --class=LgpdSeeder
+php artisan db:seed (Rodará todos os testes)
 ```
 
 ## 🤖 Integração com IA

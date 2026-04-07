@@ -12,6 +12,32 @@
     rel="stylesheet" />
 
   @vite(['resources/css/grc.css', 'resources/js/app.js'])
+  <style>
+    .sidebar {
+      height: 100vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+      position: fixed !important;
+      top: 0; left: 0;
+      width: 220px;
+      z-index: 1000;
+      background: #0d1628 !important; /* Cor var(--bg-surface) */
+    }
+    .main { margin-left: 220px !important; }
+    nav { 
+      flex: 1 !important; 
+      overflow-y: auto !important; 
+      margin-bottom: 80px !important; 
+    }
+    .sidebar-footer {
+      position: absolute !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      background: #0d1628 !important;
+      padding: 15px !important;
+      border-top: 1px solid #1e3258 !important;
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
@@ -33,9 +59,12 @@
         <a href="{{ route('profile.edit') }}" class="user-info" title="Perfil">
           <span style="font-size:18px">👤</span>
           <div>
-            <div style="font-size:11px;font-weight:600;color:var(--text-1)">{{ auth()->user()->nome ?? 'Usuário' }}
+            <div style="font-size:11px;font-weight:600;color:var(--text-1)">
+                {{ explode(' ', auth()->user()->name)[0] }}
             </div>
-            <div style="font-size:10px;color:var(--text-3)">{{ auth()->user()->username ?? 'admin' }}</div>
+            <div style="font-size:10px;color:var(--text-3);text-transform:capitalize">
+                {{ auth()->user()->role ?? 'Acesso GRC' }}
+            </div>
           </div>
         </a>
 
@@ -107,6 +136,11 @@
         <a href="{{ route('treinamentos.index') }}" class="nav-btn"
           :class="{ 'active': view.includes('treinamentos') }">
           <span class="icon">🎓</span> Treinamentos
+        </a>
+
+        <div class="nav-label" style="margin-top:14px">Configurações</div>
+        <a href="{{ route('usuarios.index') }}" class="nav-btn" :class="{ 'active': view.includes('usuarios') }">
+          <span class="icon">👥</span> Usuários
         </a>
       </nav>
 

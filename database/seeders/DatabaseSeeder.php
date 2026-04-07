@@ -28,12 +28,13 @@ class DatabaseSeeder extends Seeder
     {
         // 0. Usuário Admin (Garante que não duplique)
         User::updateOrCreate(
-            ['username' => 'admin'],
+            ['email' => 'admin@admin.com'],
             [
                 'nome' => 'Administrador',
                 'name' => 'Administrador',
-                'email' => 'admin@admin.com',
                 'password' => Hash::make('admin123'),
+                'role' => 'admin',
+                'active' => true,
             ]
         );
 

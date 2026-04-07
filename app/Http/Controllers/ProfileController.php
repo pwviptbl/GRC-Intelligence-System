@@ -44,7 +44,7 @@ class ProfileController extends Controller
     {
         $validated = $request->validateWithBag('updatePassword', [
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', \Illuminate\Validation\Rules\Password::defaults(), 'confirmed'],
+            'password' => ['required', \Illuminate\Validation\Rules\Password::min(8)->letters()->numbers()->symbols(), 'confirmed'],
         ]);
 
         $request->user()->update([

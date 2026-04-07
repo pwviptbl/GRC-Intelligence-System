@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('username')->unique();
-            $table->string('nome')->default('Administrador');
             $table->string('name');
-            $table->string('email')->unique()->nullable();
+            $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('role')->default('operacional'); // admin, governanca, operacional, auditor
+            $table->boolean('active')->default(true);
             $table->rememberToken();
             $table->timestamps();
         });

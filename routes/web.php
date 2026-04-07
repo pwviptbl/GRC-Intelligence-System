@@ -13,6 +13,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PlanoAcaoController;
 use App\Http\Controllers\TreinamentoController;
 use App\Http\Controllers\ProcedimentoController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -70,6 +71,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Chat IA
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
     Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
+
+    // Gestão de Usuários (Apenas Admin)
+    Route::resource('usuarios', UserController::class);
 });
 
 Route::middleware('auth')->group(function () {
