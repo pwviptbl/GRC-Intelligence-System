@@ -4,7 +4,34 @@
 @section('description', 'Visão Geral do Sistema GRC')
 
 @section('content')
-<div class="table-view">
+<div class="table-view" x-data="{
+    aiAnalysis: 'Carregando análise estratégica...',
+    async init() {
+        try {
+            const res = await fetch('{{ route('dashboard.ai_summary') }}');
+            const data = await res.json();
+            this.aiAnalysis = data.analise;
+        } catch(e) { this.aiAnalysis = 'Não foi possível carregar a análise da IA no momento.'; }
+    }
+}">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px">
+        <div>
+            <h3 style="color:var(--text-1); margin:0">📊 Visão Geral Estratégica</h3>
+            <p style="font-size:12px; color:var(--text-3); margin-top:4px">Principais KPIs de Governança e Riscos</p>
+        </div>
+        <a href="{{ route('dashboard.export') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(6,182,212,0.1); color:var(--cyan); border:1px solid var(--cyan); cursor:pointer; font-size:13px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:10px">
+            <span>📄 Exportar Relatório Executivo</span>
+        </a>
+    </div>
+
+    <!-- Visão do CISO (IA) -->
+    <div style="background:rgba(0,255,159,0.03); border:1px solid rgba(0,255,159,0.1); border-radius:12px; padding:20px; margin-bottom:25px;">
+        <div>
+            <h4 style="color:var(--green); font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Visão do CISO (Inteligência Artificial)</h4>
+            <div style="color:var(--text-2); font-size:14px; line-height:1.6; font-style: italic" x-text="aiAnalysis"></div>
+        </div>
+    </div>
+
     <!-- Row 1: Cards principais -->
     <div class="stats-row" style="margin-bottom:20px">
         <div class="stat-card c1"><div class="stat-label">Clientes</div><div class="stat-value">{{ $ativos['clientes'] }}</div></div>
