@@ -9,9 +9,30 @@ use Illuminate\Http\Request;
 
 class InstanciaClienteController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $instancias = InstanciaCliente::with(['cliente', 'software'])->latest()->get();
+        $query = InstanciaCliente::with(['cliente', 'software']);
+
+        // Filtro por Cliente
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+
+        // Filtro por Software
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        // Filtro por Branch ou URL (termo de busca)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('branch', 'like', "%{$search}%")
+                  ->orWhere('git_custom_url', 'like', "%{$search}%");
+            });
+        }
+
+        $instancias = $query->latest()->get();
         $clientes = Cliente::orderBy('nome')->get();
         $softwares = Software::orderBy('nome')->get();
         

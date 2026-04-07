@@ -24,6 +24,40 @@
         @endif
     </div>
 
+    <!-- Filtros de Busca -->
+    <div class="card" style="margin-bottom:20px; padding:15px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05)">
+        <form action="{{ route('instancias.index') }}" method="GET" style="display:flex; gap:15px; align-items:flex-end">
+            <div style="flex:1">
+                <label style="font-size:11px; color:var(--text-3); display:block; margin-bottom:5px">Filtrar por Termo (Branch / URL)</label>
+                <input type="text" name="search" value="{{ request('search') }}" class="form-input" placeholder="Ex: master, v2, homolog..." style="padding:8px 12px; font-size:13px" />
+            </div>
+            <div style="width:220px">
+                <label style="font-size:11px; color:var(--text-3); display:block; margin-bottom:5px">Filtrar por Cliente</label>
+                <select name="cliente_id" class="form-select" style="padding:8px 12px; font-size:13px">
+                    <option value="">Todos os Clientes</option>
+                    @foreach($clientes as $c)
+                        <option value="{{ $c->id }}" {{ request('cliente_id') == $c->id ? 'selected' : '' }}>{{ $c->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="width:220px">
+                <label style="font-size:11px; color:var(--text-3); display:block; margin-bottom:5px">Filtrar por Software</label>
+                <select name="software_id" class="form-select" style="padding:8px 12px; font-size:13px">
+                    <option value="">Todos os Softwares</option>
+                    @foreach($softwares as $s)
+                        <option value="{{ $s->id }}" {{ request('software_id') == $s->id ? 'selected' : '' }}>{{ $s->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="display:flex; gap:8px">
+                <button type="submit" class="btn-save" style="padding:8px 15px; font-size:12px; height:38px">🔍 Filtrar</button>
+                @if(request()->anyFilled(['search', 'cliente_id', 'software_id']))
+                    <a href="{{ route('instancias.index') }}" class="btn-cancel" style="padding:8px 15px; font-size:12px; height:38px; display:flex; align-items:center; text-decoration:none">✖ Limpar</a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     <div class="table-card">
         <table class="data-table">
             <thead>
