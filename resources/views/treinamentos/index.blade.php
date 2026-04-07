@@ -58,12 +58,16 @@
         <div class="card" style="padding:20px;display:flex;flex-direction:column;gap:12px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);border-radius:12px; position:relative">
             <div style="display:flex;justify-content:space-between;align-items:start">
                 <div>
-                    <span class="tech-badge" style="margin-bottom:6px">{{ $treino->categoria }}</span>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px">
+                        <span class="tech-badge">{{ $treino->categoria }}</span>
+                        @if($treino->obrigatorio)
+                            <span style="font-size:9px;background:rgba(255,83,112,.1);color:var(--red);padding:2px 8px;border-radius:100px;border:1px solid rgba(255,83,112,.2);font-weight:bold">OBRIGATÓRIO</span>
+                        @endif
+                    </div>
                     <h3 style="font-size:16px;color:var(--text-1);font-weight:600">{{ $treino->titulo }}</h3>
                     <p style="font-size:12px;color:var(--text-3);margin-top:4px">{{ $treino->descricao }}</p>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center">
-                    <a href="{{ route('treinamentos.export', $treino) }}" target="_blank" style="text-decoration:none; font-size:12px" title="Exportar PDF">📄</a>
+                <div style="display:flex; gap:8px; align-items:center">                    <a href="{{ route('treinamentos.export', $treino) }}" target="_blank" style="text-decoration:none; font-size:12px" title="Exportar PDF">📄</a>
                     <button @click="openEdit({{ $treino->toJson() }})" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:12px" title="Editar">🖊️</button>
                     <form action="{{ route('treinamentos.destroy', $treino) }}" method="POST" style="margin:0" onsubmit="return confirm('Excluir este treinamento?')">
                         @csrf @method('DELETE')
@@ -71,12 +75,6 @@
                     </form>
                 </div>
             </div>
-
-            @if($treino->obrigatorio)
-                <div style="position:absolute; bottom:15px; right:15px">
-                    <span style="font-size:9px;background:rgba(255,83,112,.1);color:var(--red);padding:2px 8px;border-radius:100px;border:1px solid rgba(255,83,112,.2)">Obrigatório</span>
-                </div>
-            @endif
 
             <div style="margin-top:8px">
                 <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:6px">

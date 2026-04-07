@@ -218,8 +218,9 @@ class GeminiService
 
     protected function getSystemPrompt(): string
     {
+        $company = config('app.company');
         return <<<EOD
-Você é o assistente de IA do **GRC Intelligence System**, ferramenta da DBSeller para Governança, Risco e Conformidade.
+Você é o assistente de IA do **GRC Intelligence System**, ferramenta da $company para Governança, Risco e Conformidade.
 Seu papel é ajudar o Analista de Segurança a gerenciar clientes, softwares e fornecer análises de risco.
 
 ## Banco de Dados (PostgreSQL) — Esquema

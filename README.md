@@ -1,6 +1,6 @@
 # GRC Intelligence System
 
-Sistema de Governança, Risco e Conformidade (GRC) desenvolvido para a DBSeller.
+Sistema de Governança, Risco e Conformidade (GRC).
 
 ## 🚀 Funcionalidades
 

@@ -57,10 +57,10 @@ class DatabaseSeeder extends Seeder
 
         // 2. Softwares
         $softwares = [
-            ['nome' => 'e-Cidade', 'tecnologia' => 'PHP 7.4', 'git_url' => 'https://github.com/dbseller/e-cidade'],
-            ['nome' => 'Portal Transparência', 'tecnologia' => 'Node.js', 'git_url' => 'https://github.com/dbseller/portal'],
-            ['nome' => 'EducaDigital', 'tecnologia' => 'Python/Django', 'git_url' => 'https://github.com/dbseller/educa'],
-            ['nome' => 'Saúde Mais', 'tecnologia' => 'Java', 'git_url' => 'https://github.com/dbseller/saude'],
+            ['nome' => 'e-Cidade', 'tecnologia' => 'PHP 7.4', 'git_url' => 'https://github.com/empresa/e-cidade'],
+            ['nome' => 'Portal Transparência', 'tecnologia' => 'Node.js', 'git_url' => 'https://github.com/empresa/portal'],
+            ['nome' => 'EducaDigital', 'tecnologia' => 'Python/Django', 'git_url' => 'https://github.com/empresa/educa'],
+            ['nome' => 'Saúde Mais', 'tecnologia' => 'Java', 'git_url' => 'https://github.com/empresa/saude'],
         ];
         foreach ($softwares as $s) {
             Software::create($s);
