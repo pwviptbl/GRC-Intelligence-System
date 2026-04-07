@@ -78,7 +78,8 @@ echo -e "\n${GREEN}✅ Banco de dados online!${NC}"
 # 4. Instala dependências e roda migrações
 echo -e "${BLUE}🔄 Executando migrações e atualizando ambiente...${NC}"
 ./vendor/bin/sail composer install --quiet
-./vendor/bin/sail artisan key:generate --quiet
+./vendor/bin/sail artisan key:generate --force --quiet
+./vendor/bin/sail artisan config:clear --quiet
 ./vendor/bin/sail artisan migrate --force --quiet
 
 # Se resetou, cria o admin e o guia LGPD obrigatoriamente (Dados essenciais do sistema)
