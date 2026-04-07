@@ -19,7 +19,9 @@
     
     <div class="table-header">
         <h3>Instâncias Ativas</h3>
+        @if(in_array(auth()->user()->role, ['admin', 'governanca']))
         <button class="btn-add" @click="showModal = true">+ Nova Instância</button>
+        @endif
     </div>
 
     <div class="table-card">
@@ -31,7 +33,9 @@
                     <th>Software</th>
                     <th>Branch</th>
                     <th>URL Custom</th>
+                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <th>Ações</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -48,6 +52,7 @@
                             <span style="color:var(--text-3)">—</span>
                         @endif
                     </td>
+                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <td>
                         <form action="{{ route('instancias.destroy', $i) }}" method="POST" onsubmit="return confirm('Deseja remover esta instância?')">
                             @csrf
@@ -55,6 +60,7 @@
                             <button type="submit" class="btn-del">🗑</button>
                         </form>
                     </td>
+                    @endif
                 </tr>
                 @empty
                 <tr>

@@ -25,55 +25,70 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard/export/executive', [DashboardController::class, 'exportExecutive'])->name('dashboard.export');
     Route::get('/dashboard/ai-summary', [DashboardController::class, 'aiSummary'])->name('dashboard.ai_summary');
     
-    // Ativos
-    Route::resource('clientes', ClienteController::class);
-    Route::resource('softwares', SoftwareController::class);
-    Route::resource('instancias', InstanciaClienteController::class);
-    
-    // Governança
-    Route::resource('politicas', PoliticaController::class);
-    Route::get('/politicas/export/all', [PoliticaController::class, 'printAll'])->name('politicas.export.all');
-    Route::get('/politicas/export/{politica}', [PoliticaController::class, 'print'])->name('politicas.export');
-    Route::post('/politicas/generate', [PoliticaController::class, 'generateIA'])->name('politicas.generate');
-    Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
-    Route::resource('procedimentos', ProcedimentoController::class);
-    Route::get('/procedimentos/export/all', [ProcedimentoController::class, 'printAll'])->name('procedimentos.export.all');
-    Route::get('/procedimentos/export/{procedimento}', [ProcedimentoController::class, 'print'])->name('procedimentos.export');
-    Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');
-    Route::post('/procedimentos/suggest', [ProcedimentoController::class, 'suggestIA'])->name('procedimentos.suggest');
-    
-    // Riscos e Incidentes
-    Route::resource('riscos', RiscoController::class);
-    Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
-    Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
-    Route::post('/riscos/analyze', [RiscoController::class, 'analyzeIA'])->name('riscos.analyze');
-    
-    Route::resource('incidentes', IncidenteController::class);
-    Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
-    Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
-    
-    Route::resource('plano_acoes', PlanoAcaoController::class);
-    Route::get('/plano_acoes/export/all', [PlanoAcaoController::class, 'printAll'])->name('plano_acoes.export.all');
-    Route::get('/plano_acoes/export/{plano_aco}', [PlanoAcaoController::class, 'print'])->name('plano_acoes.export');
-
-    // Conformidade
-    Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
-    Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');
-    Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
-    Route::patch('/lgpd/{item}', [LgpdController::class, 'update'])->name('lgpd.update');
-    
-    Route::resource('treinamentos', TreinamentoController::class);
-    Route::get('/treinamentos/export/all', [TreinamentoController::class, 'printAll'])->name('treinamentos.export.all');
-    Route::get('/treinamentos/export/{treinamento}', [TreinamentoController::class, 'print'])->name('treinamentos.export');
-    Route::post('/treinamentos/{treinamento}/alunos', [TreinamentoController::class, 'addAlunos'])->name('treinamentos.add_alunos');
-    Route::patch('/treinamentos/registro/{registro}', [TreinamentoController::class, 'updateRegistro'])->name('treinamentos.update_registro');
-
-    // Chat IA
-    Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-    Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
-
     // Gestão de Usuários (Apenas Admin)
-    Route::resource('usuarios', UserController::class);
+    Route::middleware('role:admin')->group(function() {
+        Route::resource('usuarios', UserController::class);
+    });
+
+    // 1. MÓDULOS RESTRITOS (Ativos e Governança)
+    // Escrita: Admin e Governança | Leitura: Operacional e Auditor
+    Route::middleware('role:admin,governanca,operacional,auditor')->group(function() {
+        Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');
+        Route::get('/softwares', [SoftwareController::class, 'index'])->name('softwares.index');
+        Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
+        Route::get('/politicas', [PoliticaController::class, 'index'])->name('politicas.index');
+        Route::get('/politicas/export/all', [PoliticaController::class, 'printAll'])->name('politicas.export.all');
+        Route::get('/politicas/export/{politica}', [PoliticaController::class, 'print'])->name('politicas.export');
+        Route::get('/procedimentos', [ProcedimentoController::class, 'index'])->name('procedimentos.index');
+        Route::get('/procedimentos/export/all', [ProcedimentoController::class, 'printAll'])->name('procedimentos.export.all');
+        Route::get('/procedimentos/export/{procedimento}', [ProcedimentoController::class, 'print'])->name('procedimentos.export');
+    });
+
+    Route::middleware('role:admin,governanca')->group(function() {
+        Route::resource('clientes', ClienteController::class)->except(['index']);
+        Route::resource('softwares', SoftwareController::class)->except(['index']);
+        Route::resource('instancias', InstanciaClienteController::class)->except(['index']);
+        Route::resource('politicas', PoliticaController::class)->except(['index']);
+        Route::resource('procedimentos', ProcedimentoController::class)->except(['index']);
+    });
+
+    // 2. MÓDULOS OPERACIONAIS (Escrita liberada para Operacional)
+    Route::middleware('role:admin,governanca,operacional,auditor')->group(function() {
+        Route::resource('riscos', RiscoController::class);
+        Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
+        Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
+        
+        Route::resource('incidentes', IncidenteController::class);
+        Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
+        Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
+        
+        Route::resource('plano_acoes', PlanoAcaoController::class);
+        Route::get('/plano_acoes/export/all', [PlanoAcaoController::class, 'printAll'])->name('plano_acoes.export.all');
+        Route::get('/plano_acoes/export/{plano_aco}', [PlanoAcaoController::class, 'print'])->name('plano_acoes.export');
+
+        Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
+        Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');
+        Route::patch('/lgpd/{item}', [LgpdController::class, 'update'])->name('lgpd.update');
+        
+        Route::resource('treinamentos', TreinamentoController::class);
+        Route::get('/treinamentos/export/all', [TreinamentoController::class, 'printAll'])->name('treinamentos.export.all');
+        Route::get('/treinamentos/export/{treinamento}', [TreinamentoController::class, 'print'])->name('treinamentos.export');
+        Route::patch('/treinamentos/registro/{registro}', [TreinamentoController::class, 'updateRegistro'])->name('treinamentos.update_registro');
+
+        Route::get('/chat', [ChatController::class, 'index'])->name('chat');
+        Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
+    });
+
+    // 3. FERRAMENTAS DE IA (Liberadas para Operacional)
+    Route::middleware('role:admin,governanca,operacional')->group(function() {
+        Route::post('/politicas/generate', [PoliticaController::class, 'generateIA'])->name('politicas.generate');
+        Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
+        Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');
+        Route::post('/procedimentos/suggest', [ProcedimentoController::class, 'suggestIA'])->name('procedimentos.suggest');
+        Route::post('/riscos/analyze', [RiscoController::class, 'analyzeIA'])->name('riscos.analyze');
+        Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
+        Route::post('/treinamentos/{treinamento}/alunos', [TreinamentoController::class, 'addAlunos'])->name('treinamentos.add_alunos');
+    });
 });
 
 Route::middleware('auth')->group(function () {

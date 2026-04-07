@@ -92,11 +92,16 @@
             <a href="{{ route('procedimentos.export.all') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar Todos</span>
             </a>
+            @if(in_array(auth()->user()->role, ['admin', 'governanca', 'operacional']))
             <button class="btn-secondary" @click="getSuggestions()" :disabled="suggesting" style="padding:10px 20px; border-radius:8px; background:rgba(0,255,255,0.05); color:var(--cyan); border:1px solid var(--cyan); cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px">
                 <span x-show="!suggesting">💡 Sugerir Novos</span>
                 <span x-show="suggesting">⌛ Consultando...</span>
             </button>
+            @endif
+
+            @if(in_array(auth()->user()->role, ['admin', 'governanca']))
             <button class="btn-add" @click="openCreate()">+ Novo Procedimento</button>
+            @endif
         </div>
     </div>
 
@@ -117,11 +122,13 @@
                     <span class="tech-badge">{{ strtoupper($proc->tipo) }}</span>
                     <div style="display:flex; gap:8px; align-items:center">
                         <a href="{{ route('procedimentos.export', $proc) }}" target="_blank" style="text-decoration:none; font-size:12px" title="Exportar PDF">📄</a>
+                        @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                         <button @click="openEdit({{ $proc->load('etapas')->toJson() }})" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:12px" title="Editar">🖊️</button>
                         <form action="{{ route('procedimentos.destroy', $proc) }}" method="POST" style="margin:0" onsubmit="return confirm('Excluir este procedimento?')">
                             @csrf @method('DELETE')
                             <button type="submit" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:12px">🗑</button>
                         </form>
+                        @endif
                     </div>
                 </div>
                 <h3 style="font-size:16px;color:var(--text-1);font-weight:600; margin-bottom:15px">{{ $proc->titulo }}</h3>

@@ -15,7 +15,9 @@
 
         <div class="table-header">
             <h3>Clientes Cadastrados</h3>
+            @if(in_array(auth()->user()->role, ['admin', 'governanca']))
             <button class="btn-add" @click="showModal = true">+ Novo Cliente</button>
+            @endif
         </div>
 
         <div class="table-card">
@@ -25,7 +27,9 @@
                         <th>#</th>
                         <th>Nome</th>
                         <th>Cadastrado em</th>
+                        @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                         <th>Ações</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -34,6 +38,7 @@
                             <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">{{ $cliente->id }}</td>
                             <td style="font-weight:500;color:var(--text-1)">{{ $cliente->nome }}</td>
                             <td>{{ $cliente->created_at->format('d/m/Y H:i') }}</td>
+                            @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                             <td>
                                 <div style="display: flex; gap: 8px;">
                                     <form action="{{ route('clientes.destroy', $cliente) }}" method="POST"
@@ -44,6 +49,7 @@
                                     </form>
                                 </div>
                             </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>

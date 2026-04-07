@@ -171,10 +171,12 @@
           <span class="icon">🎓</span> Treinamentos
         </a>
 
+        @if(auth()->user()->isAdmin())
         <div class="nav-label" style="margin-top:14px">Configurações</div>
         <a href="{{ route('usuarios.index') }}" class="nav-btn" :class="{ 'active': view.includes('usuarios') }">
           <span class="icon">👥</span> Usuários
         </a>
+        @endif
       </nav>
 
       <div class="sidebar-footer">

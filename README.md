@@ -41,6 +41,30 @@ Para carregar dados fictícios (Clientes, Riscos, Softwares, etc.) para teste da
 ./vendor/bin/sail artisan db:seed
 ```
 
+## 👥 Perfis de Acesso (RBAC)
+
+O sistema possui controle de acesso baseado em perfis, garantindo a segregação de funções:
+
+- **👑 Administrador (`admin`):**
+  - Acesso total e irrestrito a todos os módulos.
+  - Único perfil com permissão para **Gestão de Usuários** (criar, editar e desativar contas).
+  
+- **⚖️ Governança (`governanca`):**
+  - Gestão completa de Ativos, Riscos, Incidentes e Conformidade.
+  - Acesso total às ferramentas de **Inteligência Artificial** (Geração de Políticas, Sugestões de Riscos, etc).
+  - Não possui acesso à gestão de usuários.
+
+- **🛠️ Operacional (`operacional`):**
+  - Foco na execução: Permissão total para gerenciar **Riscos, Incidentes, Planos de Ação e Treinamentos**.
+  - Acesso de **Apenas Leitura** para os módulos estruturais (**Ativos e Governança**).
+  - Pode utilizar ferramentas de **Inteligência Artificial** para análise e sugestões.
+  - Bloqueado para gestão de usuários.
+
+- **🔍 Auditor (`auditor`):**
+  - Perfil de **Apenas Leitura** (Read-Only).
+  - Pode visualizar dashboards, listar registros e exportar relatórios em PDF.
+  - **Bloqueado** para qualquer ação de criação, edição ou exclusão (botões ocultos na interface e travados no backend).
+
 ## 🐳 Docker (Laravel Sail)
 
 O projeto está configurado para rodar com **Laravel Sail**.

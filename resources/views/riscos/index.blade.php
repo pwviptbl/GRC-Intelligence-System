@@ -76,7 +76,9 @@
             <a href="{{ route('riscos.export.all') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar Inventário</span>
             </a>
+            @if(auth()->user()->role !== 'auditor')
             <button class="btn-add" @click="openCreate()">+ Registrar Risco</button>
+            @endif
         </div>
     </div>
 
@@ -102,11 +104,13 @@
                         <div style="display:flex;gap:12px;align-items:center">
                             <a href="{{ route('riscos.export', $r) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
                             <button @click="openView({{ $r->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
+                            @if(auth()->user()->role !== 'auditor')
                             <button @click="openEdit({{ $r->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
                             <form action="{{ route('riscos.destroy', $r) }}" method="POST" style="margin:0">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-del" onclick="return confirm('Remover este risco?')">🗑</button>
                             </form>
+                            @endif
                         </div>
                     </td>
                 </tr>

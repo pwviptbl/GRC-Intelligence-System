@@ -23,15 +23,14 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nome' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', Rules\Password::min(8)->letters()->numbers()->symbols()],
             'role' => ['required', 'string'],
         ]);
 
         User::create([
-            'nome' => $request->nome,
-            'name' => $request->nome,
+            'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
@@ -44,13 +43,12 @@ class UserController extends Controller
     public function update(Request $request, User $usuario)
     {
         $request->validate([
-            'nome' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'role' => ['required', 'string'],
         ]);
 
         $data = [
-            'nome' => $request->nome,
-            'name' => $request->nome,
+            'name' => $request->name,
             'role' => $request->role,
             'active' => $request->has('active')
         ];

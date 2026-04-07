@@ -15,7 +15,9 @@
     
     <div class="table-header">
         <h3>Softwares Cadastrados</h3>
+        @if(in_array(auth()->user()->role, ['admin', 'governanca']))
         <button class="btn-add" @click="showModal = true">+ Novo Software</button>
+        @endif
     </div>
 
     <div class="table-card">
@@ -26,7 +28,9 @@
                     <th>Nome</th>
                     <th>Tecnologia</th>
                     <th>Repositório</th>
+                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <th>Ações</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -48,6 +52,7 @@
                             <span style="color:var(--text-3)">—</span>
                         @endif
                     </td>
+                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <td>
                         <form action="{{ route('softwares.destroy', $s) }}" method="POST" onsubmit="return confirm('Deseja remover este software?')">
                             @csrf
@@ -55,6 +60,7 @@
                             <button type="submit" class="btn-del">🗑</button>
                         </form>
                     </td>
+                    @endif
                 </tr>
                 @empty
                 <tr>

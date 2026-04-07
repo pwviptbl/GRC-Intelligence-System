@@ -9,11 +9,11 @@
     showModal: false, 
     editMode: false,
     formAction: '{{ route('usuarios.store') }}',
-    form: { id: '', nome: '', email: '', role: 'operacional', active: true, password: '' },
+    form: { id: '', name: '', email: '', role: 'operacional', active: true, password: '' },
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', nome: '', email: '', role: 'operacional', active: true, password: '' };
+        this.form = { id: '', name: '', email: '', role: 'operacional', active: true, password: '' };
         this.formAction = '{{ route('usuarios.store') }}';
         this.showModal = true;
     },
@@ -44,7 +44,7 @@
                 @foreach($users as $user)
                 <tr style="{{ !$user->active ? 'opacity: 0.5' : '' }}">
                     <td>
-                        <div style="font-weight:600;color:var(--text-1)">{{ $user->nome }}</div>
+                        <div style="font-weight:600;color:var(--text-1)">{{ $user->name }}</div>
                         <div style="font-size:11px;color:var(--text-3)">{{ $user->email }}</div>
                     </td>
                     <td>
@@ -88,7 +88,7 @@
 
                 <div class="form-group">
                     <label>Nome Completo</label>
-                    <input type="text" name="nome" x-model="form.nome" class="form-input" required />
+                    <input type="text" name="name" x-model="form.name" class="form-input" required />
                 </div>
 
                 <div class="form-group" style="margin-top:10px">
