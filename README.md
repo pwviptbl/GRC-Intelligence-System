@@ -41,6 +41,27 @@ php artisan db:seed --class=LgpdSeeder
 php artisan db:seed (Rodará todos os testes)
 ```
 
+## 🐳 Docker (Laravel Sail)
+
+O projeto está configurado para rodar com **Laravel Sail**.
+
+### Comandos Úteis
+
+**Para entrar no container do PHP (Bash):**
+```bash
+./vendor/bin/sail shell
+```
+
+**Ou utilizando Docker Compose direto:**
+```bash
+docker compose exec laravel.test bash
+```
+
+**Para rodar comandos Artisan sem entrar no container:**
+```bash
+./vendor/bin/sail artisan <comando>
+```
+
 ## 🤖 Integração com IA
 O sistema utiliza o modelo **Gemini 2.5 Flash Lite**. Certifique-se de configurar sua chave no arquivo `.env`:
 ```env

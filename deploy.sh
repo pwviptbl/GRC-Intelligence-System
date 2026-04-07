@@ -7,9 +7,22 @@ set -e
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Iniciando GRC Intelligence System (Versão Laravel)...${NC}"
+
+# 0. Opção de Reset Total
+echo -e "${YELLOW}❓ Deseja fazer um RESET TOTAL do ambiente? (Apagar containers, volumes e banco de dados) (s/n)${NC}"
+read -r reset_response
+DO_RESET=false
+if [[ "$reset_response" =~ ^([sS][imIM]|[sS])$ ]]; then
+    echo -e "${RED}⚠️  APAGANDO TUDO EM 3 SEGUNDOS...${NC}"
+    sleep 3
+    ./vendor/bin/sail down -v || true
+    echo -e "${GREEN}✅ Ambiente limpo!${NC}"
+    DO_RESET=true
+fi
 
 # 1. Verifica/Cria .env
 if [ ! -f .env ]; then
@@ -37,17 +50,25 @@ echo -e "${BLUE}🔄 Executando migrações e atualizando ambiente...${NC}"
 ./vendor/bin/sail artisan key:generate --quiet
 ./vendor/bin/sail artisan migrate --force --quiet
 
+# Se resetou, cria o admin e o guia LGPD obrigatoriamente (Dados essenciais do sistema)
+if [ "$DO_RESET" = true ]; then
+    echo -e "${BLUE}👤 Criando usuário administrador inicial...${NC}"
+    ./vendor/bin/sail artisan db:seed --class=AdminSeeder --force
+    echo -e "${BLUE}📋 Carregando Guia de Auditoria LGPD...${NC}"
+    ./vendor/bin/sail artisan db:seed --class=LgpdSeeder --force
+fi
+
 # 5. Compila Assets (Vite)
 echo -e "${BLUE}🎨 Instalando dependências Node e compilando assets...${NC}"
 ./vendor/bin/sail npm install --quiet
 ./vendor/bin/sail npm run build --quiet
 
-# 6. Pergunta se deseja popular o banco (Seeder)
-echo -e "${YELLOW}❓ Deseja popular o banco com dados de teste? (s/n)${NC}"
+# 6. Pergunta se deseja popular o banco com dados de TESTE (fictícios)
+echo -e "${YELLOW}❓ Deseja popular o banco com dados de teste (Clientes, Softwares, Riscos fictícios)? (s/n)${NC}"
 read -r response
 if [[ "$response" =~ ^([sS][imIM]|[sS])$ ]]; then
     ./vendor/bin/sail artisan db:seed --force
-    echo -e "${GREEN}✅ Banco de dados populado!${NC}"
+    echo -e "${GREEN}✅ Banco de dados populado com dados de demonstração!${NC}"
 fi
 
 echo -e "--------------------------------------------------------"
