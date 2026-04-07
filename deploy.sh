@@ -12,6 +12,31 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Iniciando GRC Intelligence System (Versão Laravel)...${NC}"
 
+# Garante que o Sail exista antes de qualquer comando que dependa de vendor/
+bootstrap_sail() {
+    if [ -x ./vendor/bin/sail ]; then
+        return
+    fi
+
+    echo -e "${YELLOW}⚠️  Sail não encontrado em ./vendor/bin/sail.${NC}"
+    echo -e "${BLUE}📦 Instalando dependências do Composer para preparar o ambiente...${NC}"
+
+    if command -v composer >/dev/null 2>&1; then
+        composer install
+    elif command -v docker >/dev/null 2>&1; then
+        docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/app -w /app composer:2 composer install
+    else
+        echo -e "${RED}❌ Nem Composer local nem Docker foram encontrados.${NC}"
+        echo -e "${RED}Instale o Composer ou Docker e tente novamente.${NC}"
+        exit 1
+    fi
+
+    if [ ! -x ./vendor/bin/sail ]; then
+        echo -e "${RED}❌ Não foi possível preparar o Laravel Sail.${NC}"
+        exit 1
+    fi
+}
+
 # 0. Opção de Reset Total
 echo -e "${YELLOW}❓ Deseja fazer um RESET TOTAL do ambiente? (Apagar containers, volumes e banco de dados) (s/n)${NC}"
 read -r reset_response
@@ -19,7 +44,11 @@ DO_RESET=false
 if [[ "$reset_response" =~ ^([sS][imIM]|[sS])$ ]]; then
     echo -e "${RED}⚠️  APAGANDO TUDO EM 3 SEGUNDOS...${NC}"
     sleep 3
-    ./vendor/bin/sail down -v || true
+    if [ -x ./vendor/bin/sail ]; then
+        ./vendor/bin/sail down -v || true
+    else
+        docker compose down -v || true
+    fi
     echo -e "${GREEN}✅ Ambiente limpo!${NC}"
     DO_RESET=true
 fi
@@ -33,6 +62,8 @@ if [ ! -f .env ]; then
 fi
 
 # 2. Sobe os containers usando o Sail (Docker Compose)
+bootstrap_sail
+
 echo -e "${BLUE}📦 Subindo containers via Docker Compose...${NC}"
 ./vendor/bin/sail up -d
 
