@@ -82,6 +82,12 @@ echo -e "${BLUE}🔄 Executando migrações e atualizando ambiente...${NC}"
 ./vendor/bin/sail artisan config:clear --quiet
 ./vendor/bin/sail artisan migrate --force --quiet
 
+# Garante o link simbólico do storage e permissões de acesso
+echo -e "${BLUE}📁 Configurando armazenamento e links simbólicos...${NC}"
+./vendor/bin/sail artisan storage:link --force || true
+./vendor/bin/sail exec -u root laravel.test chmod -R 775 storage/app/public
+./vendor/bin/sail exec -u root laravel.test chown -R sail:sail storage/app/public
+
 # Se resetou, cria o admin e o guia LGPD obrigatoriamente (Dados essenciais do sistema)
 if [ "$DO_RESET" = true ]; then
     echo -e "${BLUE}👤 Criando usuário administrador inicial...${NC}"

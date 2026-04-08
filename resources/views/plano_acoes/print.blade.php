@@ -71,6 +71,46 @@
         <div class="content-box">
             {!! nl2br(e($a->descricao)) !!}
         </div>
+
+        @if($a->items->count() > 0)
+        <div class="section-title">Checklist de Execução e Evidências</div>
+        <div style="padding: 0 15px 15px 15px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead>
+                    <tr style="background: #f9fafb;">
+                        <th style="border: 1px solid #eee; padding: 8px; text-align: left; width: 30px;">Status</th>
+                        <th style="border: 1px solid #eee; padding: 8px; text-align: left;">Etapa / Tarefa</th>
+                        <th style="border: 1px solid #eee; padding: 8px; text-align: left;">Observações Técnicas e Evidências</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($a->items as $item)
+                    <tr>
+                        <td style="border: 1px solid #eee; padding: 8px; text-align: center;">
+                            {{ $item->concluido ? '✅' : '⏳' }}
+                        </td>
+                        <td style="border: 1px solid #eee; padding: 8px; font-weight: bold;">
+                            {{ $item->titulo }}
+                        </td>
+                        <td style="border: 1px solid #eee; padding: 8px;">
+                            @if($item->observacoes)
+                                <div style="margin-bottom: 5px; color: #444; font-style: italic;">{{ $item->observacoes }}</div>
+                            @endif
+                            
+                            @foreach($item->evidencias as $ev)
+                                <div style="color: #0891b2; font-size: 10px;">📎 {{ $ev->arquivo_nome }}</div>
+                            @endforeach
+
+                            @if(!$item->observacoes && $item->evidencias->count() == 0)
+                                <span style="color: #999;">Sem registros adicionais.</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
     </div>
     @endforeach
 

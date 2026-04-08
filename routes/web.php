@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/plano_acoes/item/{item}', [PlanoAcaoController::class, 'updateItem'])->name('plano_acoes.update_item');
         Route::post('/plano_acoes/{plano_aco}/item', [PlanoAcaoController::class, 'addItem'])->name('plano_acoes.add_item');
         Route::delete('/plano_acoes/item/{item}', [PlanoAcaoController::class, 'removeItem'])->name('plano_acoes.remove_item');
+        Route::delete('/plano_acoes/evidencia/{evidencia}', [PlanoAcaoController::class, 'removeEvidence'])->name('plano_acoes.remove_evidence');
 
         Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
         Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');

@@ -103,82 +103,82 @@
 
         <div class="nav-label">Principal</div>
         <a href="{{ route('dashboard') }}" class="nav-btn" :class="{ 'active': view === 'dashboard' }">
-          <span class="icon">📊</span> Painel CISO
+          <span class="icon" style="margin-right: 10px;">📊</span> Painel
         </a>
 
         <a href="{{ route('estrategia.index') }}" class="nav-btn" :class="{ 'active': view === 'estrategia' }">
-          <span class="icon">🚀</span> Consultor IA
+          <span class="icon" style="margin-right: 10px;">🚀</span> Consultor IA
         </a>
 
         <a href="{{ route('chat') }}" class="nav-btn" :class="{ 'active': view === 'chat' }">
-          <span class="icon">💬</span> Chat GRC
+          <span class="icon" style="margin-right: 10px;">💬</span> Chat GRC
         </a>
         <div class="nav-folder" @click="menuAtivosAberto = !menuAtivosAberto" style="margin-top: 20px;">
           <span style="display: flex; align-items: center; gap: 6px;"><span class="icon"
-              style="font-size: 14px;">📁</span> Ativos</span>
+              style="font-size: 14px; margin-right: 10px;">📁</span> Ativos</span>
           <span style="font-size: 10px; color: var(--text-3);" x-text="menuAtivosAberto ? '▼' : '►'"></span>
         </div>
         <div class="nav-submenu-group" x-show="menuAtivosAberto" style="display: none;" x-transition>
           <a href="{{ route('clientes.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('clientes') }">
-            <span class="icon" style="opacity: 0.8;">🏢</span> Clientes
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🏢</span> Clientes
           </a>
           <a href="{{ route('softwares.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('softwares') }">
-            <span class="icon" style="opacity: 0.8;">💾</span> Softwares
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">💾</span> Softwares
           </a>
           <a href="{{ route('instancias.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('instancias') }">
-            <span class="icon" style="opacity: 0.8;">🔗</span> Instâncias
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔗</span> Instâncias
           </a>
         </div>
 
         <div class="nav-folder" @click="menuGovernancaAberto = !menuGovernancaAberto" style="margin-top: 8px;">
           <span style="display: flex; align-items: center; gap: 6px;"><span class="icon"
-              style="font-size: 14px;">📜</span> Governança</span>
+              style="font-size: 14px; margin-right: 10px;">📜</span> Governança</span>
           <span style="font-size: 10px; color: var(--text-3);" x-text="menuGovernancaAberto ? '▼' : '►'"></span>
         </div>
         <div class="nav-submenu-group" x-show="menuGovernancaAberto" style="display: none;" x-transition>
           <a href="{{ route('politicas.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('politicas') }">
-            <span class="icon" style="opacity: 0.8;">📄</span> Políticas
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📄</span> Políticas
           </a>
           <a href="{{ route('procedimentos.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('procedimentos') }">
-            <span class="icon" style="opacity: 0.8;">🔄</span> Procedimentos
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔄</span> Procedimentos
           </a>
         </div>
 
         <div class="nav-folder" @click="menuRiscosAberto = !menuRiscosAberto" style="margin-top: 8px;">
           <span style="display: flex; align-items: center; gap: 6px;"><span class="icon"
-              style="font-size: 14px;">⚠️</span> Riscos</span>
+              style="font-size: 14px; margin-right: 10px;">⚠️</span> Riscos</span>
           <span style="font-size: 10px; color: var(--text-3);" x-text="menuRiscosAberto ? '▼' : '►'"></span>
         </div>
         <div class="nav-submenu-group" x-show="menuRiscosAberto" style="display: none;" x-transition>
           <a href="{{ route('riscos.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('riscos') }">
-            <span class="icon" style="opacity: 0.8;">📋</span> Registro de Riscos
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📋</span> Registro de Riscos
           </a>
         </div>
 
         <div class="nav-label" style="margin-top:14px">Operacional</div>
         <a href="{{ route('incidentes.index') }}" class="nav-btn" :class="{ 'active': view.includes('incidentes') }">
-          <span class="icon">🚨</span> Incidentes
+          <span class="icon" style="margin-right: 10px;">🚨</span> Incidentes
         </a>
         <a href="{{ route('plano_acoes.index') }}" class="nav-btn" :class="{ 'active': view.includes('plano_acoes') }">
-          <span class="icon">✅</span> Plano de Ação
+          <span class="icon" style="margin-right: 10px;">✅</span> Plano de Ação
         </a>
         <a href="{{ route('lgpd.index') }}" class="nav-btn" :class="{ 'active': view.includes('lgpd') }">
-          <span class="icon">📋</span> LGPD
+          <span class="icon" style="margin-right: 10px;">📋</span> LGPD
         </a>
         <a href="{{ route('treinamentos.index') }}" class="nav-btn"
           :class="{ 'active': view.includes('treinamentos') }">
-          <span class="icon">🎓</span> Treinamentos
+          <span class="icon" style="margin-right: 10px;">🎓</span> Treinamentos
         </a>
 
         @if(auth()->user()->isAdmin())
         <div class="nav-label" style="margin-top:14px">Configurações</div>
         <a href="{{ route('usuarios.index') }}" class="nav-btn" :class="{ 'active': view.includes('usuarios') }">
-          <span class="icon">👥</span> Usuários
+          <span class="icon" style="margin-right: 10px;">👥</span> Usuários
         </a>
         @endif
       </nav>

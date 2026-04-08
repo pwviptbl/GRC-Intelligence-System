@@ -33,11 +33,39 @@
     },
 
     async toggleItem(item) {
+        const formData = new FormData();
+        formData.append('_method', 'PATCH');
+        formData.append('concluido', item.concluido ? 1 : 0);
+        
         await fetch(`/plano_acoes/item/${item.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ concluido: item.concluido })
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: formData
         });
+    },
+
+    async saveEvidence(item) {
+        const formData = new FormData();
+        formData.append('_method', 'PATCH');
+        formData.append('observacoes', item.observacoes || '');
+        
+        // Se houver um input de arquivo para este item
+        const fileInput = document.getElementById(`file-${item.id}`);
+        if (fileInput && fileInput.files[0]) {
+            formData.append('evidencia', fileInput.files[0]);
+        }
+
+        const res = await fetch(`/plano_acoes/item/${item.id}`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: formData
+        });
+        const updatedItem = await res.json();
+        
+        // Atualiza o item na lista local
+        const index = this.viewAcao.items.findIndex(i => i.id === item.id);
+        this.viewAcao.items[index] = updatedItem;
+        alert('Evidência salva com sucesso!');
     },
 
     async removeItem(itemId) {
@@ -47,6 +75,15 @@
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
         });
         this.viewAcao.items = this.viewAcao.items.filter(i => i.id !== itemId);
+    },
+
+    async deleteEvidence(evidId, item) {
+        if(!confirm('Excluir esta evidência?')) return;
+        await fetch(`/plano_acoes/evidencia/${evidId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        });
+        item.evidencias = item.evidencias.filter(ev => ev.id !== evidId);
     },
 
     openCreate() {
@@ -151,6 +188,31 @@
                 <div class="view-text" x-text="viewAcao.descricao"></div>
             </div>
 
+            <!-- Lista de Itens no Visualizar -->
+            <div x-show="viewAcao.items && viewAcao.items.length > 0" style="margin-top:20px">
+                <label class="label-mini">Progresso da Execução</label>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-top:10px">
+                    <template x-for="item in viewAcao.items" :key="'v-' + item.id">
+                        <div style="display: flex; align-items: flex-start; gap: 10px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 6px;">
+                            <span x-text="item.concluido ? '✅' : '⏳'"></span>
+                            <div>
+                                <div style="font-size: 13px; color: var(--text-1); font-weight: 600;" x-text="item.titulo" :style="item.concluido ? 'text-decoration:line-through; opacity:0.6' : ''"></div>
+                                <div x-show="item.observacoes" style="font-size: 11px; color: var(--text-3); margin-top:4px;" x-text="item.observacoes"></div>
+                                
+                                <!-- Lista de evidências no visualizar -->
+                                <div x-show="item.evidencias && item.evidencias.length > 0" style="display:flex; gap:10px; margin-top:8px; flex-wrap: wrap;">
+                                    <template x-for="ev in item.evidencias" :key="'ve-'+ev.id">
+                                        <a :href="'/storage/' + ev.arquivo_caminho" target="_blank" style="font-size:10px; color:var(--cyan); text-decoration:none; background:rgba(0,229,255,0.05); padding:2px 8px; border-radius:4px; border:1px solid rgba(0,229,255,0.1)">
+                                            📄 <span x-text="ev.arquivo_nome"></span>
+                                        </a>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
             <div class="modal-actions" style="margin-top:30px">
                 <button type="button" class="btn-cancel" @click="showViewModal = false">Fechar</button>
                 <a :href="'/plano_acoes/export/' + viewAcao.id" target="_blank" class="btn-save" style="text-decoration:none; display:inline-block; text-align:center">Imprimir PDF</a>
@@ -220,38 +282,72 @@
 
     <!-- Modal de Itens/Checklist -->
     <div class="modal-overlay" x-show="showItemsModal" style="display: none;" @click.self="showItemsModal = false" x-transition>
-        <div class="modal" style="width: 500px;">
+        <div class="modal" style="width: 800px; max-height: 90vh; overflow-y: auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px">
-                <h2 style="color:var(--cyan); margin:0">📋 Checklist do Plano</h2>
+                <h2 style="color:var(--cyan); margin:0">📋 Gerenciamento de Execução e Evidências</h2>
                 <button @click="showItemsModal = false" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:20px">&times;</button>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <h4 style="color:var(--text-1); margin-bottom:5px" x-text="viewAcao.titulo"></h4>
-                <p style="font-size:12px; color:var(--text-3)" x-text="viewAcao.descricao"></p>
+            <div style="margin-bottom: 25px; background: rgba(0,229,255,0.03); padding: 15px; border-radius: 8px; border-left: 4px solid var(--cyan);">
+                <h4 style="color:var(--text-1); margin: 0 0 5px 0" x-text="viewAcao.titulo"></h4>
+                <p style="font-size:12px; color:var(--text-3); margin:0" x-text="viewAcao.descricao"></p>
             </div>
 
-            <div style="margin-bottom:15px">
+            <div style="margin-bottom:20px">
                 <div style="display:flex; gap:10px">
-                    <input type="text" x-model="newItemTitle" @keyup.enter="addItem()" class="form-input" placeholder="Novo item da checklist..." style="flex:1">
-                    <button @click="addItem()" class="btn-add">Add</button>
+                    <input type="text" x-model="newItemTitle" @keyup.enter="addItem()" class="form-input" placeholder="Nova etapa de execução (ex: Teste SQLi no Login)..." style="flex:1">
+                    <button @click="addItem()" class="btn-add">Adicionar Etapa</button>
                 </div>
             </div>
 
-            <div style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
                 <template x-for="item in viewAcao.items" :key="item.id">
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05)">
-                        <div style="display:flex; align-items:center; gap:10px">
-                            <input type="checkbox" x-model="item.concluido" @change="toggleItem(item)">
-                            <span :style="item.concluido ? 'text-decoration: line-through; opacity: 0.5' : ''" x-text="item.titulo" style="font-size:13px; color:var(--text-2)"></span>
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden">
+                        <!-- Header do Item -->
+                        <div style="padding:12px 15px; background:rgba(255,255,255,0.02); display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05)">
+                            <div style="display:flex; align-items:center; gap:12px">
+                                <input type="checkbox" x-model="item.concluido" @change="toggleItem(item)" style="width:16px; height:16px; cursor:pointer">
+                                <span :style="item.concluido ? 'text-decoration: line-through; opacity: 0.5' : ''" x-text="item.titulo" style="font-weight:600; color:var(--text-1); font-size:14px"></span>
+                            </div>
+                            <button @click="removeItem(item.id)" style="background:none; border:none; color:var(--red); cursor:pointer; opacity:0.6">🗑 Excluir</button>
                         </div>
-                        <button @click="removeItem(item.id)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:12px">🗑</button>
+
+                        <!-- Detalhes / Evidências -->
+                        <div style="padding:15px; display:grid; grid-template-columns: 1fr 1fr; gap:20px">
+                            <div>
+                                <label style="font-size:10px; color:var(--text-3); text-transform:uppercase; font-weight:700; display:block; margin-bottom:8px">📜 Log Técnico / Observações</label>
+                                <textarea x-model="item.observacoes" class="form-input" rows="3" placeholder="Detalhes do que foi encontrado ou feito..." style="font-size:12px"></textarea>
+                            </div>
+                            <div>
+                                <label style="font-size:10px; color:var(--text-3); text-transform:uppercase; font-weight:700; display:block; margin-bottom:8px">📸 Anexar Evidência (Print/Log)</label>
+                                <div style="display:flex; flex-direction:column; gap:8px">
+                                    <input type="file" :id="'file-' + item.id" class="form-input" style="font-size:11px">
+                                    
+                                    <div style="display:flex; flex-direction:column; gap:5px; margin-top:5px">
+                                        <template x-for="evid in item.evidencias" :key="evid.id">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,229,255,0.05); padding:5px 10px; border-radius:6px; border:1px solid rgba(0,229,255,0.1)">
+                                                <a :href="'/storage/' + evid.arquivo_caminho" target="_blank" style="font-size:11px; color:var(--cyan); text-decoration:none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;" :title="evid.arquivo_nome">
+                                                    🔍 <span x-text="evid.arquivo_nome"></span>
+                                                </a>
+                                                <button @click="deleteEvidence(evid.id, item)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:12px" title="Excluir evidência">🗑</button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="padding: 0 15px 15px 15px; text-align: right;">
+                            <button @click="saveEvidence(item)" class="btn-save" style="font-size:10px; padding:6px 15px">
+                                💾 Salvar Evidências desta Etapa
+                            </button>
+                        </div>
                     </div>
                 </template>
             </div>
 
-            <div class="modal-actions" style="margin-top:20px">
-                <button type="button" class="btn-cancel" @click="showItemsModal = false">Fechar</button>
+            <div class="modal-actions" style="margin-top:30px; border-top:1px solid rgba(255,255,255,0.05); padding-top:20px">
+                <button type="button" class="btn-cancel" @click="showItemsModal = false">Fechar Gerenciamento</button>
             </div>
         </div>
     </div>
