@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\LgpdItem;
 use App\Models\Cliente;
 use App\Models\Software;
 use App\Models\InstanciaCliente;
@@ -11,13 +9,13 @@ use App\Models\Politica;
 use App\Models\Risco;
 use App\Models\Incidente;
 use App\Models\PlanoAcao;
+use App\Models\PlanoAcaoItem;
+use App\Models\LgpdItem;
 use App\Models\Treinamento;
 use App\Models\TreinamentoRegistro;
 use App\Models\Procedimento;
 use App\Models\ProcedimentoEtapa;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -26,36 +24,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 0. Usuário Admin (Garante que não duplique)
-        User::updateOrCreate(
-            ['email' => 'admin@admin.com'],
-            [
-                'name' => 'Administrador',
-                'password' => Hash::make('admin123'),
-                'role' => 'admin',
-                'active' => true,
-            ]
-        );
+        // 1. Admin
+        $this->call(AdminSeeder::class);
 
-        // Limpa tabelas antes de repopular
-        DB::statement('TRUNCATE TABLE clientes CASCADE');
-        DB::statement('TRUNCATE TABLE software CASCADE');
-        DB::statement('TRUNCATE TABLE politicas CASCADE');
-        DB::statement('TRUNCATE TABLE riscos CASCADE');
-        DB::statement('TRUNCATE TABLE incidentes CASCADE');
-        DB::statement('TRUNCATE TABLE plano_acaos CASCADE');
-        DB::statement('TRUNCATE TABLE lgpd_items CASCADE');
-        DB::statement('TRUNCATE TABLE treinamentos CASCADE');
-        DB::statement('TRUNCATE TABLE procedimentos CASCADE');
-        DB::statement('TRUNCATE TABLE procedimento_etapas CASCADE');
-
-        // 1. Clientes
-        $clientes = ['Prefeitura de SP', 'Câmara Mun. BH', 'Instituto XYZ', 'Secretaria Finanças RJ', 'Autarquia de Água'];
+        // 2. Clientes e Softwares
+        $clientes = ['Prefeitura de Itápolis', 'Câmara Municipal de Sorocaba', 'DAEE SP', 'Hospital das Clínicas'];
         foreach ($clientes as $c) {
             Cliente::create(['nome' => $c]);
         }
 
-        // 2. Softwares
         $softwares = [
             ['nome' => 'e-Cidade', 'tecnologia' => 'PHP 7.4', 'git_url' => 'https://github.com/empresa/e-cidade'],
             ['nome' => 'Portal Transparência', 'tecnologia' => 'Node.js', 'git_url' => 'https://github.com/empresa/portal'],
@@ -125,6 +102,20 @@ class DatabaseSeeder extends Seeder
             'prioridade' => 'critica',
             'status' => 'pendente'
         ]);
+
+        $pa2 = PlanoAcao::create([
+            'titulo' => 'Pentest no software e-Cidade',
+            'descricao' => 'Executar análise completa de segurança OWASP Top 10.',
+            'origem' => 'Gestão de Riscos',
+            'responsavel' => 'Marcio (Security)',
+            'prioridade' => 'alta',
+            'status' => 'em_andamento'
+        ]);
+
+        PlanoAcaoItem::create(['plano_acao_id' => $pa2->id, 'titulo' => 'Teste de SQL Injection', 'concluido' => true]);
+        PlanoAcaoItem::create(['plano_acao_id' => $pa2->id, 'titulo' => 'Teste de XSS (Cross-Site Scripting)', 'concluido' => false]);
+        PlanoAcaoItem::create(['plano_acao_id' => $pa2->id, 'titulo' => 'Verificar Broken Access Control (IDOR)', 'concluido' => false]);
+        PlanoAcaoItem::create(['plano_acao_id' => $pa2->id, 'titulo' => 'Validar cabeçalhos de segurança (HSTS, CSP)', 'concluido' => false]);
 
         // 8. LGPD Checklist
         $this->call(LgpdSeeder::class);

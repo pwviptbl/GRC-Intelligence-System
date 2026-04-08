@@ -103,12 +103,16 @@
 
         <div class="nav-label">Principal</div>
         <a href="{{ route('dashboard') }}" class="nav-btn" :class="{ 'active': view === 'dashboard' }">
-          <span class="icon">🏠</span> Dashboard
-        </a>
-        <a href="{{ route('chat') }}" class="nav-btn" :class="{ 'active': view === 'chat' }">
-          <span class="icon">🤖</span> Chat IA
+          <span class="icon">📊</span> Painel CISO
         </a>
 
+        <a href="{{ route('estrategia.index') }}" class="nav-btn" :class="{ 'active': view === 'estrategia' }">
+          <span class="icon">🚀</span> Consultor IA
+        </a>
+
+        <a href="{{ route('chat') }}" class="nav-btn" :class="{ 'active': view === 'chat' }">
+          <span class="icon">💬</span> Chat GRC
+        </a>
         <div class="nav-folder" @click="menuAtivosAberto = !menuAtivosAberto" style="margin-top: 20px;">
           <span style="display: flex; align-items: center; gap: 6px;"><span class="icon"
               style="font-size: 14px;">📁</span> Ativos</span>

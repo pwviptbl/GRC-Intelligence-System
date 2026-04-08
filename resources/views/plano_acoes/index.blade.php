@@ -11,7 +11,43 @@
     editMode: false,
     formAction: '{{ route('plano_acoes.store') }}',
     form: { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual' },
-    viewAcao: {},
+    viewAcao: { items: [] },
+    showItemsModal: false,
+    newItemTitle: '',
+
+    openItems(a) {
+        this.viewAcao = a;
+        this.showItemsModal = true;
+    },
+
+    async addItem() {
+        if(!this.newItemTitle) return;
+        const res = await fetch(`/plano_acoes/${this.viewAcao.id}/item`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ titulo: this.newItemTitle })
+        });
+        const item = await res.json();
+        this.viewAcao.items.push(item);
+        this.newItemTitle = '';
+    },
+
+    async toggleItem(item) {
+        await fetch(`/plano_acoes/item/${item.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ concluido: item.concluido })
+        });
+    },
+
+    async removeItem(itemId) {
+        if(!confirm('Remover item?')) return;
+        await fetch(`/plano_acoes/item/${itemId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        });
+        this.viewAcao.items = this.viewAcao.items.filter(i => i.id !== itemId);
+    },
 
     openCreate() {
         this.editMode = false;
@@ -79,6 +115,7 @@
                         <div style="display:flex;gap:12px;align-items:center">
                             <a href="{{ route('plano_acoes.export', $a) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
                             <button @click="openView({{ $a->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
+                            <button @click="openItems({{ $a->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Checklist/Itens">✅</button>
                             <button @click="openEdit({{ $a->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
                             <form action="{{ route('plano_acoes.destroy', $a) }}" method="POST" style="margin:0">
                                 @csrf @method('DELETE')
@@ -178,6 +215,44 @@
                     <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Plano' : 'Criar Plano'"></button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal de Itens/Checklist -->
+    <div class="modal-overlay" x-show="showItemsModal" style="display: none;" @click.self="showItemsModal = false" x-transition>
+        <div class="modal" style="width: 500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px">
+                <h2 style="color:var(--cyan); margin:0">📋 Checklist do Plano</h2>
+                <button @click="showItemsModal = false" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:20px">&times;</button>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4 style="color:var(--text-1); margin-bottom:5px" x-text="viewAcao.titulo"></h4>
+                <p style="font-size:12px; color:var(--text-3)" x-text="viewAcao.descricao"></p>
+            </div>
+
+            <div style="margin-bottom:15px">
+                <div style="display:flex; gap:10px">
+                    <input type="text" x-model="newItemTitle" @keyup.enter="addItem()" class="form-input" placeholder="Novo item da checklist..." style="flex:1">
+                    <button @click="addItem()" class="btn-add">Add</button>
+                </div>
+            </div>
+
+            <div style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <template x-for="item in viewAcao.items" :key="item.id">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05)">
+                        <div style="display:flex; align-items:center; gap:10px">
+                            <input type="checkbox" x-model="item.concluido" @change="toggleItem(item)">
+                            <span :style="item.concluido ? 'text-decoration: line-through; opacity: 0.5' : ''" x-text="item.titulo" style="font-size:13px; color:var(--text-2)"></span>
+                        </div>
+                        <button @click="removeItem(item.id)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:12px">🗑</button>
+                    </div>
+                </template>
+            </div>
+
+            <div class="modal-actions" style="margin-top:20px">
+                <button type="button" class="btn-cancel" @click="showItemsModal = false">Fechar</button>
+            </div>
         </div>
     </div>
 </div>

@@ -9,8 +9,29 @@ class PlanoAcaoController extends Controller
 {
     public function index()
     {
-        $acoes = PlanoAcao::latest()->get();
+        $acoes = PlanoAcao::with('items')->latest()->get();
         return view('plano_acoes.index', compact('acoes'));
+    }
+
+    public function updateItem(Request $request, \App\Models\PlanoAcaoItem $item)
+    {
+        $item->update(['concluido' => $request->concluido]);
+        return response()->json(['success' => true]);
+    }
+
+    public function addItem(Request $request, PlanoAcao $plano_aco)
+    {
+        $item = $plano_aco->items()->create([
+            'titulo' => $request->titulo,
+            'concluido' => false
+        ]);
+        return response()->json($item);
+    }
+
+    public function removeItem(\App\Models\PlanoAcaoItem $item)
+    {
+        $item->delete();
+        return response()->json(['success' => true]);
     }
 
     public function store(Request $request)
