@@ -13,6 +13,11 @@ class PlanoAcaoController extends Controller
         return view('plano_acoes.index', compact('acoes'));
     }
 
+    public function show(PlanoAcao $plano_aco)
+    {
+        return response()->json($plano_aco->load('items.evidencias'));
+    }
+
     public function updateItem(Request $request, \App\Models\PlanoAcaoItem $item)
     {
         try {

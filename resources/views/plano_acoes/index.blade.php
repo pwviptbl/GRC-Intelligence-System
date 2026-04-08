@@ -15,9 +15,11 @@
     showItemsModal: false,
     newItemTitle: '',
 
-    openItems(a) {
-        this.viewAcao = a;
+    async openItems(id) {
         this.showItemsModal = true;
+        this.viewAcao = { items: [] }; // Limpa antes de carregar
+        const res = await fetch(`/plano_acoes/${id}`);
+        this.viewAcao = await res.json();
     },
 
     async addItem() {
@@ -28,6 +30,7 @@
             body: JSON.stringify({ titulo: this.newItemTitle })
         });
         const item = await res.json();
+        item.evidencias = []; // Inicializa o array de evidências no novo item
         this.viewAcao.items.push(item);
         this.newItemTitle = '';
     },
@@ -152,7 +155,7 @@
                         <div style="display:flex;gap:12px;align-items:center">
                             <a href="{{ route('plano_acoes.export', $a) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
                             <button @click="openView({{ $a->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
-                            <button @click="openItems({{ $a->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Checklist/Itens">✅</button>
+                            <button @click="openItems({{ $a->id }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Checklist/Itens">✅</button>
                             <button @click="openEdit({{ $a->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
                             <form action="{{ route('plano_acoes.destroy', $a) }}" method="POST" style="margin:0">
                                 @csrf @method('DELETE')
