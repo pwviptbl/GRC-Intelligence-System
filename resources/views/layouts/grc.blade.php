@@ -110,6 +110,10 @@
           <span class="icon" style="margin-right: 10px;">🚀</span> Consultor IA
         </a>
 
+        <a href="{{ route('relatorios.index') }}" class="nav-btn" :class="{ 'active': view === 'relatorios' }">
+          <span class="icon" style="margin-right: 10px;">📊</span> Centro de Relatórios
+        </a>
+
         <a href="{{ route('chat') }}" class="nav-btn" :class="{ 'active': view === 'chat' }">
           <span class="icon" style="margin-right: 10px;">💬</span> Chat GRC
         </a>
