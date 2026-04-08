@@ -19,7 +19,13 @@ return new class extends Migration
             $table->string('status')->default('aberto');
             $table->string('detectado_por')->default('');
             $table->string('data_deteccao')->default('');
-            $table->string('risco_vinculado')->default('');
+            
+            // Relacionamentos reais em vez de apenas texto
+            $table->foreignId('software_id')->nullable()->constrained('software')->nullOnDelete();
+            $table->foreignId('cliente_id')->nullable()->constrained('clientes')->nullOnDelete();
+            $table->foreignId('risco_id')->nullable()->constrained('riscos')->nullOnDelete();
+            
+            $table->string('risco_vinculado')->default(''); // Mantido por compatibilidade legada se necessário
             $table->text('licoes_aprendidas');
             $table->timestamps();
         });

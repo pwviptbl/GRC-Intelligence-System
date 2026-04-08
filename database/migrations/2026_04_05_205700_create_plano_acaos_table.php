@@ -16,7 +16,13 @@ return new class extends Migration
             $table->string('titulo');
             $table->text('descricao');
             $table->string('origem')->default('');
-            $table->integer('origem_id')->nullable();
+            $table->integer('origem_id')->nullable(); // Mantido para referências genéricas
+            
+            // Relacionamentos Estruturados
+            $table->foreignId('software_id')->nullable()->constrained('software')->nullOnDelete();
+            $table->foreignId('cliente_id')->nullable()->constrained('clientes')->nullOnDelete();
+            $table->foreignId('risco_id')->nullable()->constrained('riscos')->nullOnDelete();
+
             $table->string('responsavel')->default('');
             $table->string('prioridade')->default('media');
             $table->string('status')->default('pendente');

@@ -10,8 +10,10 @@ class RiscoController extends Controller
 {
     public function index()
     {
-        $riscos = Risco::latest()->get();
-        return view('riscos.index', compact('riscos'));
+        $riscos = Risco::with(['software', 'cliente'])->latest()->get();
+        $clientes = \App\Models\Cliente::orderBy('nome')->get();
+        $softwares = \App\Models\Software::orderBy('nome')->get();
+        return view('riscos.index', compact('riscos', 'clientes', 'softwares'));
     }
 
     public function store(Request $request)

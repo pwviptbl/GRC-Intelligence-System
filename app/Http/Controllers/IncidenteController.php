@@ -9,8 +9,11 @@ class IncidenteController extends Controller
 {
     public function index()
     {
-        $incidentes = Incidente::latest()->get();
-        return view('incidentes.index', compact('incidentes'));
+        $incidentes = Incidente::with(['software', 'cliente', 'risco'])->latest()->get();
+        $clientes = \App\Models\Cliente::orderBy('nome')->get();
+        $softwares = \App\Models\Software::orderBy('nome')->get();
+        $riscos = \App\Models\Risco::orderBy('titulo')->get();
+        return view('incidentes.index', compact('incidentes', 'clientes', 'softwares', 'riscos'));
     }
 
     public function store(Request $request)

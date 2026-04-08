@@ -10,14 +10,14 @@
     showViewModal: false,
     editMode: false,
     formAction: '{{ route('plano_acoes.store') }}',
-    form: { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual' },
-    viewAcao: { items: [] },
+    form: { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual', software_id: '', cliente_id: '', risco_id: '' },
+    viewAcao: { items: [], software: null, cliente: null, risco: null },
     showItemsModal: false,
     newItemTitle: '',
 
     async openItems(id) {
         this.showItemsModal = true;
-        this.viewAcao = { items: [] }; // Limpa antes de carregar
+        this.viewAcao = { items: [] };
         const res = await fetch(`/plano_acoes/${id}`);
         this.viewAcao = await res.json();
     },
@@ -30,7 +30,7 @@
             body: JSON.stringify({ titulo: this.newItemTitle })
         });
         const item = await res.json();
-        item.evidencias = []; // Inicializa o array de evidências no novo item
+        item.evidencias = []; 
         this.viewAcao.items.push(item);
         this.newItemTitle = '';
     },
@@ -39,7 +39,6 @@
         const formData = new FormData();
         formData.append('_method', 'PATCH');
         formData.append('concluido', item.concluido ? 1 : 0);
-        
         await fetch(`/plano_acoes/item/${item.id}`, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -51,21 +50,16 @@
         const formData = new FormData();
         formData.append('_method', 'PATCH');
         formData.append('observacoes', item.observacoes || '');
-        
-        // Se houver um input de arquivo para este item
         const fileInput = document.getElementById(`file-${item.id}`);
         if (fileInput && fileInput.files[0]) {
             formData.append('evidencia', fileInput.files[0]);
         }
-
         const res = await fetch(`/plano_acoes/item/${item.id}`, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: formData
         });
         const updatedItem = await res.json();
-        
-        // Atualiza o item na lista local
         const index = this.viewAcao.items.findIndex(i => i.id === item.id);
         this.viewAcao.items[index] = updatedItem;
         alert('Evidência salva com sucesso!');
@@ -91,7 +85,7 @@
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual' };
+        this.form = { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual', software_id: '', cliente_id: '', risco_id: '' };
         this.formAction = '{{ route('plano_acoes.store') }}';
         this.showModal = true;
     },
@@ -257,6 +251,37 @@
                             <option value="critica">Crítica</option>
                         </select>
                     </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top:10px">
+                    <div class="form-group">
+                        <label>Vínculo com Software</label>
+                        <select name="software_id" x-model="form.software_id" class="form-select">
+                            <option value="">Nenhum (Geral)</option>
+                            @foreach($softwares as $s)
+                                <option value="{{ $s->id }}">{{ $s->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Vínculo com Cliente</label>
+                        <select name="cliente_id" x-model="form.cliente_id" class="form-select">
+                            <option value="">Nenhum (Interno)</option>
+                            @foreach($clientes as $c)
+                                <option value="{{ $c->id }}">{{ $c->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:10px">
+                    <label>Risco Relacionado (Opcional)</label>
+                    <select name="risco_id" x-model="form.risco_id" class="form-select">
+                        <option value="">Nenhum Risco Específico</option>
+                        @foreach($riscos as $r)
+                            <option value="{{ $r->id }}">#{{ $r->id }} - {{ $r->titulo }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top:10px">

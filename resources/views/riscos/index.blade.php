@@ -11,12 +11,12 @@
     analyzing: false,
     editMode: false,
     formAction: '{{ route('riscos.store') }}',
-    form: { id: '', titulo: '', descricao: '', origem: 'Técnico', probabilidade: 'Media', impacto: 'Medio', plano_acao: '', status: 'aberto', ativo_afetado: '', responsavel: '' },
-    viewRisk: {},
+    form: { id: '', titulo: '', descricao: '', origem: 'Técnico', probabilidade: 'Media', impacto: 'Medio', plano_acao: '', status: 'aberto', ativo_afetado: '', responsavel: '', software_id: '', cliente_id: '' },
+    viewRisk: { software: null, cliente: null },
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', titulo: '', descricao: '', origem: 'Técnico', probabilidade: 'Media', impacto: 'Medio', plano_acao: '', status: 'aberto', ativo_afetado: '', responsavel: '' };
+        this.form = { id: '', titulo: '', descricao: '', origem: 'Técnico', probabilidade: 'Media', impacto: 'Medio', plano_acao: '', status: 'aberto', ativo_afetado: '', responsavel: '', software_id: '', cliente_id: '' };
         this.formAction = '{{ route('riscos.store') }}';
         this.showModal = true;
     },
@@ -216,9 +216,30 @@
                     </div>
                     <div>
                         <div class="form-group">
-                            <label>Ativo Afetado</label>
+                            <label>Ativo Afetado (Manual)</label>
                             <input type="text" name="ativo_afetado" x-model="form.ativo_afetado" class="form-input" placeholder="Servidor, Software, Setor..." />
                         </div>
+
+                        <div class="form-group" style="margin-top:10px">
+                            <label>Vínculo com Software</label>
+                            <select name="software_id" x-model="form.software_id" class="form-select">
+                                <option value="">Nenhum (Geral)</option>
+                                @foreach($softwares as $s)
+                                    <option value="{{ $s->id }}">{{ $s->nome }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-top:10px">
+                            <label>Vínculo com Cliente</label>
+                            <select name="cliente_id" x-model="form.cliente_id" class="form-select">
+                                <option value="">Nenhum (Interno)</option>
+                                @foreach($clientes as $c)
+                                    <option value="{{ $c->id }}">{{ $c->nome }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="form-group" style="margin-top:10px">
                             <label>Responsável</label>
                             <input type="text" name="responsavel" x-model="form.responsavel" class="form-input" />
