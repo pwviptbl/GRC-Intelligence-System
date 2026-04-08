@@ -173,11 +173,16 @@
                 <span class="badge" :style="prioridadeStyle(viewAcao.prioridade)" x-text="viewAcao.prioridade"></span>
             </div>
             
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; margin-bottom:20px">
                 <div><label class="label-mini">Responsável</label><div class="view-val" x-text="viewAcao.responsavel || '-'"></div></div>
                 <div><label class="label-mini">Status</label><div class="view-val" x-text="viewAcao.status"></div></div>
-                <div><label class="label-mini">Origem</label><div class="view-val" x-text="viewAcao.origem || 'Manual'"></div></div>
-                <div><label class="label-mini">Data de Criação</label><div class="view-val" x-text="new Date(viewAcao.created_at).toLocaleDateString('pt-BR')"></div></div>
+                <div><label class="label-mini">Prioridade</label><div class="view-val" x-text="viewAcao.prioridade"></div></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; margin-bottom:20px">
+                <div><label class="label-mini">Software</label><div class="view-val" x-text="viewAcao.software ? viewAcao.software.nome : 'Não informado'"></div></div>
+                <div><label class="label-mini">Cliente</label><div class="view-val" x-text="viewAcao.cliente ? viewAcao.cliente.nome : 'Geral'"></div></div>
+                <div><label class="label-mini">Risco Vinculado</label><div class="view-val" x-text="viewAcao.risco ? '#' + viewAcao.risco.id + ' - ' + viewAcao.risco.titulo : 'Nenhum'"></div></div>
             </div>
 
             <div style="margin-bottom:20px">

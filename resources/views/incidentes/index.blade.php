@@ -97,7 +97,9 @@
                 <div><label class="label-mini">Status</label><div class="view-val" x-text="viewInc.status"></div></div>
                 <div><label class="label-mini">Detectado Em</label><div class="view-val" x-text="viewInc.data_deteccao"></div></div>
                 <div><label class="label-mini">Detectado Por</label><div class="view-val" x-text="viewInc.detectado_por || '-'"></div></div>
-                <div><label class="label-mini">Risco Relacionado</label><div class="view-val" x-text="viewInc.risco_vinculado || '-'"></div></div>
+                <div><label class="label-mini">Risco Mapeado</label><div class="view-val" x-text="viewInc.risco ? '#' + viewInc.risco.id + ' - ' + viewInc.risco.titulo : 'Não vinculado'"></div></div>
+                <div><label class="label-mini">Software</label><div class="view-val" x-text="viewInc.software ? viewInc.software.nome : 'Não informado'"></div></div>
+                <div><label class="label-mini">Cliente</label><div class="view-val" x-text="viewInc.cliente ? viewInc.cliente.nome : 'Interno / Geral'"></div></div>
             </div>
             <div style="margin-bottom:20px">
                 <label class="label-mini">Descrição do Evento</label>

@@ -146,6 +146,14 @@
                     <label style="font-size:11px; color:var(--text-3); text-transform:uppercase">Responsável</label>
                     <div style="color:var(--text-1); font-weight:500" x-text="viewRisk.responsavel || '-'"></div>
                 </div>
+                <div>
+                    <label style="font-size:11px; color:var(--text-3); text-transform:uppercase">Software</label>
+                    <div style="color:var(--text-1); font-weight:500" x-text="viewRisk.software ? viewRisk.software.nome : 'Não vinculado'"></div>
+                </div>
+                <div>
+                    <label style="font-size:11px; color:var(--text-3); text-transform:uppercase">Cliente</label>
+                    <div style="color:var(--text-1); font-weight:500" x-text="viewRisk.cliente ? viewRisk.cliente.nome : 'Interno / Geral'"></div>
+                </div>
             </div>
 
             <div style="margin-bottom:20px">

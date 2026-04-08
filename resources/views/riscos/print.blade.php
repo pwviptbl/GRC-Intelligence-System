@@ -63,6 +63,11 @@
                 <div class="grid-cell" style="width: 25%"><span class="label">Responsável</span>{{ $r->responsavel }}</div>
                 <div class="grid-cell" style="width: 25%"><span class="label">Status</span>{{ ucfirst($r->status) }}</div>
             </div>
+            <div class="grid-row">
+                <div class="grid-cell" style="width: 33%"><span class="label">Software</span>{{ $r->software?->nome ?? 'N/A' }}</div>
+                <div class="grid-cell" style="width: 33%"><span class="label">Cliente</span>{{ $r->cliente?->nome ?? 'Geral' }}</div>
+                <div class="grid-cell" style="width: 34%"><span class="label">Origem / Ativo</span>{{ $r->origem }} {{ $r->ativo_afetado ? '('.$r->ativo_afetado.')' : '' }}</div>
+            </div>
         </div>
 
         <div class="section-title">Descrição do Cenário</div>

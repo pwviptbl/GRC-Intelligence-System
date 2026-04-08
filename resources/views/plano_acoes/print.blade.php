@@ -62,6 +62,11 @@
             <div class="grid-row">
                 <div class="grid-cell" style="width: 25%"><span class="label">Status</span>{{ ucfirst($a->status) }}</div>
                 <div class="grid-cell" style="width: 25%"><span class="label">Responsável</span>{{ $a->responsavel ?: 'Não definido' }}</div>
+                <div class="grid-cell" style="width: 25%"><span class="label">Software</span>{{ $a->software?->nome ?? 'Geral' }}</div>
+                <div class="grid-cell" style="width: 25%"><span class="label">Cliente</span>{{ $a->cliente?->nome ?? 'Interno' }}</div>
+            </div>
+            <div class="grid-row">
+                <div class="grid-cell" style="width: 50%"><span class="label">Risco Mapeado</span>{{ $a->risco ? '#' . $a->risco->id . ' - ' . $a->risco->titulo : 'Nenhum vínculo direto' }}</div>
                 <div class="grid-cell" style="width: 25%"><span class="label">Origem</span>{{ $a->origem ?: 'Manual' }}</div>
                 <div class="grid-cell" style="width: 25%"><span class="label">Criação</span>{{ $a->created_at->format('d/m/Y') }}</div>
             </div>

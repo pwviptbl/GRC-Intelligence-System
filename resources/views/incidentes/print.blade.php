@@ -61,7 +61,11 @@
                 <div class="grid-cell" style="width: 25%"><span class="label">Status</span>{{ ucfirst($i->status) }}</div>
                 <div class="grid-cell" style="width: 25%"><span class="label">Data de Detecção</span>{{ $i->data_deteccao }}</div>
                 <div class="grid-cell" style="width: 25%"><span class="label">Detectado Por</span>{{ $i->detectado_por }}</div>
-                <div class="grid-cell" style="width: 25%"><span class="label">Risco Vinculado</span>{{ $i->risco_vinculado }}</div>
+                <div class="grid-cell" style="width: 25%"><span class="label">Risco Relacionado</span>{{ $i->risco ? '#' . $i->risco->id . ' - ' . $i->risco->titulo : $i->risco_vinculado }}</div>
+            </div>
+            <div class="grid-row">
+                <div class="grid-cell" style="width: 50%"><span class="label">Software Afetado</span>{{ $i->software?->nome ?? 'Infraestrutura Geral / Não informado' }}</div>
+                <div class="grid-cell" style="width: 50%"><span class="label">Cliente Afetado</span>{{ $i->cliente?->nome ?? 'Impacto Interno / Todos' }}</div>
             </div>
         </div>
 
