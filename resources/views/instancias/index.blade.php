@@ -90,7 +90,7 @@
                     <th>Cliente</th>
                     <th>Software</th>
                     <th>Branch</th>
-                    <th>URL Custom</th>
+                    <th>URL</th>
                     @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <th>Ações</th>
                     @endif
@@ -170,7 +170,7 @@
                     <input type="text" name="branch" x-model="form.branch" class="form-input" placeholder="master" required />
                 </div>
                 <div class="form-group">
-                    <label>URL Customizada (Opcional)</label>
+                    <label>URL</label>
                     <input type="url" name="git_custom_url" x-model="form.git_custom_url" class="form-input" placeholder="https://..." />
                 </div>
                 <div class="modal-actions">

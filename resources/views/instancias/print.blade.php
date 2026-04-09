@@ -31,7 +31,7 @@
                 <th>Cliente</th>
                 <th>Software</th>
                 <th>Branch</th>
-                <th>Repositório Customizado</th>
+                <th>Sistema</th>
             </tr>
         </thead>
         <tbody>
