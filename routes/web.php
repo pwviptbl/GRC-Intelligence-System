@@ -69,6 +69,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('incidentes', IncidenteController::class);
         Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
         Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
+        Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->name('incidentes.add_evidence');
+        Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->name('incidentes.remove_evidence');
         
         Route::resource('plano_acoes', PlanoAcaoController::class);
         Route::get('/plano_acoes/export/all', [PlanoAcaoController::class, 'printAll'])->name('plano_acoes.export.all');

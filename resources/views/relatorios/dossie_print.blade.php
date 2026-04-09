@@ -119,19 +119,25 @@
         <table>
             <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>Incidente</th>
-                    <th>Severidade</th>
-                    <th>Resumo da Resposta</th>
+                    <th style="width: 80px;">Data</th>
+                    <th>Incidente e Resumo</th>
+                    <th style="width: 150px;">Provas/Evidências</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($incidentes as $i)
                 <tr>
                     <td>{{ $i->data_deteccao }}</td>
-                    <td><strong>{{ $i->titulo }}</strong></td>
-                    <td>{{ $i->severidade }}</td>
-                    <td>{{ Str::limit($i->licoes_aprendidas, 150) }}</td>
+                    <td>
+                        <strong>{{ $i->titulo }}</strong> (Severidade: {{ $i->severidade }})<br>
+                        <div style="font-size: 10px; color: #666; margin-top:5px">{{ Str::limit($i->licoes_aprendidas, 200) }}</div>
+                    </td>
+                    <td>
+                        @foreach($i->evidencias as $ev)
+                            <div style="font-size: 9px; color: #0891b2;">📎 {{ $ev->arquivo_nome }}</div>
+                        @endforeach
+                        @if($i->evidencias->count() == 0) <span style="color:#999; font-size:9px">Sem anexos</span> @endif
+                    </td>
                 </tr>
                 @endforeach
             </tbody>

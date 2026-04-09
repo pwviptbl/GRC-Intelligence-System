@@ -29,6 +29,14 @@ return new class extends Migration
             $table->text('licoes_aprendidas');
             $table->timestamps();
         });
+
+        Schema::create('incidente_evidencias', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('incidente_id')->constrained('incidentes')->cascadeOnDelete();
+            $table->string('arquivo_nome');
+            $table->string('arquivo_caminho');
+            $table->timestamps();
+        });
     }
 
     /**

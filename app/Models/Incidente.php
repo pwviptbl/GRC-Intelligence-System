@@ -31,4 +31,9 @@ class Incidente extends Model
     {
         return $this->hasMany(IncidenteTimeline::class);
     }
+
+    public function evidencias()
+    {
+        return $this->hasMany(IncidenteEvidencia::class);
+    }
 }

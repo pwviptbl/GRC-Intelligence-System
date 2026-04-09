@@ -11,7 +11,42 @@
     editMode: false,
     formAction: '{{ route('incidentes.store') }}',
     form: { id: '', titulo: '', descricao: '', severidade: 'Media', status: 'aberto', detectado_por: '', data_deteccao: '{{ date('Y-m-d') }}', risco_id: '', software_id: '', cliente_id: '', licoes_aprendidas: '' },
-    viewInc: { software: null, cliente: null, risco: null },
+    viewInc: { software: null, cliente: null, risco: null, evidencias: [] },
+    showEvidModal: false,
+
+    async openEvid(id) {
+        this.showEvidModal = true;
+        this.viewInc = { evidencias: [] };
+        const res = await fetch(`/incidentes/${id}`);
+        this.viewInc = await res.json();
+    },
+
+    async addEvidence() {
+        const fileInput = document.getElementById('inc-file');
+        if (!fileInput.files[0]) return;
+
+        const formData = new FormData();
+        formData.append('evidencia', fileInput.files[0]);
+
+        const res = await fetch(`/incidentes/${this.viewInc.id}/evidencia`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: formData
+        });
+        const data = await res.json();
+        this.viewInc.evidencias = data.evidencias;
+        fileInput.value = '';
+        alert('Evidência anexada!');
+    },
+
+    async deleteEvidence(evidId) {
+        if(!confirm('Excluir esta evidência?')) return;
+        await fetch(`/incidentes/evidencia/${evidId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        });
+        this.viewInc.evidencias = this.viewInc.evidencias.filter(ev => ev.id !== evidId);
+    },
 
     openCreate() {
         this.editMode = false;
@@ -71,6 +106,7 @@
                         <div style="display:flex;gap:12px;align-items:center">
                             <a href="{{ route('incidentes.export', $i) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
                             <button @click="openView({{ $i->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
+                            <button @click="openEvid({{ $i->id }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Anexar Provas/Evidências">✅</button>
                             <button @click="openEdit({{ $i->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
                             <form action="{{ route('incidentes.destroy', $i) }}" method="POST" style="margin:0">
                                 @csrf @method('DELETE')
@@ -206,6 +242,47 @@
                     <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Incidente' : 'Registrar Incidente'"></button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal de Evidências do Incidente -->
+    <div class="modal-overlay" x-show="showEvidModal" style="display: none;" @click.self="showEvidModal = false" x-transition>
+        <div class="modal" style="width: 550px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px">
+                <h2 style="color:var(--cyan); margin:0">📸 Provas e Evidências</h2>
+                <button @click="showEvidModal = false" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:20px">&times;</button>
+            </div>
+
+            <div style="margin-bottom: 20px; background: rgba(255,83,112,0.03); padding: 12px; border-radius: 8px;">
+                <h4 style="color:var(--text-1); margin:0" x-text="viewInc.titulo"></h4>
+                <p style="font-size:11px; color:var(--text-3); margin:5px 0 0 0" x-text="'ID: #' + viewInc.id"></p>
+            </div>
+
+            <div style="margin-bottom:20px">
+                <label style="font-size:11px; color:var(--text-3); text-transform:uppercase; font-weight:700; display:block; margin-bottom:8px">Anexar Nova Prova (Log, Print, PDF)</label>
+                <div style="display:flex; gap:10px">
+                    <input type="file" id="inc-file" class="form-input" style="flex:1; font-size:12px">
+                    <button @click="addEvidence()" class="btn-add">Anexar</button>
+                </div>
+            </div>
+
+            <div style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <template x-for="ev in viewInc.evidencias" :key="ev.id">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05)">
+                        <a :href="'/storage/' + ev.arquivo_caminho" target="_blank" style="font-size:12px; color:var(--cyan); text-decoration:none; display:flex; align-items:center; gap:8px">
+                            <span>📄</span> <span x-text="ev.arquivo_nome" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                        </a>
+                        <button @click="deleteEvidence(ev.id)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:14px" title="Remover evidência">🗑</button>
+                    </div>
+                </template>
+                <template x-if="viewInc.evidencias && viewInc.evidencias.length === 0">
+                    <div style="text-align:center; padding:20px; color:var(--text-3); font-size:12px">Nenhuma evidência anexada a este incidente.</div>
+                </template>
+            </div>
+
+            <div class="modal-actions" style="margin-top:20px">
+                <button type="button" class="btn-cancel" @click="showEvidModal = false">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
