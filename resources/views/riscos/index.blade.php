@@ -55,6 +55,18 @@
         return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
     }
 }">
+    @if ($errors->any())
+        <div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,83,112,.35); background:rgba(255,83,112,.08); color:#ffd7de; font-size:13px;">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
+    @if (session('success'))
+        <div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(0,255,159,.35); background:rgba(0,255,159,.08); color:#d7ffef; font-size:13px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="stats-row">
         <div class="stat-card" :style="criticidadeStyle('Critico')">
             <div class="stat-label">Críticos</div>
@@ -250,7 +262,7 @@
 
                         <div class="form-group" style="margin-top:10px">
                             <label>Responsável</label>
-                            <input type="text" name="responsavel" x-model="form.responsavel" class="form-input" />
+                            <input type="text" name="responsavel" x-model="form.responsavel" class="form-input" required maxlength="255" />
                         </div>
                         <div class="form-group" style="margin-top:10px">
                             <label style="display: flex; justify-content: space-between;">

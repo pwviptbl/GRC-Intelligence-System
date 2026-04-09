@@ -18,9 +18,13 @@ class RiscoController extends Controller
 
     public function store(Request $request)
     {
-        $dados = $request->all();
+        $dados = $this->validateRisco($request);
         $dados['criticidade'] = $this->calcularCriticidade($dados['probabilidade'] ?? 'Media', $dados['impacto'] ?? 'Medio');
         $dados['plano_acao'] = $dados['plano_acao'] ?? '';
+        $dados['origem'] = $dados['origem'] ?? 'Técnico';
+        $dados['ativo_afetado'] = $dados['ativo_afetado'] ?? '';
+        $dados['software_id'] = $dados['software_id'] ?: null;
+        $dados['cliente_id'] = $dados['cliente_id'] ?: null;
         
         Risco::create($dados);
 
@@ -29,9 +33,13 @@ class RiscoController extends Controller
 
     public function update(Request $request, Risco $risco)
     {
-        $dados = $request->all();
+        $dados = $this->validateRisco($request);
         $dados['criticidade'] = $this->calcularCriticidade($dados['probabilidade'] ?? 'Media', $dados['impacto'] ?? 'Medio');
         $dados['plano_acao'] = $dados['plano_acao'] ?? '';
+        $dados['origem'] = $dados['origem'] ?? 'Técnico';
+        $dados['ativo_afetado'] = $dados['ativo_afetado'] ?? '';
+        $dados['software_id'] = $dados['software_id'] ?: null;
+        $dados['cliente_id'] = $dados['cliente_id'] ?: null;
         
         $risco->update($dados);
 
@@ -77,5 +85,27 @@ class RiscoController extends Controller
     {
         $risco->delete();
         return redirect()->back()->with('success', 'Risco removido.');
+    }
+
+    protected function validateRisco(Request $request): array
+    {
+        return $request->validate([
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string'],
+            'origem' => ['nullable', 'string', 'max:255'],
+            'ativo_afetado' => ['nullable', 'string', 'max:255'],
+            'probabilidade' => ['required', 'in:Alta,Media,Baixa'],
+            'impacto' => ['required', 'in:Alto,Medio,Baixo'],
+            'status' => ['required', 'in:aberto,em_tratamento,monitorando,fechado'],
+            'plano_acao' => ['nullable', 'string'],
+            'responsavel' => ['required', 'string', 'max:255'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+        ], [
+            'titulo.required' => 'O título do risco é obrigatório.',
+            'descricao.required' => 'A descrição do risco é obrigatória.',
+            'responsavel.required' => 'O campo responsável é obrigatório.',
+            'responsavel.max' => 'O responsável deve ter no máximo 255 caracteres.',
+        ]);
     }
 }
