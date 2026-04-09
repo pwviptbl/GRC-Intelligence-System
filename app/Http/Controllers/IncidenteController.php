@@ -48,16 +48,22 @@ class IncidenteController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->all();
+        $data = $this->validateIncidente($request);
         $data['licoes_aprendidas'] = $data['licoes_aprendidas'] ?? '';
+        $data['software_id'] = $data['software_id'] ?: null;
+        $data['cliente_id'] = $data['cliente_id'] ?: null;
+        $data['risco_id'] = $data['risco_id'] ?: null;
         Incidente::create($data);
         return redirect()->back()->with('success', 'Incidente registrado.');
     }
 
     public function update(Request $request, Incidente $incidente)
     {
-        $data = $request->all();
+        $data = $this->validateIncidente($request);
         $data['licoes_aprendidas'] = $data['licoes_aprendidas'] ?? '';
+        $data['software_id'] = $data['software_id'] ?: null;
+        $data['cliente_id'] = $data['cliente_id'] ?: null;
+        $data['risco_id'] = $data['risco_id'] ?: null;
         $incidente->update($data);
         return redirect()->back()->with('success', 'Incidente atualizado com sucesso!');
     }
@@ -78,5 +84,26 @@ class IncidenteController extends Controller
     {
         $incidente->delete();
         return redirect()->back()->with('success', 'Incidente removido.');
+    }
+
+    protected function validateIncidente(Request $request): array
+    {
+        return $request->validate([
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string'],
+            'severidade' => ['required', 'in:Baixa,Media,Alta,Critica'],
+            'status' => ['required', 'in:aberto,contencao,erradicacao,recuperacao,fechado'],
+            'data_deteccao' => ['required', 'date'],
+            'detectado_por' => ['required', 'string', 'max:255'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
+            'licoes_aprendidas' => ['nullable', 'string'],
+        ], [
+            'titulo.required' => 'O título do incidente é obrigatório.',
+            'descricao.required' => 'A descrição do incidente é obrigatória.',
+            'detectado_por.required' => 'O campo detectado por é obrigatório.',
+            'detectado_por.max' => 'O campo detectado por deve ter no máximo 255 caracteres.',
+        ]);
     }
 }
