@@ -35,6 +35,12 @@ class ClienteController extends Controller
         return redirect()->back()->with('success', 'Cliente atualizado com sucesso!');
     }
 
+    public function print()
+    {
+        $clientes = Cliente::orderBy('nome')->get();
+        return view('clientes.print', compact('clientes'));
+    }
+
     public function destroy(Cliente $cliente)
     {
         $cliente->delete();

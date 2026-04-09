@@ -39,6 +39,12 @@ class SoftwareController extends Controller
         return redirect()->back()->with('success', 'Software atualizado com sucesso!');
     }
 
+    public function print()
+    {
+        $softwares = Software::orderBy('nome')->get();
+        return view('softwares.print', compact('softwares'));
+    }
+
     public function destroy(Software $software)
     {
         $software->delete();

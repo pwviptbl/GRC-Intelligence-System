@@ -67,6 +67,28 @@ class InstanciaClienteController extends Controller
         return redirect()->back()->with('success', 'Instância atualizada com sucesso!');
     }
 
+    public function print(Request $request)
+    {
+        $query = InstanciaCliente::with(['cliente', 'software']);
+
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('branch', 'like', "%{$search}%")
+                  ->orWhere('git_custom_url', 'like', "%{$search}%");
+            });
+        }
+
+        $instancias = $query->latest()->get();
+        return view('instancias.print', compact('instancias'));
+    }
+
     public function destroy(InstanciaCliente $instancia)
     {
         $instancia->delete();

@@ -42,8 +42,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 1. MÓDULOS RESTRITOS (Ativos e Governança)
     Route::middleware('role:admin,governanca,operacional,auditor')->group(function() {
         Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');
+        Route::get('/clientes/export', [ClienteController::class, 'print'])->name('clientes.export');
+        
         Route::get('/softwares', [SoftwareController::class, 'index'])->name('softwares.index');
+        Route::get('/softwares/export', [SoftwareController::class, 'print'])->name('softwares.export');
+        
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
+        Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
+        
         Route::get('/politicas', [PoliticaController::class, 'index'])->name('politicas.index');
         Route::get('/politicas/export/all', [PoliticaController::class, 'printAll'])->name('politicas.export.all');
         Route::get('/politicas/export/{politica}', [PoliticaController::class, 'print'])->name('politicas.export');
