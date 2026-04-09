@@ -5,7 +5,26 @@
 @section('badge', $clientes->count() . ' Total')
 
 @section('content')
-    <div class="table-view" x-data="{ showModal: false }">
+    <div class="table-view" x-data="{ 
+        showModal: false, 
+        editMode: false,
+        formAction: '{{ route('clientes.store') }}',
+        form: { id: '', nome: '' },
+
+        openCreate() {
+            this.editMode = false;
+            this.form = { id: '', nome: '' };
+            this.formAction = '{{ route('clientes.store') }}';
+            this.showModal = true;
+        },
+
+        openEdit(c) {
+            this.editMode = true;
+            this.form = { ...c };
+            this.formAction = `/clientes/${c.id}`;
+            this.showModal = true;
+        }
+    }">
         <div class="stats-row">
             <div class="stat-card c1">
                 <div class="stat-label">Total de Clientes</div>
@@ -16,7 +35,7 @@
         <div class="table-header">
             <h3>Clientes Cadastrados</h3>
             @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-            <button class="btn-add" @click="showModal = true">+ Novo Cliente</button>
+            <button class="btn-add" @click="openCreate()">+ Novo Cliente</button>
             @endif
         </div>
 
@@ -40,7 +59,8 @@
                             <td>{{ $cliente->created_at->format('d/m/Y H:i') }}</td>
                             @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                             <td>
-                                <div style="display: flex; gap: 8px;">
+                                <div style="display: flex; gap: 10px; align-items:center">
+                                    <button @click="openEdit({{ $cliente->toJson() }})" style="background:none; border:none; cursor:pointer; font-size:14px" title="Editar">🖊️</button>
                                     <form action="{{ route('clientes.destroy', $cliente) }}" method="POST"
                                         onsubmit="return confirm('Tem certeza que deseja remover este cliente?')">
                                         @csrf
@@ -65,20 +85,24 @@
             </table>
         </div>
 
-        <!-- Modal Novo Cliente -->
+        <!-- Modal Novo/Editar Cliente -->
         <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
             <div class="modal" @click.away="showModal = false">
-                <h3>🏢 Novo Cliente</h3>
-                <form action="{{ route('clientes.store') }}" method="POST">
+                <h3>🏢 <span x-text="editMode ? 'Editar Cliente' : 'Novo Cliente'"></span></h3>
+                <form :action="formAction" method="POST">
                     @csrf
+                    <template x-if="editMode">
+                        <input type="hidden" name="_method" value="PATCH">
+                    </template>
+
                     <div class="form-group">
                         <label>Nome do Cliente</label>
-                        <input type="text" name="nome" class="form-input" placeholder="Ex: Cliente Exemplo" required
+                        <input type="text" name="nome" x-model="form.nome" class="form-input" placeholder="Ex: Cliente Exemplo" required
                             autofocus />
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn-cancel" @click="showModal = false">Cancelar</button>
-                        <button type="submit" class="btn-save">Salvar Cliente</button>
+                        <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Cliente' : 'Salvar Cliente'"></button>
                     </div>
                 </form>
             </div>

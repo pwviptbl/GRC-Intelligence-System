@@ -5,7 +5,26 @@
 @section('badge', $softwares->count() . ' Total')
 
 @section('content')
-<div class="table-view" x-data="{ showModal: false }">
+<div class="table-view" x-data="{ 
+    showModal: false, 
+    editMode: false,
+    formAction: '{{ route('softwares.store') }}',
+    form: { id: '', nome: '', tecnologia: '', git_url: '' },
+
+    openCreate() {
+        this.editMode = false;
+        this.form = { id: '', nome: '', tecnologia: '', git_url: '' };
+        this.formAction = '{{ route('softwares.store') }}';
+        this.showModal = true;
+    },
+
+    openEdit(s) {
+        this.editMode = true;
+        this.form = { ...s };
+        this.formAction = `/softwares/${s.id}`;
+        this.showModal = true;
+    }
+}">
     <div class="stats-row">
         <div class="stat-card c2">
             <div class="stat-label">Total de Softwares</div>
@@ -16,7 +35,7 @@
     <div class="table-header">
         <h3>Softwares Cadastrados</h3>
         @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-        <button class="btn-add" @click="showModal = true">+ Novo Software</button>
+        <button class="btn-add" @click="openCreate()">+ Novo Software</button>
         @endif
     </div>
 
@@ -54,11 +73,14 @@
                     </td>
                     @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <td>
-                        <form action="{{ route('softwares.destroy', $s) }}" method="POST" onsubmit="return confirm('Deseja remover este software?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn-del">🗑</button>
-                        </form>
+                        <div style="display:flex; gap:10px; align-items:center">
+                            <button @click="openEdit({{ $s->toJson() }})" style="background:none; border:none; cursor:pointer; font-size:14px" title="Editar">🖊️</button>
+                            <form action="{{ route('softwares.destroy', $s) }}" method="POST" onsubmit="return confirm('Deseja remover este software?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-del">🗑</button>
+                            </form>
+                        </div>
                     </td>
                     @endif
                 </tr>
@@ -76,27 +98,31 @@
         </table>
     </div>
 
-    <!-- Modal Novo Software -->
+    <!-- Modal Novo/Editar Software -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
         <div class="modal" @click.away="showModal = false">
-            <h3>💾 Novo Software</h3>
-            <form action="{{ route('softwares.store') }}" method="POST">
+            <h3>💾 <span x-text="editMode ? 'Editar Software' : 'Novo Software'"></span></h3>
+            <form :action="formAction" method="POST">
                 @csrf
+                <template x-if="editMode">
+                    <input type="hidden" name="_method" value="PATCH">
+                </template>
+
                 <div class="form-group">
                     <label>Nome do Software</label>
-                    <input type="text" name="nome" class="form-input" placeholder="Ex: GRC System" required />
+                    <input type="text" name="nome" x-model="form.nome" class="form-input" placeholder="Ex: GRC System" required />
                 </div>
                 <div class="form-group">
                     <label>Tecnologia</label>
-                    <input type="text" name="tecnologia" class="form-input" placeholder="Ex: PHP / Laravel" />
+                    <input type="text" name="tecnologia" x-model="form.tecnologia" class="form-input" placeholder="Ex: PHP / Laravel" />
                 </div>
                 <div class="form-group">
                     <label>URL Git</label>
-                    <input type="url" name="git_url" class="form-input" placeholder="https://github.com/..." />
+                    <input type="url" name="git_url" x-model="form.git_url" class="form-input" placeholder="https://github.com/..." />
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" @click="showModal = false">Cancelar</button>
-                    <button type="submit" class="btn-save">Salvar Software</button>
+                    <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Software' : 'Salvar Software'"></button>
                 </div>
             </form>
         </div>

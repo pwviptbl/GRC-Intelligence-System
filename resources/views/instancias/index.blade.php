@@ -5,7 +5,26 @@
 @section('badge', $instancias->count() . ' Total')
 
 @section('content')
-<div class="table-view" x-data="{ showModal: false }">
+<div class="table-view" x-data="{ 
+    showModal: false, 
+    editMode: false,
+    formAction: '{{ route('instancias.store') }}',
+    form: { id: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' },
+
+    openCreate() {
+        this.editMode = false;
+        this.form = { id: '', cliente_id: '', software_id: '', branch: 'master', git_custom_url: '' };
+        this.formAction = '{{ route('instancias.store') }}';
+        this.showModal = true;
+    },
+
+    openEdit(i) {
+        this.editMode = true;
+        this.form = { ...i };
+        this.formAction = `/instancias/${i.id}`;
+        this.showModal = true;
+    }
+}">
     <div class="stats-row">
         <div class="stat-card c3">
             <div class="stat-label">Total de Instâncias</div>
@@ -20,7 +39,7 @@
     <div class="table-header">
         <h3>Instâncias Ativas</h3>
         @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-        <button class="btn-add" @click="showModal = true">+ Nova Instância</button>
+        <button class="btn-add" @click="openCreate()">+ Nova Instância</button>
         @endif
     </div>
 
@@ -88,11 +107,14 @@
                     </td>
                     @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <td>
-                        <form action="{{ route('instancias.destroy', $i) }}" method="POST" onsubmit="return confirm('Deseja remover esta instância?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn-del">🗑</button>
-                        </form>
+                        <div style="display:flex; gap:10px; align-items:center">
+                            <button @click="openEdit({{ $i->toJson() }})" style="background:none; border:none; cursor:pointer; font-size:14px" title="Editar">🖊️</button>
+                            <form action="{{ route('instancias.destroy', $i) }}" method="POST" onsubmit="return confirm('Deseja remover esta instância?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-del">🗑</button>
+                            </form>
+                        </div>
                     </td>
                     @endif
                 </tr>
@@ -110,15 +132,19 @@
         </table>
     </div>
 
-    <!-- Modal Nova Instância -->
+    <!-- Modal Novo/Editar Instância -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
         <div class="modal" @click.away="showModal = false">
-            <h3>🔗 Nova Instância</h3>
-            <form action="{{ route('instancias.store') }}" method="POST">
+            <h3>🔗 <span x-text="editMode ? 'Editar Instância' : 'Nova Instância'"></span></h3>
+            <form :action="formAction" method="POST">
                 @csrf
+                <template x-if="editMode">
+                    <input type="hidden" name="_method" value="PATCH">
+                </template>
+
                 <div class="form-group">
                     <label>Cliente</label>
-                    <select name="cliente_id" class="form-select" required>
+                    <select name="cliente_id" x-model="form.cliente_id" class="form-select" required>
                         <option value="">Selecione um Cliente...</option>
                         @foreach($clientes as $c)
                             <option value="{{ $c->id }}">{{ $c->nome }}</option>
@@ -127,7 +153,7 @@
                 </div>
                 <div class="form-group">
                     <label>Software</label>
-                    <select name="software_id" class="form-select" required>
+                    <select name="software_id" x-model="form.software_id" class="form-select" required>
                         <option value="">Selecione um Software...</option>
                         @foreach($softwares as $s)
                             <option value="{{ $s->id }}">{{ $s->nome }}</option>
@@ -136,15 +162,15 @@
                 </div>
                 <div class="form-group">
                     <label>Branch</label>
-                    <input type="text" name="branch" class="form-input" placeholder="master" value="master" required />
+                    <input type="text" name="branch" x-model="form.branch" class="form-input" placeholder="master" required />
                 </div>
                 <div class="form-group">
                     <label>URL Customizada (Opcional)</label>
-                    <input type="url" name="git_custom_url" class="form-input" placeholder="https://..." />
+                    <input type="url" name="git_custom_url" x-model="form.git_custom_url" class="form-input" placeholder="https://..." />
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" @click="showModal = false">Cancelar</button>
-                    <button type="submit" class="btn-save">Vincular</button>
+                    <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar' : 'Vincular'"></button>
                 </div>
             </form>
         </div>

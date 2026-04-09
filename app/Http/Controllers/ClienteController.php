@@ -24,6 +24,17 @@ class ClienteController extends Controller
         return redirect()->back()->with('success', 'Cliente cadastrado com sucesso!');
     }
 
+    public function update(Request $request, Cliente $cliente)
+    {
+        $request->validate([
+            'nome' => 'required|string|max:255|unique:clientes,nome,' . $cliente->id,
+        ]);
+
+        $cliente->update($request->all());
+
+        return redirect()->back()->with('success', 'Cliente atualizado com sucesso!');
+    }
+
     public function destroy(Cliente $cliente)
     {
         $cliente->delete();

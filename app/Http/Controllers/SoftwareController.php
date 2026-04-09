@@ -26,6 +26,19 @@ class SoftwareController extends Controller
         return redirect()->back()->with('success', 'Software cadastrado com sucesso!');
     }
 
+    public function update(Request $request, Software $software)
+    {
+        $request->validate([
+            'nome' => 'required|string|max:255|unique:software,nome,' . $software->id,
+            'tecnologia' => 'nullable|string|max:255',
+            'git_url' => 'nullable|url|max:255',
+        ]);
+
+        $software->update($request->all());
+
+        return redirect()->back()->with('success', 'Software atualizado com sucesso!');
+    }
+
     public function destroy(Software $software)
     {
         $software->delete();

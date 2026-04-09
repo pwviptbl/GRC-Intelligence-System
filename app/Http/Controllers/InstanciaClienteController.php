@@ -53,6 +53,20 @@ class InstanciaClienteController extends Controller
         return redirect()->back()->with('success', 'Instância cadastrada com sucesso!');
     }
 
+    public function update(Request $request, InstanciaCliente $instancia)
+    {
+        $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'software_id' => 'required|exists:software,id',
+            'branch' => 'required|string|max:255',
+            'git_custom_url' => 'nullable|url|max:255',
+        ]);
+
+        $instancia->update($request->all());
+
+        return redirect()->back()->with('success', 'Instância atualizada com sucesso!');
+    }
+
     public function destroy(InstanciaCliente $instancia)
     {
         $instancia->delete();
