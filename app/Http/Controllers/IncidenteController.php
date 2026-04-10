@@ -82,6 +82,12 @@ class IncidenteController extends Controller
 
     public function destroy(Incidente $incidente)
     {
+        $paths = $incidente->evidencias()->pluck('arquivo_caminho')->filter()->toArray();
+
+        if (!empty($paths)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($paths);
+        }
+
         $incidente->delete();
         return redirect()->back()->with('success', 'Incidente removido.');
     }
