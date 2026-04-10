@@ -13,7 +13,9 @@ class PlanoAcaoController extends Controller
         $clientes = \App\Models\Cliente::orderBy('nome')->get();
         $softwares = \App\Models\Software::orderBy('nome')->get();
         $riscos = \App\Models\Risco::orderBy('titulo')->get();
-        return view('plano_acoes.index', compact('acoes', 'clientes', 'softwares', 'riscos'));
+        $procedimentos = \App\Models\Procedimento::orderBy('titulo')->get(['id', 'titulo', 'tipo']);
+
+        return view('plano_acoes.index', compact('acoes', 'clientes', 'softwares', 'riscos', 'procedimentos'));
     }
 
     public function show(PlanoAcao $plano_aco)
@@ -27,7 +29,14 @@ class PlanoAcaoController extends Controller
             $data = [];
             
             if ($request->has('concluido')) {
-                $data['concluido'] = filter_var($request->concluido, FILTER_VALIDATE_BOOLEAN);
+                $concluido = filter_var($request->concluido, FILTER_VALIDATE_BOOLEAN);
+                $data['concluido'] = $concluido;
+
+                if ($concluido) {
+                    $data['concluido_em'] = now();
+                } else {
+                    $data['concluido_em'] = null;
+                }
             }
             
             if ($request->has('observacoes')) {
@@ -84,6 +93,44 @@ class PlanoAcaoController extends Controller
     {
         $item->delete();
         return response()->json(['success' => true]);
+    }
+
+    public function importItemsFromProcedimento(Request $request, PlanoAcao $plano_aco)
+    {
+        $validated = $request->validate([
+            'procedimento_id' => ['required', 'integer', 'exists:procedimentos,id'],
+        ]);
+
+        $procedimento = \App\Models\Procedimento::with(['etapas' => function ($query) {
+            $query->orderBy('ordem')->orderBy('id');
+        }])->findOrFail($validated['procedimento_id']);
+
+        if ($procedimento->etapas->isEmpty()) {
+            return response()->json([
+                'error' => 'O procedimento selecionado não possui etapas para importar.'
+            ], 422);
+        }
+
+        $ultimaOrdem = (int) $plano_aco->items()->max('ordem');
+
+        foreach ($procedimento->etapas as $index => $etapa) {
+            $observacoes = trim("Procedimento base: {$procedimento->titulo}\n"
+                . "Responsável sugerido: " . ($etapa->responsavel ?: 'N/D') . "\n"
+                . "SLA sugerido: " . ($etapa->sla ?: 'N/D') . "\n\n"
+                . "Descrição da etapa:\n{$etapa->descricao}");
+
+            $plano_aco->items()->create([
+                'titulo' => $etapa->nome_etapa,
+                'ordem' => $ultimaOrdem + $index + 1,
+                'concluido' => false,
+                'observacoes' => $observacoes,
+            ]);
+        }
+
+        return response()->json([
+            'items' => $plano_aco->items()->with('evidencias')->get(),
+            'message' => 'Etapas importadas com sucesso.',
+        ]);
     }
 
     public function store(Request $request)

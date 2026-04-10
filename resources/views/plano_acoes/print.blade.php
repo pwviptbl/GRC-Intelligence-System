@@ -85,6 +85,7 @@
                     <tr style="background: #f9fafb;">
                         <th style="border: 1px solid #eee; padding: 8px; text-align: left; width: 30px;">Status</th>
                         <th style="border: 1px solid #eee; padding: 8px; text-align: left;">Etapa / Tarefa</th>
+                        <th style="border: 1px solid #eee; padding: 8px; text-align: left; width: 140px;">Concluído em</th>
                         <th style="border: 1px solid #eee; padding: 8px; text-align: left;">Observações Técnicas e Evidências</th>
                     </tr>
                 </thead>
@@ -96,6 +97,9 @@
                         </td>
                         <td style="border: 1px solid #eee; padding: 8px; font-weight: bold;">
                             {{ $item->titulo }}
+                        </td>
+                        <td style="border: 1px solid #eee; padding: 8px;">
+                            {{ $item->concluido_em ? \Carbon\Carbon::parse($item->concluido_em)->format('d/m/Y H:i') : '-' }}
                         </td>
                         <td style="border: 1px solid #eee; padding: 8px;">
                             @if($item->observacoes)

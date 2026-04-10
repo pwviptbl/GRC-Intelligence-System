@@ -83,6 +83,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/plano_acoes/export/{plano_aco}', [PlanoAcaoController::class, 'print'])->name('plano_acoes.export');
         Route::patch('/plano_acoes/item/{item}', [PlanoAcaoController::class, 'updateItem'])->name('plano_acoes.update_item');
         Route::post('/plano_acoes/{plano_aco}/item', [PlanoAcaoController::class, 'addItem'])->name('plano_acoes.add_item');
+        Route::post('/plano_acoes/{plano_aco}/import-procedimento', [PlanoAcaoController::class, 'importItemsFromProcedimento'])->name('plano_acoes.import_procedimento');
         Route::delete('/plano_acoes/item/{item}', [PlanoAcaoController::class, 'removeItem'])->name('plano_acoes.remove_item');
         Route::delete('/plano_acoes/evidencia/{evidencia}', [PlanoAcaoController::class, 'removeEvidence'])->name('plano_acoes.remove_evidence');
 

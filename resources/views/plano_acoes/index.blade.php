@@ -11,13 +11,17 @@
     editMode: false,
     formAction: '{{ route('plano_acoes.store') }}',
     form: { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual', software_id: '', cliente_id: '', risco_id: '' },
+    procedimentos: @js($procedimentos),
     viewAcao: { items: [], software: null, cliente: null, risco: null },
     showItemsModal: false,
     newItemTitle: '',
+    selectedProcedimentoId: '',
+    importingProcedimento: false,
 
     async openItems(id) {
         this.showItemsModal = true;
         this.viewAcao = { items: [] };
+        this.selectedProcedimentoId = '';
         const res = await fetch(`/plano_acoes/${id}`);
         this.viewAcao = await res.json();
         this.sortItems();
@@ -45,6 +49,39 @@
         this.viewAcao.items.push(item);
         this.sortItems();
         this.newItemTitle = '';
+    },
+
+    async importProcedimento() {
+        if (!this.selectedProcedimentoId) {
+            alert('Selecione um procedimento para importar.');
+            return;
+        }
+
+        if (!confirm('Importar as etapas do procedimento selecionado para este checklist?')) {
+            return;
+        }
+
+        this.importingProcedimento = true;
+        try {
+            const res = await fetch(`/plano_acoes/${this.viewAcao.id}/import-procedimento`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ procedimento_id: this.selectedProcedimentoId })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || 'Não foi possível importar o procedimento.');
+            }
+
+            this.viewAcao.items = data.items || [];
+            this.sortItems();
+            alert(data.message || 'Etapas importadas com sucesso.');
+        } catch (error) {
+            console.error(error);
+            alert(error.message || 'Erro ao importar procedimento.');
+        }
+        this.importingProcedimento = false;
     },
 
     async persistItemsOrder() {
@@ -165,6 +202,13 @@
         if(status === 'concluida') return 'background:rgba(0,255,159,.1);color:var(--green)';
         if(status === 'em_andamento') return 'background:rgba(0,210,255,.1);color:var(--cyan)';
         return 'background:rgba(255,255,255,.05);color:var(--text-3)';
+    },
+
+    formatDateTime(value) {
+        if (!value) return '';
+        const dt = new Date(value);
+        if (Number.isNaN(dt.getTime())) return value;
+        return dt.toLocaleString('pt-BR');
     }
 }">
     <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -252,6 +296,9 @@
                             <span x-text="item.concluido ? '✅' : '⏳'"></span>
                             <div>
                                 <div style="font-size: 13px; color: var(--text-1); font-weight: 600;" x-text="item.titulo" :style="item.concluido ? 'text-decoration:line-through; opacity:0.6' : ''"></div>
+                                <div x-show="item.concluido_em" style="font-size: 10px; color: var(--green); margin-top:3px;">
+                                    Concluído em: <span x-text="formatDateTime(item.concluido_em)"></span>
+                                </div>
                                 <div x-show="item.observacoes" style="font-size: 11px; color: var(--text-3); margin-top:4px;" x-text="item.observacoes"></div>
                                 
                                 <!-- Lista de evidências no visualizar -->
@@ -386,6 +433,21 @@
                 </div>
             </div>
 
+            <div style="margin-bottom:20px; background:rgba(0,229,255,0.03); border:1px solid rgba(0,229,255,0.12); border-radius:10px; padding:12px">
+                <label style="font-size:11px; color:var(--text-3); text-transform:uppercase; font-weight:700; display:block; margin-bottom:8px">Importar Etapas de Procedimento</label>
+                <div style="display:flex; gap:10px">
+                    <select x-model="selectedProcedimentoId" class="form-select" style="flex:1">
+                        <option value="">Selecione um procedimento base...</option>
+                        <template x-for="proc in procedimentos" :key="proc.id">
+                            <option :value="proc.id" x-text="proc.titulo + ' (' + proc.tipo + ')'" ></option>
+                        </template>
+                    </select>
+                    <button @click="importProcedimento()" class="btn-save" :disabled="importingProcedimento" style="min-width:170px">
+                        <span x-text="importingProcedimento ? 'Importando...' : 'Importar Etapas'"></span>
+                    </button>
+                </div>
+            </div>
+
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 <template x-for="(item, index) in viewAcao.items" :key="item.id">
                     <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden">
@@ -393,7 +455,12 @@
                         <div style="padding:12px 15px; background:rgba(255,255,255,0.02); display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05)">
                             <div style="display:flex; align-items:center; gap:12px">
                                 <input type="checkbox" x-model="item.concluido" @change="toggleItem(item)" style="width:16px; height:16px; cursor:pointer">
-                                <span :style="item.concluido ? 'text-decoration: line-through; opacity: 0.5' : ''" x-text="item.titulo" style="font-weight:600; color:var(--text-1); font-size:14px"></span>
+                                <div>
+                                    <span :style="item.concluido ? 'text-decoration: line-through; opacity: 0.5' : ''" x-text="item.titulo" style="font-weight:600; color:var(--text-1); font-size:14px"></span>
+                                    <div x-show="item.concluido_em" style="font-size:10px; color:var(--green); margin-top:2px;">
+                                        Concluído em: <span x-text="formatDateTime(item.concluido_em)"></span>
+                                    </div>
+                                </div>
                             </div>
                             <div style="display:flex; align-items:center; gap:8px">
                                 <label style="font-size:10px; color:var(--text-3)">Posição</label>
