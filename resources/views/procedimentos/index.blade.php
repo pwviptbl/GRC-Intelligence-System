@@ -88,6 +88,25 @@
         this.form.etapas.push({ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' });
     },
 
+    moveEtapa(index, direction) {
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= this.form.etapas.length) return;
+
+        const [etapa] = this.form.etapas.splice(index, 1);
+        this.form.etapas.splice(targetIndex, 0, etapa);
+    },
+
+    setEtapaPosition(index, position) {
+        const parsed = Number.parseInt(position, 10);
+        if (Number.isNaN(parsed)) return;
+
+        const targetIndex = Math.min(Math.max(parsed - 1, 0), this.form.etapas.length - 1);
+        if (targetIndex === index) return;
+
+        const [etapa] = this.form.etapas.splice(index, 1);
+        this.form.etapas.splice(targetIndex, 0, etapa);
+    },
+
     removeEtapa(index) {
         if(this.form.etapas.length > 1) this.form.etapas.splice(index, 1);
     }
@@ -255,7 +274,20 @@
                             <div style="padding:15px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:8px">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
                                     <span style="font-size:11px; font-weight:bold; color:var(--text-3)" x-text="'Etapa #' + (index + 1)"></span>
-                                    <button type="button" @click="removeEtapa(index)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:14px" x-show="form.etapas.length > 1">🗑</button>
+                                    <div style="display:flex; align-items:center; gap:8px">
+                                        <label style="font-size:10px; color:var(--text-3)">Posição</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            :max="form.etapas.length"
+                                            :value="index + 1"
+                                            @change="setEtapaPosition(index, $event.target.value)"
+                                            style="width:60px; background:rgba(0,0,0,.2); border:1px solid rgba(255,255,255,.1); border-radius:6px; color:var(--text-1); padding:4px 6px; font-size:11px"
+                                        >
+                                        <button type="button" @click="moveEtapa(index, -1)" :disabled="index === 0" style="background:none; border:none; color:var(--text-2); cursor:pointer; font-size:14px" title="Subir etapa">⬆️</button>
+                                        <button type="button" @click="moveEtapa(index, 1)" :disabled="index === form.etapas.length - 1" style="background:none; border:none; color:var(--text-2); cursor:pointer; font-size:14px" title="Descer etapa">⬇️</button>
+                                        <button type="button" @click="removeEtapa(index)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:14px" x-show="form.etapas.length > 1" title="Remover etapa">🗑</button>
+                                    </div>
                                 </div>
                                 <input type="hidden" :name="'etapas['+index+'][id]'" x-model="etapa.id">
                                 <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px">
