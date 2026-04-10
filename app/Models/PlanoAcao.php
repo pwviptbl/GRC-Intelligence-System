@@ -29,6 +29,6 @@ class PlanoAcao extends Model
 
     public function items()
     {
-        return $this->hasMany(PlanoAcaoItem::class);
+        return $this->hasMany(PlanoAcaoItem::class)->orderBy('ordem')->orderBy('id');
     }
 }

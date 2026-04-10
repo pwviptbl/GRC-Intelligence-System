@@ -34,6 +34,10 @@ class PlanoAcaoController extends Controller
                 $data['observacoes'] = $request->observacoes;
             }
 
+            if ($request->has('ordem')) {
+                $data['ordem'] = max((int) $request->ordem, 1);
+            }
+
             $item->update($data);
 
             if ($request->hasFile('evidencia')) {
@@ -66,8 +70,11 @@ class PlanoAcaoController extends Controller
 
     public function addItem(Request $request, PlanoAcao $plano_aco)
     {
+        $ultimaOrdem = (int) $plano_aco->items()->max('ordem');
+
         $item = $plano_aco->items()->create([
             'titulo' => $request->titulo,
+            'ordem' => $ultimaOrdem + 1,
             'concluido' => false
         ]);
         return response()->json($item);

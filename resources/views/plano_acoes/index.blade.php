@@ -20,6 +20,17 @@
         this.viewAcao = { items: [] };
         const res = await fetch(`/plano_acoes/${id}`);
         this.viewAcao = await res.json();
+        this.sortItems();
+    },
+
+    sortItems() {
+        if (!this.viewAcao.items) return;
+        this.viewAcao.items.sort((a, b) => {
+            const ordemA = a.ordem ?? Number.MAX_SAFE_INTEGER;
+            const ordemB = b.ordem ?? Number.MAX_SAFE_INTEGER;
+            if (ordemA !== ordemB) return ordemA - ordemB;
+            return (a.id ?? 0) - (b.id ?? 0);
+        });
     },
 
     async addItem() {
@@ -32,7 +43,49 @@
         const item = await res.json();
         item.evidencias = []; 
         this.viewAcao.items.push(item);
+        this.sortItems();
         this.newItemTitle = '';
+    },
+
+    async persistItemsOrder() {
+        for (let index = 0; index < this.viewAcao.items.length; index++) {
+            const item = this.viewAcao.items[index];
+            const novaOrdem = index + 1;
+            if (item.ordem === novaOrdem) continue;
+
+            const formData = new FormData();
+            formData.append('_method', 'PATCH');
+            formData.append('ordem', String(novaOrdem));
+
+            await fetch(`/plano_acoes/item/${item.id}`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: formData
+            });
+
+            item.ordem = novaOrdem;
+        }
+    },
+
+    async moveItem(index, direction) {
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= this.viewAcao.items.length) return;
+
+        const [item] = this.viewAcao.items.splice(index, 1);
+        this.viewAcao.items.splice(targetIndex, 0, item);
+        await this.persistItemsOrder();
+    },
+
+    async setItemPosition(index, position) {
+        const parsed = Number.parseInt(position, 10);
+        if (Number.isNaN(parsed)) return;
+
+        const targetIndex = Math.min(Math.max(parsed - 1, 0), this.viewAcao.items.length - 1);
+        if (targetIndex === index) return;
+
+        const [item] = this.viewAcao.items.splice(index, 1);
+        this.viewAcao.items.splice(targetIndex, 0, item);
+        await this.persistItemsOrder();
     },
 
     async toggleItem(item) {
@@ -334,7 +387,7 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 15px;">
-                <template x-for="item in viewAcao.items" :key="item.id">
+                <template x-for="(item, index) in viewAcao.items" :key="item.id">
                     <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; overflow:hidden">
                         <!-- Header do Item -->
                         <div style="padding:12px 15px; background:rgba(255,255,255,0.02); display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05)">
@@ -342,7 +395,20 @@
                                 <input type="checkbox" x-model="item.concluido" @change="toggleItem(item)" style="width:16px; height:16px; cursor:pointer">
                                 <span :style="item.concluido ? 'text-decoration: line-through; opacity: 0.5' : ''" x-text="item.titulo" style="font-weight:600; color:var(--text-1); font-size:14px"></span>
                             </div>
-                            <button @click="removeItem(item.id)" style="background:none; border:none; color:var(--red); cursor:pointer; opacity:0.6">🗑 Excluir</button>
+                            <div style="display:flex; align-items:center; gap:8px">
+                                <label style="font-size:10px; color:var(--text-3)">Posição</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    :max="viewAcao.items.length"
+                                    :value="index + 1"
+                                    @change="setItemPosition(index, $event.target.value)"
+                                    style="width:60px; background:rgba(0,0,0,.2); border:1px solid rgba(255,255,255,.1); border-radius:6px; color:var(--text-1); padding:4px 6px; font-size:11px"
+                                >
+                                <button @click="moveItem(index, -1)" :disabled="index === 0" style="background:none; border:none; color:var(--text-2); cursor:pointer; font-size:14px" title="Subir item">⬆️</button>
+                                <button @click="moveItem(index, 1)" :disabled="index === viewAcao.items.length - 1" style="background:none; border:none; color:var(--text-2); cursor:pointer; font-size:14px" title="Descer item">⬇️</button>
+                                <button @click="removeItem(item.id)" style="background:none; border:none; color:var(--red); cursor:pointer; opacity:0.6" title="Excluir item">🗑 Excluir</button>
+                            </div>
                         </div>
 
                         <!-- Detalhes / Evidências -->
