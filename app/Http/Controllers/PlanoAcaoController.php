@@ -91,6 +91,16 @@ class PlanoAcaoController extends Controller
 
     public function removeItem(\App\Models\PlanoAcaoItem $item)
     {
+        $paths = $item->evidencias()
+            ->pluck('arquivo_caminho')
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!empty($paths)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($paths);
+        }
+
         $item->delete();
         return response()->json(['success' => true]);
     }
@@ -179,6 +189,20 @@ class PlanoAcaoController extends Controller
 
     public function destroy(PlanoAcao $plano_aco)
     {
+        $paths = $plano_aco->items()
+            ->with('evidencias:id,plano_acao_item_id,arquivo_caminho')
+            ->get()
+            ->flatMap(function ($item) {
+                return $item->evidencias->pluck('arquivo_caminho');
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!empty($paths)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($paths);
+        }
+
         $plano_aco->delete();
         return redirect()->back()->with('success', 'Plano de ação removido.');
     }
