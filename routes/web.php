@@ -14,6 +14,7 @@ use App\Http\Controllers\PlanoAcaoController;
 use App\Http\Controllers\TreinamentoController;
 use App\Http\Controllers\ProcedimentoController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\EstrategiaController;
 use App\Http\Controllers\RelatorioController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Gestão de Usuários (Apenas Admin)
     Route::middleware('role:admin')->group(function() {
         Route::resource('usuarios', UserController::class);
+        Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
+        Route::post('/backups/create', [BackupController::class, 'create'])->name('backups.create');
+        Route::get('/backups/download/{file}', [BackupController::class, 'download'])->where('file', '.*')->name('backups.download');
+        Route::post('/backups/restore', [BackupController::class, 'restore'])->name('backups.restore');
     });
 
     // 1. MÓDULOS RESTRITOS (Ativos e Governança)
