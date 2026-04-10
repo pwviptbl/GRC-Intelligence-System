@@ -51,9 +51,14 @@ class RiscoController extends Controller
         $titulo = $request->input('titulo');
         $descricao = $request->input('descricao');
 
-        $prompt = "Analise o seguinte risco de segurança:\nTítulo: {$titulo}\nDescrição: {$descricao}\n\nRetorne um rascunho de Plano de Ação (Step-by-step) para mitigar este risco. Responda em Português.";
+        $prompt = "Analise o seguinte risco de segurança:\n"
+            . "Título: {$titulo}\n"
+            . "Descrição: {$descricao}\n\n"
+            . "Retorne um rascunho de Plano de Ação (passo a passo) para mitigar este risco. "
+            . "IMPORTANTE: responda em texto puro, sem Markdown, sem #, sem **, sem listas com -, sem blocos de código. "
+            . "Organize em frases e linhas simples em Português.";
 
-        $plano = $gemini->generateGovernance($prompt);
+        $plano = $this->normalizePlanoAcaoText($gemini->generateGovernance($prompt));
 
         return response()->json(['plano_acao' => $plano]);
     }
@@ -107,5 +112,24 @@ class RiscoController extends Controller
             'responsavel.required' => 'O campo responsável é obrigatório.',
             'responsavel.max' => 'O responsável deve ter no máximo 255 caracteres.',
         ]);
+    }
+
+    protected function normalizePlanoAcaoText(string $text): string
+    {
+        $normalized = str_replace(["\r\n", "\r"], "\n", $text);
+
+        // Remove cercas de codigo markdown.
+        $normalized = preg_replace('/```[\s\S]*?```/m', '', $normalized) ?? $normalized;
+
+        // Remove marcadores comuns de markdown preservando o conteudo.
+        $normalized = preg_replace('/^\s{0,3}#{1,6}\s*/m', '', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\*\*(.*?)\*\*/', '$1', $normalized) ?? $normalized;
+        $normalized = preg_replace('/`([^`]*)`/', '$1', $normalized) ?? $normalized;
+        $normalized = preg_replace('/^\s*[-*]\s+/m', '', $normalized) ?? $normalized;
+
+        // Reduz excesso de linhas em branco.
+        $normalized = preg_replace("/\n{3,}/", "\n\n", $normalized) ?? $normalized;
+
+        return trim($normalized);
     }
 }

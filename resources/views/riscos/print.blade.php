@@ -29,16 +29,23 @@
         .content-box { padding: 0 15px 15px 15px; font-size: 13px; color: #444; text-align: justify; }
         
         @media print {
+            @page { margin: 12mm; }
             .no-print { display: none; }
-            body { padding: 0; }
-            .risco-item { border: 1px solid #ddd; }
+            body { margin: 0; padding: 0; }
+            .header { break-after: avoid-page; page-break-after: avoid; }
+            .risco-item {
+                border: 1px solid #ddd;
+                margin-bottom: 16px;
+                break-inside: auto;
+                page-break-inside: auto;
+            }
         }
         
         .btn-print { background: #06b6d4; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="no-print" style="position: fixed; top: 20px; right: 20px;">
+    <div class="no-print" style="display:flex; justify-content:flex-end; margin-bottom:20px;">
         <button onclick="window.print()" class="btn-print">Imprimir Inventário</button>
     </div>
 

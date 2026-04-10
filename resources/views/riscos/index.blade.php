@@ -135,7 +135,7 @@
 
     <!-- Modal de Visualização -->
     <div class="modal-overlay" x-show="showViewModal" style="display: none;" @click.self="showViewModal = false" x-transition>
-        <div class="modal" style="width: 700px;">
+        <div class="modal" style="width: 700px; max-height: 90vh; overflow-y: auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px">
                 <h2 style="color:var(--cyan); margin:0" x-text="viewRisk.titulo"></h2>
                 <span class="badge" :style="criticidadeStyle(viewRisk.criticidade)" x-text="viewRisk.criticidade"></span>
@@ -173,7 +173,7 @@
                 <div style="color:var(--text-2); line-height:1.6; margin-top:5px" x-text="viewRisk.descricao"></div>
             </div>
 
-            <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05)">
+            <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); max-height: 45vh; overflow-y: auto;">
                 <label style="font-size:11px; color:var(--cyan); text-transform:uppercase; font-weight:600">Plano de Ação Recomendado</label>
                 <div style="color:var(--text-2); line-height:1.6; margin-top:8px; white-space: pre-wrap; font-size:13px" x-text="viewRisk.plano_acao || 'Nenhum plano definido.'"></div>
             </div>
