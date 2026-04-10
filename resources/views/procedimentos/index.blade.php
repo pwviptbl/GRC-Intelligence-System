@@ -14,7 +14,7 @@
     suggesting: false,
     suggestions: '',
     formAction: '{{ route('procedimentos.store') }}',
-    form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
+    form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', prompt_adicional: '', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
     viewProc: { titulo: '', tipo: '', status: '', etapas: [] },
 
     async getSuggestions() {
@@ -35,7 +35,7 @@
     },
 
     openCreate() {        this.editMode = false;
-        this.form = { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] };
+        this.form = { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', prompt_adicional: '', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] };
         this.formAction = '{{ route('procedimentos.store') }}';
         this.showModal = true;
     },
@@ -43,6 +43,9 @@
     openEdit(p) {
         this.editMode = true;
         this.form = { ...p };
+        if (!this.form.prompt_adicional) {
+            this.form.prompt_adicional = '';
+        }
         if (!this.form.etapas || this.form.etapas.length === 0) {
             this.form.etapas = [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }];
         }
@@ -62,7 +65,10 @@
             const res = await fetch('{{ route('procedimentos.generate') }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ titulo: this.form.titulo })
+                body: JSON.stringify({
+                    titulo: this.form.titulo,
+                    prompt_adicional: this.form.prompt_adicional
+                })
             });
             const data = await res.json();
             
@@ -221,6 +227,16 @@
                             <option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="arquivado">Arquivado</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group" style="margin-top:12px" x-show="!editMode">
+                    <label>Prompt adicional para IA (opcional)</label>
+                    <textarea
+                        x-model="form.prompt_adicional"
+                        class="form-input"
+                        rows="2"
+                        placeholder="Ex.: Gerar sequência de testes web: reconhecimento, SQL Injection, XSS, upload malicioso, controle de acesso, validação final com evidências."
+                    ></textarea>
                 </div>
 
                 <div style="margin-top:25px">

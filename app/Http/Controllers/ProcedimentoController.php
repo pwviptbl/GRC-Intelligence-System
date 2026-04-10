@@ -78,17 +78,29 @@ class ProcedimentoController extends Controller
 
     public function generateIA(Request $request, GeminiService $gemini)
     {
-        $titulo = $request->input('titulo');
-        
-        $prompt = "Crie um procedimento operacional padrão para o título: '{$titulo}'. 
-        Responda OBRIGATORIAMENTE em JSON no seguinte formato:
-        {
-          \"tipo\": \"procedimento_json\",
-          \"etapas\": [
-            {\"nome_etapa\": \"...\", \"responsavel\": \"...\", \"sla\": \"...\", \"descricao\": \"...\"}
-          ]
-        }
-        Não use Markdown no JSON. Seja técnico.";
+                $validated = $request->validate([
+                        'titulo' => 'required|string|max:255',
+                        'prompt_adicional' => 'nullable|string|max:2000',
+                ]);
+
+                $titulo = $validated['titulo'];
+                $promptAdicional = trim($validated['prompt_adicional'] ?? '');
+
+                $prompt = "Crie um procedimento operacional padrão para o título: '{$titulo}'.\n"
+                        . "Responda OBRIGATORIAMENTE em JSON no seguinte formato:\n"
+                        . "{\n"
+                        . "  \"tipo\": \"procedimento_json\",\n"
+                        . "  \"etapas\": [\n"
+                        . "    {\"nome_etapa\": \"...\", \"responsavel\": \"...\", \"sla\": \"...\", \"descricao\": \"...\"}\n"
+                        . "  ]\n"
+                        . "}\n"
+                        . "Não use Markdown no JSON. Seja técnico."
+                        . "\nPriorize etapas acionáveis, com ordem lógica, validação e critérios de conclusão.";
+
+                if ($promptAdicional !== '') {
+                        $prompt .= "\n\nContexto e foco adicional informado pelo usuário:\n" . $promptAdicional
+                                . "\n\nAjuste as etapas para respeitar este foco sem quebrar o formato JSON exigido.";
+                }
         
         $response = $gemini->chat($prompt);
         
