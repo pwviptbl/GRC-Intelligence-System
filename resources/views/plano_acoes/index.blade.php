@@ -264,7 +264,7 @@
 
     <!-- Modal Visualização -->
     <div class="modal-overlay" x-show="showViewModal" style="display: none;" @click.self="showViewModal = false" x-transition>
-        <div class="modal" style="width: 700px;">
+        <div class="modal" style="width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px">
                 <h2 style="color:var(--cyan); margin:0" x-text="viewAcao.titulo"></h2>
                 <span class="badge" :style="prioridadeStyle(viewAcao.prioridade)" x-text="viewAcao.prioridade"></span>
@@ -324,7 +324,7 @@
 
     <!-- Modal Novo/Editar -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
-        <div class="modal" style="width: 650px;">
+        <div class="modal" style="width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto;">
             <h3>📋 <span x-text="editMode ? 'Editar Plano de Ação' : 'Novo Plano de Ação'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
@@ -415,7 +415,7 @@
 
     <!-- Modal de Itens/Checklist -->
     <div class="modal-overlay" x-show="showItemsModal" style="display: none;" @click.self="showItemsModal = false" x-transition>
-        <div class="modal" style="width: 800px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal" style="width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px">
                 <h2 style="color:var(--cyan); margin:0">📋 Gerenciamento de Execução e Evidências</h2>
                 <button @click="showItemsModal = false" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:20px">&times;</button>
