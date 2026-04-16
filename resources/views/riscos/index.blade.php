@@ -85,13 +85,69 @@
     <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="color:var(--text-1); font-size:16px">📋 Registro de Riscos</h3>
         <div style="display:flex; gap:10px">
-            <a href="{{ route('riscos.export.all') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
+            <a href="{{ route('riscos.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar Inventário</span>
             </a>
             @if(auth()->user()->role !== 'auditor')
             <button class="btn-add" @click="openCreate()">+ Registrar Risco</button>
             @endif
         </div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
+        <form action="{{ route('riscos.index') }}" method="GET" style="display:grid; grid-template-columns: repeat(6, 1fr); gap:12px; align-items: end;">
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px">Status</label>
+                <select name="status" class="form-select" style="height:35px; font-size:12px; width:100%">
+                    <option value="">Todos</option>
+                    <option value="aberto" {{ request('status') == 'aberto' ? 'selected' : '' }}>Aberto</option>
+                    <option value="em_tratamento" {{ request('status') == 'em_tratamento' ? 'selected' : '' }}>Em Tratamento</option>
+                    <option value="monitorando" {{ request('status') == 'monitorando' ? 'selected' : '' }}>Monitorando</option>
+                    <option value="fechado" {{ request('status') == 'fechado' ? 'selected' : '' }}>Fechado</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px">Probabilidade</label>
+                <select name="probabilidade" class="form-select" style="height:35px; font-size:12px; width:100%">
+                    <option value="">Todas</option>
+                    <option value="Alta" {{ request('probabilidade') == 'Alta' ? 'selected' : '' }}>Alta</option>
+                    <option value="Media" {{ request('probabilidade') == 'Media' ? 'selected' : '' }}>Média</option>
+                    <option value="Baixa" {{ request('probabilidade') == 'Baixa' ? 'selected' : '' }}>Baixa</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px">Impacto</label>
+                <select name="impacto" class="form-select" style="height:35px; font-size:12px; width:100%">
+                    <option value="">Todos</option>
+                    <option value="Alto" {{ request('impacto') == 'Alto' ? 'selected' : '' }}>Alto</option>
+                    <option value="Medio" {{ request('impacto') == 'Medio' ? 'selected' : '' }}>Médio</option>
+                    <option value="Baixo" {{ request('impacto') == 'Baixo' ? 'selected' : '' }}>Baixo</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px">Software</label>
+                <select name="software_id" class="form-select" style="height:35px; font-size:12px; width:100%">
+                    <option value="">Todos</option>
+                    @foreach($softwares as $s)
+                        <option value="{{ $s->id }}" {{ request('software_id') == $s->id ? 'selected' : '' }}>{{ $s->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px">Cliente</label>
+                <select name="cliente_id" class="form-select" style="height:35px; font-size:12px; width:100%">
+                    <option value="">Todos</option>
+                    @foreach($clientes as $c)
+                        <option value="{{ $c->id }}" {{ request('cliente_id') == $c->id ? 'selected' : '' }}>{{ $c->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="display:flex; gap:8px">
+                <button type="submit" class="btn-save" style="height:35px; flex:1; padding:0 15px; font-size:11px; display:flex; align-items:center; justify-content:center; box-sizing:border-box;">🔍 Filtrar</button>
+                <a href="{{ route('riscos.index') }}" class="btn-cancel" style="height:35px; flex:1; padding:0 15px; font-size:11px; text-decoration:none; display:flex; align-items:center; justify-content:center; box-sizing:border-box;">Limpar</a>
+            </div>
+        </form>
     </div>
 
     <div class="table-card">

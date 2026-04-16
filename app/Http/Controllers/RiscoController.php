@@ -8,11 +8,34 @@ use Illuminate\Http\Request;
 
 class RiscoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $riscos = Risco::with(['software', 'cliente'])->latest()->get();
+        $query = Risco::with(['software', 'cliente'])->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('probabilidade')) {
+            $query->where('probabilidade', $request->probabilidade);
+        }
+
+        if ($request->filled('impacto')) {
+            $query->where('impacto', $request->impacto);
+        }
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+
+        $riscos = $query->get();
         $clientes = \App\Models\Cliente::orderBy('nome')->get();
         $softwares = \App\Models\Software::orderBy('nome')->get();
+        
         return view('riscos.index', compact('riscos', 'clientes', 'softwares'));
     }
 
@@ -69,9 +92,31 @@ class RiscoController extends Controller
         return view('riscos.print', compact('riscos'));
     }
 
-    public function printAll()
+    public function printAll(Request $request)
     {
-        $riscos = Risco::latest()->get();
+        $query = Risco::with(['software', 'cliente'])->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('probabilidade')) {
+            $query->where('probabilidade', $request->probabilidade);
+        }
+
+        if ($request->filled('impacto')) {
+            $query->where('impacto', $request->impacto);
+        }
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+
+        $riscos = $query->get();
         return view('riscos.print', compact('riscos'));
     }
 
