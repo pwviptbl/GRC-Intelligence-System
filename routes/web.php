@@ -103,6 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/chat', [ChatController::class, 'index'])->name('chat');
         Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
+        Route::post('/chat/reset', [ChatController::class, 'reset'])->name('chat.reset');
     });
 
     // 3. FERRAMENTAS DE IA

@@ -8,13 +8,12 @@
 <div class="view active" x-data="{
     userInput: '',
     loading: false,
-    messages: [
-        { role: 'ai', text: 'Olá! Sou seu assistente GRC. Como posso ajudar hoje?', tipo: 'geral' }
-    ],
+    contextLoaded: @js($contextLoaded),
+    messages: @js($initialMessages),
     async sendMessage() {
         if (!this.userInput.trim() || this.loading) return;
         
-        const msg = this.userInput;
+        const msg = this.userInput.trim();
         this.messages.push({ role: 'user', text: msg });
         this.userInput = '';
         this.loading = true;
@@ -29,7 +28,15 @@
                 body: JSON.stringify({ message: msg })
             });
             const data = await response.json();
+
+            if (data.reset) {
+                this.messages = [];
+            }
+
             this.messages.push({ role: 'ai', text: data.resposta, tipo: data.tipo });
+            if (typeof data.context_loaded === 'boolean') {
+                this.contextLoaded = data.context_loaded;
+            }
         } catch (e) {
             this.messages.push({ role: 'ai', text: '❌ Erro ao conectar com o servidor.', tipo: 'erro' });
         } finally {
@@ -73,16 +80,19 @@
     <div class="chat-input-area" style="border-top: 1px solid var(--border); background: var(--bg-surface); margin: -24px -28px; padding: 20px 28px;">
         <div class="chat-form">
             <textarea class="chat-input" x-model="userInput" 
-                placeholder="Pergunte sobre clientes, peça uma análise ou peça para cadastrar algo..."
+                placeholder="Pergunte algo, use /dados para atualizar o contexto ou /limpar para reiniciar a conversa..."
                 @keydown.enter.exact.prevent="sendMessage" rows="1"></textarea>
             <button class="send-btn" @click="sendMessage" :disabled="loading || !userInput.trim()">
                 Enviar ↑
             </button>
         </div>
+        <div style="margin-top: 12px; color: var(--text-3); font-size: 12px;">
+            <span x-text="contextLoaded ? 'Contexto cadastrado importado nesta conversa.' : 'Sem contexto importado nesta conversa ainda.'"></span>
+        </div>
         <div class="hints">
-            <span class="hint-chip" @click="userInput = 'Quais clientes cadastrados?'">Quais clientes?</span>
-            <span class="hint-chip" @click="userInput = 'Liste os softwares instalados'">Listar softwares</span>
-            <span class="hint-chip" @click="userInput = 'Analise os riscos atuais'">Analisar riscos</span>
+            <span class="hint-chip" @click="userInput = '/dados'">/dados</span>
+            <span class="hint-chip" @click="userInput = '/limpar'">/limpar</span>
+            <span class="hint-chip" @click="userInput = 'Analise os riscos atuais considerando meus impedimentos operacionais.'">Analisar riscos</span>
         </div>
     </div>
 </div>

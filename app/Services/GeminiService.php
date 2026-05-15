@@ -20,13 +20,19 @@ class GeminiService
     /**
      * Processa uma mensagem do chat usando o system prompt e as regras do GRC.
      */
-    public function chat(string $message): array
+    public function chat(string $message, array $options = []): array
     {
         if (empty($this->apiKey)) {
             return ['resposta' => '⚠️ GEMINI_API_KEY não configurada no arquivo .env.', 'tipo' => 'erro'];
         }
 
         $systemPrompt = $this->getSystemPrompt();
+        $prompt = $this->buildChatPrompt(
+            $systemPrompt,
+            $message,
+            $options['history'] ?? [],
+            $options['dataContext'] ?? null
+        );
         
         try {
             $response = Http::post($this->baseUrl . '?key=' . $this->apiKey, [
@@ -34,7 +40,7 @@ class GeminiService
                     [
                         'role' => 'user',
                         'parts' => [
-                            ['text' => "INSTRUÇÕES DO SISTEMA:\n" . $systemPrompt . "\n\nMENSAGEM DO USUÁRIO: " . $message]
+                            ['text' => $prompt]
                         ]
                     ]
                 ],
@@ -214,6 +220,30 @@ class GeminiService
             }
             return ['resposta' => "❌ Erro ao cadastrar: " . $msg, 'tipo' => 'erro'];
         }
+    }
+
+    protected function buildChatPrompt(string $systemPrompt, string $message, array $history = [], ?string $dataContext = null): string
+    {
+        $historyText = collect($history)
+            ->map(function ($item) {
+                $role = ($item['role'] ?? 'user') === 'ai' ? 'ASSISTENTE' : 'USUARIO';
+                return $role . ': ' . ($item['text'] ?? '');
+            })
+            ->implode("\n");
+
+        $contextBlock = $dataContext
+            ? "DADOS CADASTRADOS IMPORTADOS NESTA CONVERSA:\n{$dataContext}\n\n"
+            : "DADOS CADASTRADOS IMPORTADOS NESTA CONVERSA:\nNenhum snapshot importado.\n\n";
+
+        return "INSTRUCOES DO SISTEMA:\n{$systemPrompt}\n\n"
+            . "REGRAS ADICIONAIS DE CONTEXTO:\n"
+            . "- Considere o historico da conversa para entender impedimentos, contexto operacional e necessidades do usuario.\n"
+            . "- Quando houver dados cadastrados importados, use-os como fonte principal de contexto estruturado.\n"
+            . "- Nao invente dados cadastrais ausentes. Se algo nao estiver no snapshot, deixe isso claro.\n\n"
+            . $contextBlock
+            . "HISTORICO RECENTE DA CONVERSA:\n"
+            . ($historyText !== '' ? $historyText : "Sem historico anterior.")
+            . "\n\nMENSAGEM ATUAL DO USUARIO: {$message}";
     }
 
     protected function getSystemPrompt(): string
