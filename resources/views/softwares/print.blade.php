@@ -11,6 +11,7 @@
         th { background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; text-align: left; font-size: 13px; }
         td { border: 1px solid #dee2e6; padding: 12px; font-size: 13px; }
         .tech-badge { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .classificacao { font-weight: bold; }
         .footer { position: fixed; bottom: 20px; width: 100%; text-align: center; font-size: 10px; color: #999; }
         @media print { .no-print { display: none; } }
     </style>
@@ -31,6 +32,11 @@
                 <th width="60">ID</th>
                 <th>Nome do Software</th>
                 <th>Tecnologia</th>
+                <th>Classificação</th>
+                <th>Exposição</th>
+                <th>Dados</th>
+                <th>Criticidade</th>
+                <th>Autenticação</th>
                 <th>Repositório Git</th>
             </tr>
         </thead>
@@ -40,6 +46,11 @@
                 <td>#{{ $s->id }}</td>
                 <td><strong>{{ $s->nome }}</strong></td>
                 <td><span class="tech-badge">{{ $s->tecnologia ?: 'N/D' }}</span></td>
+                <td class="classificacao">{{ $s->classificacao_label }}</td>
+                <td>{{ $s->exposicao_label }}</td>
+                <td>{{ $s->dados_sensibilidade_label }}</td>
+                <td>{{ $s->criticidade_operacional_label }}</td>
+                <td>{{ $s->autenticacao_label }}</td>
                 <td style="font-size: 11px; color: #666;">{{ $s->git_url ?: 'N/A' }}</td>
             </tr>
             @endforeach

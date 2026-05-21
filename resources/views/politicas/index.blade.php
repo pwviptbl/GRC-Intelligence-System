@@ -13,14 +13,14 @@
     suggesting: false,
     editMode: false,
     formAction: '{{ route('politicas.store') }}',
-    form: { id: '', titulo: '', categoria: 'Segurança', conteudo: '', status: 'rascunho', versao: '1.0' },
+    form: { id: '', titulo: '', categoria: 'Segurança', conteudo: '', status: 'rascunho', versao: '1.0', prompt_adicional: '' },
     viewContent: '',
     viewTitle: '',
     suggestions: '',
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', titulo: '', categoria: 'Segurança', conteudo: '', status: 'rascunho', versao: '1.0' };
+        this.form = { id: '', titulo: '', categoria: 'Segurança', conteudo: '', status: 'rascunho', versao: '1.0', prompt_adicional: '' };
         this.formAction = '{{ route('politicas.store') }}';
         this.showModal = true;
     },
@@ -28,6 +28,7 @@
     openEdit(p) {
         this.editMode = true;
         this.form = { ...p };
+        this.form.prompt_adicional = '';
         this.formAction = `/politicas/${p.id}`;
         this.showModal = true;
     },
@@ -60,7 +61,11 @@
             const res = await fetch('{{ route('politicas.generate') }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ titulo: this.form.titulo, categoria: this.form.categoria })
+                body: JSON.stringify({ 
+                    titulo: this.form.titulo, 
+                    categoria: this.form.categoria,
+                    prompt_adicional: this.form.prompt_adicional
+                })
             });
             const data = await res.json();
             this.form.conteudo = data.conteudo;
@@ -182,6 +187,16 @@
                             <option>Segurança</option><option>Privacidade</option><option>RH</option><option>TI</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group" style="margin-top:10px" x-show="!editMode">
+                    <label>Prompt adicional para IA (opcional)</label>
+                    <textarea
+                        x-model="form.prompt_adicional"
+                        class="form-input"
+                        rows="2"
+                        placeholder="Ex.: Alinhar com a ISO 27001 e focar no portfólio de softwares Laravel/Zend/PostgreSQL cadastrados na empresa."
+                    ></textarea>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top:10px" x-show="editMode">

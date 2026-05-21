@@ -44,13 +44,43 @@ class PoliticaController extends Controller
 
     public function generateIA(Request $request, GeminiService $gemini)
     {
-        $titulo = $request->input('titulo');
-        $categoria = $request->input('categoria');
-        
-        $prompt = "Escreva uma política de segurança corporativa profissional para o título '{$titulo}' na categoria '{$categoria}'. Use apenas texto simples e quebras de linha nítidas entre os parágrafos. NÃO use formatação Markdown como #, ##, **, ou listas com símbolos.";
-        
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'categoria' => 'required|string|max:255',
+            'prompt_adicional' => 'nullable|string|max:2000',
+        ]);
+
+        $titulo = $validated['titulo'];
+        $categoria = $validated['categoria'];
+        $promptAdicional = trim($validated['prompt_adicional'] ?? '');
+
+        // Coleta de Contexto Organizacional real para alinhar a política às tecnologias da empresa
+        $softwares = \App\Models\Software::all(['nome', 'tecnologia'])->map(function($sw) {
+            return "{$sw->nome} ({$sw->tecnologia})";
+        })->toArray();
+        $politicasAtuais = \App\Models\Politica::pluck('titulo')->toArray();
+
+        $contexto = "Você está criando uma política de segurança para uma organização com a seguinte arquitetura de TI/Segurança:\n";
+        if (!empty($softwares)) {
+            $contexto .= "- Softwares e pilhas tecnológicas em uso: " . implode(', ', $softwares) . "\n";
+        }
+        if (!empty($politicasAtuais)) {
+            $contexto .= "- Políticas já formalizadas na empresa: " . implode(', ', $politicasAtuais) . "\n";
+        }
+
+        $prompt = "{$contexto}\n"
+            . "Escreva uma política de segurança corporativa profissional, formal e extremamente aderente a normas de GRC para o título '{$titulo}' na categoria '{$categoria}'.\n"
+            . "Instruções Operacionais e Técnicas:\n"
+            . "- Use apenas texto simples e quebras de linha limpas e nítidas entre parágrafos.\n"
+            . "- NÃO use formatação Markdown como títulos (#, ##), negritos (**), itálicos (*), ou marcadores com símbolos. O texto deve ser plano/raw.\n"
+            . "- Seja específico, técnico e acionável para fins de auditoria de conformidade.\n";
+
+        if ($promptAdicional !== '') {
+            $prompt .= "\nRequisitos específicos e contexto adicional provido pelo analista:\n" . $promptAdicional . "\n";
+        }
+
         $conteudo = $gemini->generateGovernance($prompt);
-        
+
         return response()->json(['conteudo' => $conteudo]);
     }
 

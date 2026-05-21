@@ -192,7 +192,18 @@ class ChatController extends Controller
     {
         $softwares = Software::query()
             ->orderBy('nome')
-            ->get(['nome', 'tecnologia'])
+            ->get([
+                'nome',
+                'tecnologia',
+                'exposicao_nivel',
+                'exposicao_detalhe',
+                'dados_sensibilidade_nivel',
+                'dados_sensibilidade_detalhe',
+                'criticidade_operacional_nivel',
+                'criticidade_operacional_detalhe',
+                'autenticacao_nivel',
+                'autenticacao_detalhe',
+            ])
             ->toArray();
 
         $riscos = Risco::query()
