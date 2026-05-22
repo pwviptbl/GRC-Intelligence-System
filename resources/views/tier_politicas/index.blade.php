@@ -21,7 +21,7 @@
     },
 
     tierStyle(tier) {
-        if (String(tier) === '3') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
+        if (String(tier) === '1') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
         if (String(tier) === '2') return 'background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)';
         return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
     },
@@ -80,20 +80,40 @@
             <div class="stat-value">{{ $tierPoliticas->count() }}</div>
         </div>
         <div class="stat-card" style="background:rgba(255,83,112,.06); border:1px solid rgba(255,83,112,.12);">
-            <div class="stat-label">Tier 3</div>
-            <div class="stat-value" style="color:var(--red)">{{ $tierPoliticas->where('tier', 3)->count() }}</div>
+            <div class="stat-label">Tier 1</div>
+            <div class="stat-value" style="color:var(--red)">{{ $tierPoliticas->where('tier', 1)->count() }}</div>
         </div>
         <div class="stat-card" style="background:rgba(255,150,50,.06); border:1px solid rgba(255,150,50,.12);">
             <div class="stat-label">Tier 2</div>
             <div class="stat-value" style="color:#ff9632">{{ $tierPoliticas->where('tier', 2)->count() }}</div>
         </div>
         <div class="stat-card" style="background:rgba(0,255,159,.06); border:1px solid rgba(0,255,159,.12);">
-            <div class="stat-label">Tier 1</div>
-            <div class="stat-value" style="color:var(--green)">{{ $tierPoliticas->where('tier', 1)->count() }}</div>
+            <div class="stat-label">Tier 3</div>
+            <div class="stat-value" style="color:var(--green)">{{ $tierPoliticas->where('tier', 3)->count() }}</div>
         </div>
     </div>
 
     <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
+        <form action="{{ route('tier_politicas.index') }}" method="GET" style="display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end; margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0">
+                <label>Filtro por Tier</label>
+                <select name="tier" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="1" {{ request('tier') === '1' ? 'selected' : '' }}>Tier 1 - Crítico</option>
+                    <option value="2" {{ request('tier') === '2' ? 'selected' : '' }}>Tier 2 - Médio</option>
+                    <option value="3" {{ request('tier') === '3' ? 'selected' : '' }}>Tier 3 - Baixo</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Filtro por Bloqueio</label>
+                <select name="bloqueio" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="1" {{ request('bloqueio') === '1' ? 'selected' : '' }}>Com bloqueio</option>
+                    <option value="0" {{ request('bloqueio') === '0' ? 'selected' : '' }}>Sem bloqueio</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>
+        </form>
         <div style="font-size:12px; font-weight:700; color:var(--text-2); margin-bottom:10px">Estrutura operacional por acao</div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; font-size:12px; color:var(--text-3)">
             <div><strong style="color:var(--text-1)">Acao</strong><br>Cada linha representa um controle dentro do tier.</div>
@@ -185,9 +205,9 @@
                     <label>Tier</label>
                     <select name="tier" x-model="form.tier" class="form-select" required>
                         <option value="">Selecione</option>
-                        <option value="1">Tier 1</option>
-                        <option value="2">Tier 2</option>
-                        <option value="3">Tier 3</option>
+                        <option value="1">Tier 1 - Crítico</option>
+                        <option value="2">Tier 2 - Médio</option>
+                        <option value="3">Tier 3 - Baixo</option>
                     </select>
                 </div>
                 <div class="form-group">

@@ -30,7 +30,7 @@ class TierPolitica extends Model
 
     public function getTierLabelAttribute(): string
     {
-        return 'Tier ' . $this->tier;
+        return 'T' . $this->tier;
     }
 
     public function getBloqueioAutomaticoLabelAttribute(): string

@@ -20,7 +20,7 @@
         return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
     },
     tierStyle(tier) {
-        if (String(tier) === '3') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
+        if (String(tier) === '1') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
         if (String(tier) === '2') return 'background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)';
         return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
     }
@@ -86,9 +86,9 @@
                 <label>Tier</label>
                 <select name="tier" class="form-select">
                     <option value="">Todos</option>
-                    <option value="1" {{ request('tier') === '1' ? 'selected' : '' }}>Tier 1</option>
-                    <option value="2" {{ request('tier') === '2' ? 'selected' : '' }}>Tier 2</option>
-                    <option value="3" {{ request('tier') === '3' ? 'selected' : '' }}>Tier 3</option>
+                    <option value="1" {{ request('tier') === '1' ? 'selected' : '' }}>Tier 1 - Crítico</option>
+                    <option value="2" {{ request('tier') === '2' ? 'selected' : '' }}>Tier 2 - Médio</option>
+                    <option value="3" {{ request('tier') === '3' ? 'selected' : '' }}>Tier 3 - Baixo</option>
                 </select>
             </div>
             <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>

@@ -132,9 +132,9 @@ class Software extends Model
     public function getTierSugeridoAttribute(): ?int
     {
         return match ($this->classificacao_nivel) {
-            'Alta' => 3,
+            'Alta' => 1,
             'Média' => 2,
-            'Baixa' => 1,
+            'Baixa' => 3,
             default => null,
         };
     }

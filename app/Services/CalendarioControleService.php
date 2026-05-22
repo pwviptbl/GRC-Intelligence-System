@@ -117,9 +117,9 @@ class CalendarioControleService
     public function resolveTier(Software $software): ?int
     {
         return match ($software->classificacao_nivel) {
-            'Alta' => 3,
+            'Alta' => 1,
             'Média' => 2,
-            'Baixa' => 1,
+            'Baixa' => 3,
             default => null,
         };
     }
@@ -169,7 +169,7 @@ class CalendarioControleService
     protected function priorityByTier(int $tier): string
     {
         return match ($tier) {
-            3 => 'Alta',
+            1 => 'Alta',
             2 => 'Média',
             default => 'Baixa',
         };

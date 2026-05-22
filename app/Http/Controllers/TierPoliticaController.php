@@ -11,9 +11,21 @@ class TierPoliticaController extends Controller
     {
         $tableAvailable = $this->tableAvailable();
 
-        $tierPoliticas = $tableAvailable
-            ? TierPolitica::orderBy('tier')->get()
-            : collect();
+        $tierPoliticas = collect();
+
+        if ($tableAvailable) {
+            $query = TierPolitica::query()->orderBy('tier')->orderBy('id');
+
+            if (request()->filled('tier')) {
+                $query->where('tier', request('tier'));
+            }
+
+            if (request()->filled('bloqueio')) {
+                $query->where('bloqueio_automatico', request('bloqueio') === '1');
+            }
+
+            $tierPoliticas = $query->get();
+        }
 
         return view('tier_politicas.index', compact('tierPoliticas', 'tableAvailable'));
     }

@@ -70,7 +70,7 @@ class ControleEvento extends Model
 
     public function getTierLabelAttribute(): string
     {
-        return '' . $this->tier;
+        return 'T' . $this->tier;
     }
 
     public function getBloqueioAutomaticoLabelAttribute(): string
