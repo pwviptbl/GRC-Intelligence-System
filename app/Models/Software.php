@@ -49,11 +49,23 @@ class Software extends Model
         'classificacao_pontuacao',
         'classificacao_nivel',
         'classificacao_label',
+        'tier_sugerido',
+        'tier_sugerido_label',
     ];
 
     public function instancias()
     {
         return $this->hasMany(InstanciaCliente::class);
+    }
+
+    public function riscos()
+    {
+        return $this->hasMany(Risco::class);
+    }
+
+    public function controleEventos()
+    {
+        return $this->hasMany(ControleEvento::class);
     }
 
     public function getExposicaoLabelAttribute(): string
@@ -115,6 +127,21 @@ class Software extends Model
         }
 
         return sprintf('%s (%d/%d)', $this->classificacao_nivel, $this->classificacao_pontuacao, count(self::SCORE_FIELDS) * 3);
+    }
+
+    public function getTierSugeridoAttribute(): ?int
+    {
+        return match ($this->classificacao_nivel) {
+            'Alta' => 3,
+            'Média' => 2,
+            'Baixa' => 1,
+            default => null,
+        };
+    }
+
+    public function getTierSugeridoLabelAttribute(): string
+    {
+        return $this->tier_sugerido ? 'Tier ' . $this->tier_sugerido : 'N/D';
     }
 
     protected function criterionScores(): array

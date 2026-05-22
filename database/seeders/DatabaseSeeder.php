@@ -107,7 +107,7 @@ class DatabaseSeeder extends Seeder
             'titulo' => 'Pentest no software e-Cidade',
             'descricao' => 'Executar análise completa de segurança OWASP Top 10.',
             'origem' => 'Gestão de Riscos',
-            'responsavel' => 'Marcio (Security)',
+            'responsavel' => 'Analista Security',
             'prioridade' => 'alta',
             'status' => 'em_andamento'
         ]);

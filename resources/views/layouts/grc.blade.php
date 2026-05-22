@@ -147,6 +147,10 @@
             :class="{ 'active': view.includes('politicas') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">📄</span> Políticas
           </a>
+          <a href="{{ route('tier_politicas.index') }}" class="nav-btn submenu"
+            :class="{ 'active': view.includes('tier_politicas') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📐</span> Tiers
+          </a>
           <a href="{{ route('procedimentos.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('procedimentos') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔄</span> Procedimentos
@@ -170,6 +174,9 @@
         </a>
         <a href="{{ route('plano_acoes.index') }}" class="nav-btn" :class="{ 'active': view.includes('plano_acoes') }">
           <span class="icon" style="margin-right: 10px;">✅</span> Plano de Ação
+        </a>
+        <a href="{{ route('calendario_controles.index') }}" class="nav-btn" :class="{ 'active': view.includes('calendario_controles') }">
+          <span class="icon" style="margin-right: 10px;">🗓️</span> Calendário de Controles
         </a>
         <a href="{{ route('lgpd.index') }}" class="nav-btn" :class="{ 'active': view.includes('lgpd') }">
           <span class="icon" style="margin-right: 10px;">📋</span> LGPD
