@@ -67,7 +67,7 @@ class CalendarioControleController extends Controller
 
         return redirect()
             ->route('calendario_controles.index', $filters)
-            ->with('success', "Geracao concluida: {$result['created']} evento(s) criado(s), {$result['skipped']} ignorado(s), {$result['prioritized']} priorizado(s) por risco.");
+            ->with('success', "Geracao concluida: {$result['created']} evento(s) criado(s), {$result['skipped']} ignorado(s), {$result['automatic']} automatico(s) fora do calendario, {$result['prioritized']} priorizado(s) por risco.");
     }
 
     public function update(Request $request, ControleEvento $calendario_controle)

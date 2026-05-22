@@ -98,7 +98,7 @@
             @csrf
             <input type="hidden" name="software_id" value="{{ request('software_id') }}">
             <button type="submit" class="btn-add">Gerar Calendario</button>
-            <div style="font-size:12px; color:var(--text-3)">Gera somente eventos que ainda nao existem para o periodo atual da acao.</div>
+            <div style="font-size:12px; color:var(--text-3)">Gera somente eventos manuais que ainda nao existem para o periodo atual da acao. Controles com bloqueio automatico ficam fora do calendario.</div>
         </form>
         @endif
     </div>

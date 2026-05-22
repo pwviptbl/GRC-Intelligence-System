@@ -24,9 +24,10 @@ class CalendarioControleService
         $created = 0;
         $skipped = 0;
         $prioritized = 0;
+        $automatic = 0;
         $messages = [];
 
-        DB::transaction(function () use ($softwares, &$created, &$skipped, &$prioritized, &$messages) {
+        DB::transaction(function () use ($softwares, &$created, &$skipped, &$prioritized, &$automatic, &$messages) {
             foreach ($softwares as $software) {
                 $tier = $this->resolveTier($software);
 
@@ -50,6 +51,11 @@ class CalendarioControleService
                 $risk = $this->resolveRelevantRisk($software);
 
                 foreach ($policies as $policy) {
+                    if ($policy->bloqueio_automatico) {
+                        $automatic++;
+                        continue;
+                    }
+
                     $schedule = $this->buildScheduleWindow($policy->frequencia);
 
                     $existing = ControleEvento::query()
@@ -95,6 +101,7 @@ class CalendarioControleService
             'created' => $created,
             'skipped' => $skipped,
             'prioritized' => $prioritized,
+            'automatic' => $automatic,
             'messages' => $messages,
         ];
     }
