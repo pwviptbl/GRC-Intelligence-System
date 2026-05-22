@@ -14,6 +14,7 @@ class TierPolitica extends Model
         'frequencia',
         'sla_correcao',
         'bloqueio_automatico',
+        'ativo',
         'responsavel',
         'observacoes',
     ];
@@ -21,11 +22,13 @@ class TierPolitica extends Model
     protected $casts = [
         'tier' => 'integer',
         'bloqueio_automatico' => 'boolean',
+        'ativo' => 'boolean',
     ];
 
     protected $appends = [
         'tier_label',
         'bloqueio_automatico_label',
+        'ativo_label',
     ];
 
     public function getTierLabelAttribute(): string
@@ -36,5 +39,10 @@ class TierPolitica extends Model
     public function getBloqueioAutomaticoLabelAttribute(): string
     {
         return $this->bloqueio_automatico ? 'Sim' : 'Nao';
+    }
+
+    public function getAtivoLabelAttribute(): string
+    {
+        return $this->ativo ? 'Ativa' : 'Desabilitada';
     }
 }

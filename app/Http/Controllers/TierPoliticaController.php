@@ -24,6 +24,10 @@ class TierPoliticaController extends Controller
                 $query->where('bloqueio_automatico', request('bloqueio') === '1');
             }
 
+            if (request()->filled('ativo')) {
+                $query->where('ativo', request('ativo') === '1');
+            }
+
             $tierPoliticas = $query->get();
         }
 
@@ -71,6 +75,7 @@ class TierPoliticaController extends Controller
             'frequencia' => 'required|string|max:255',
             'sla_correcao' => 'required|string|max:255',
             'bloqueio_automatico' => 'required|boolean',
+            'ativo' => 'required|boolean',
             'responsavel' => 'required|string|max:255',
             'observacoes' => 'nullable|string|max:1000',
         ]);

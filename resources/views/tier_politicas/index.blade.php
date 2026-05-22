@@ -16,6 +16,7 @@
         frequencia: '',
         sla_correcao: '',
         bloqueio_automatico: '0',
+        ativo: '1',
         responsavel: '',
         observacoes: ''
     },
@@ -24,6 +25,16 @@
         if (String(tier) === '1') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
         if (String(tier) === '2') return 'background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)';
         return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
+    },
+
+    policyRowStyle(policy) {
+        if (policy.ativo) return '';
+        return 'opacity:.55; background:rgba(255,255,255,.02)';
+    },
+
+    statusStyle(policy) {
+        if (policy.ativo) return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
+        return 'background:rgba(255,255,255,.05);color:var(--text-3);border-color:rgba(255,255,255,.08)';
     },
 
     openCreate() {
@@ -35,6 +46,7 @@
             frequencia: '',
             sla_correcao: '',
             bloqueio_automatico: '0',
+            ativo: '1',
             responsavel: '',
             observacoes: ''
         };
@@ -50,9 +62,26 @@
         this.editMode = true;
         this.form = {
             ...policy,
-            bloqueio_automatico: policy.bloqueio_automatico ? '1' : '0'
+            bloqueio_automatico: policy.bloqueio_automatico ? '1' : '0',
+            ativo: policy.ativo ? '1' : '0'
         };
         this.formAction = `/tier_politicas/${policy.id}`;
+        this.showModal = true;
+    },
+
+    openDuplicate(policy) {
+        if (typeof policy === 'string') {
+            policy = JSON.parse(atob(policy));
+        }
+
+        this.editMode = false;
+        this.form = {
+            ...policy,
+            id: '',
+            bloqueio_automatico: policy.bloqueio_automatico ? '1' : '0',
+            ativo: policy.ativo ? '1' : '0'
+        };
+        this.formAction = '{{ route('tier_politicas.store') }}';
         this.showModal = true;
     }
 }">
@@ -91,10 +120,14 @@
             <div class="stat-label">Tier 3</div>
             <div class="stat-value" style="color:var(--green)">{{ $tierPoliticas->where('tier', 3)->count() }}</div>
         </div>
+        <div class="stat-card" style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);">
+            <div class="stat-label">Desabilitadas</div>
+            <div class="stat-value" style="color:var(--text-3)">{{ $tierPoliticas->where('ativo', false)->count() }}</div>
+        </div>
     </div>
 
     <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
-        <form action="{{ route('tier_politicas.index') }}" method="GET" style="display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end; margin-bottom:14px;">
+        <form action="{{ route('tier_politicas.index') }}" method="GET" style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end; margin-bottom:14px;">
             <div class="form-group" style="margin-bottom:0">
                 <label>Filtro por Tier</label>
                 <select name="tier" class="form-select">
@@ -110,6 +143,14 @@
                     <option value="">Todos</option>
                     <option value="1" {{ request('bloqueio') === '1' ? 'selected' : '' }}>Com bloqueio</option>
                     <option value="0" {{ request('bloqueio') === '0' ? 'selected' : '' }}>Sem bloqueio</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Status da Ação</label>
+                <select name="ativo" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="1" {{ request('ativo') === '1' ? 'selected' : '' }}>Ativas</option>
+                    <option value="0" {{ request('ativo') === '0' ? 'selected' : '' }}>Desabilitadas</option>
                 </select>
             </div>
             <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>
@@ -143,6 +184,7 @@
                     <th>Frequencia</th>
                     <th>SLA</th>
                     <th>Bloqueio</th>
+                    <th>Status</th>
                     <th>Responsavel</th>
                     <th>Observacoes</th>
                     @if(in_array(auth()->user()->role, ['admin', 'governanca']))
@@ -152,17 +194,24 @@
             </thead>
             <tbody>
                 @forelse($tierPoliticas as $policy)
-                <tr>
+                <tr :style="policyRowStyle(@js($policy))">
                     <td><span class="badge" :style="tierStyle('{{ $policy->tier }}')">{{ $policy->tier_label }}</span></td>
                     <td style="min-width:180px; color:var(--text-1)">{{ $policy->acao_controle }}</td>
                     <td>{{ $policy->frequencia }}</td>
                     <td>{{ $policy->sla_correcao }}</td>
                     <td>{{ $policy->bloqueio_automatico_label }}</td>
+                    <td><span class="badge" :style="statusStyle(@js($policy))">{{ $policy->ativo_label }}</span></td>
                     <td>{{ $policy->responsavel }}</td>
                     <td style="color:var(--text-3)">{{ $policy->observacoes ?: '—' }}</td>
                     @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <td>
                         <div style="display:flex; gap:10px; align-items:center">
+                            <button
+                                data-policy="{{ base64_encode($policy->toJson()) }}"
+                                @click="openDuplicate($el.dataset.policy)"
+                                style="background:none; border:none; cursor:pointer; font-size:14px"
+                                title="Duplicar"
+                            >📄</button>
                             <button
                                 data-policy="{{ base64_encode($policy->toJson()) }}"
                                 @click="openEdit($el.dataset.policy)"
@@ -180,7 +229,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ in_array(auth()->user()->role, ['admin', 'governanca']) ? 8 : 7 }}">
+                    <td colspan="{{ in_array(auth()->user()->role, ['admin', 'governanca']) ? 9 : 8 }}">
                         <div class="empty-state">
                             <div class="empty-icon">📐</div>
                             <p>Nenhuma acao de tier cadastrada ainda.</p>
@@ -232,6 +281,15 @@
                             <option value="1">Sim</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Status da Acao</label>
+                        <select name="ativo" x-model="form.ativo" class="form-select" required>
+                            <option value="1">Ativa</option>
+                            <option value="0">Desabilitada</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div class="form-group">
                         <label>Responsavel</label>
                         <input type="text" name="responsavel" x-model="form.responsavel" class="form-input" placeholder="Ex: Analista / Devs / Junior" required />

@@ -39,6 +39,7 @@ class CalendarioControleService
 
                 $policies = TierPolitica::query()
                     ->where('tier', $tier)
+                    ->where('ativo', true)
                     ->orderBy('id')
                     ->get();
 
