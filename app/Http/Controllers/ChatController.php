@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\Models\ControleEvento;
 use App\Models\Incidente;
 use App\Models\PlanoAcao;
 use App\Models\Politica;
 use App\Models\Procedimento;
 use App\Models\Risco;
 use App\Models\Software;
+use App\Models\TierPolitica;
 use App\Services\GeminiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -193,6 +195,7 @@ class ChatController extends Controller
         $softwares = Software::query()
             ->orderBy('nome')
             ->get([
+                'id',
                 'nome',
                 'tecnologia',
                 'exposicao_nivel',
@@ -206,11 +209,69 @@ class ChatController extends Controller
             ])
             ->toArray();
 
+        $tierPoliticas = Schema::hasTable('tier_politicas')
+            ? TierPolitica::query()
+                ->orderBy('tier')
+                ->orderBy('id')
+                ->get([
+                    'tier',
+                    'acao_controle',
+                    'frequencia',
+                    'sla_correcao',
+                    'bloqueio_automatico',
+                    'responsavel',
+                ])
+                ->toArray()
+            : [];
+
+        $calendarioControles = Schema::hasTable('controle_eventos')
+            ? ControleEvento::query()
+                ->with(['software:id,nome', 'risco:id,titulo,criticidade'])
+                ->orderByDesc('data_prevista')
+                ->take(30)
+                ->get([
+                    'id',
+                    'software_id',
+                    'risco_id',
+                    'tier',
+                    'acao_controle_snapshot',
+                    'frequencia_snapshot',
+                    'bloqueio_automatico_snapshot',
+                    'responsavel_planejado',
+                    'periodo_referencia',
+                    'data_prevista',
+                    'data_limite',
+                    'prioridade',
+                    'status',
+                ])
+                ->map(function (ControleEvento $evento) {
+                    return [
+                        'software' => $evento->software?->nome,
+                        'tier' => $evento->tier_label,
+                        'acao' => $evento->acao_controle_snapshot,
+                        'frequencia' => $evento->frequencia_snapshot,
+                        'bloqueio_automatico' => $evento->bloqueio_automatico_label,
+                        'responsavel' => $evento->responsavel_planejado,
+                        'periodo_referencia' => $evento->periodo_referencia,
+                        'data_prevista' => optional($evento->data_prevista)->format('Y-m-d'),
+                        'data_limite' => optional($evento->data_limite)->format('Y-m-d'),
+                        'prioridade' => $evento->prioridade,
+                        'status' => $evento->status,
+                        'risco' => $evento->risco ? [
+                            'titulo' => $evento->risco->titulo,
+                            'criticidade' => $evento->risco->criticidade,
+                        ] : null,
+                    ];
+                })
+                ->values()
+                ->all()
+            : [];
+
         $riscos = Risco::query()
             ->where('status', '!=', 'fechado')
             ->orderByDesc('updated_at')
             ->take(20)
-            ->get(['titulo', 'criticidade', 'probabilidade', 'status', 'responsavel'])
+            ->get(['titulo', 'criticidade', 'probabilidade', 'status', 'responsavel', 'software_id'])
             ->toArray();
 
         $incidentes = Incidente::query()
@@ -239,6 +300,8 @@ class ChatController extends Controller
         $snapshot = [
             'gerado_em' => now()->toDateTimeString(),
             'softwares' => $softwares,
+            'acoes_por_tier' => $tierPoliticas,
+            'calendario_controles' => $calendarioControles,
             'riscos_abertos' => $riscos,
             'incidentes_recentes' => $incidentes,
             'planos_acao_abertos' => $planos,

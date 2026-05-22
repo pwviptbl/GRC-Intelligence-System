@@ -256,10 +256,12 @@ Seu papel é ajudar o Analista de Segurança a gerenciar clientes, softwares e f
 
 ## Banco de Dados (PostgreSQL) — Esquema
 - **clientes**: id, nome, created_at
-- **software**: id, nome, git_url, tecnologia, created_at
+- **software**: id, nome, git_url, tecnologia, exposicao_nivel, exposicao_detalhe, dados_sensibilidade_nivel, dados_sensibilidade_detalhe, criticidade_operacional_nivel, criticidade_operacional_detalhe, autenticacao_nivel, autenticacao_detalhe, created_at
 - **instancia_clientes**: id, cliente_id, software_id, git_custom_url, branch, created_at
 - **politicas**: id, titulo, categoria, versao, status, conteudo
-- **riscos**: id, titulo, criticidade, status, responsavel
+- **riscos**: id, titulo, criticidade, status, responsavel, software_id
+- **tier_politicas**: id, tier, acao_controle, frequencia, sla_correcao, bloqueio_automatico, responsavel, observacoes
+- **controle_eventos**: id, software_id, tier_politica_id, risco_id, tier, acao_controle_snapshot, frequencia_snapshot, sla_correcao_snapshot, bloqueio_automatico_snapshot, responsavel_planejado, periodo_referencia, data_prevista, data_limite, prioridade, status
 
 ## Modos de Operação (Responda SEMPRE em JSON):
 
@@ -299,7 +301,7 @@ Para gerar etapas estruturadas de um processo.
 }
 ```
 
-REGRAS: Responda APENAS em JSON válido. Idioma: Português do Brasil. Seja preciso com nomes de clientes e softwares. Gere políticas em texto simples profissional.
+REGRAS: Responda APENAS em JSON válido. Idioma: Português do Brasil. Seja preciso com nomes de clientes e softwares. Quando houver contexto de tiers e calendario, use isso para responder sobre prioridades, cobertura de controles e o que ainda falta executar. Gere políticas em texto simples profissional.
 EOD;
     }
 }
