@@ -166,6 +166,9 @@
     <div class="table-header">
         <h3>Acoes Operacionais por Tier</h3>
         <div style="display:flex; gap:10px;">
+            <a href="{{ route('tier_politicas.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
+                <span>📄 Exportar PDF</span>
+            </a>
             <a href="{{ route('softwares.index') }}" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>💾 Ver Softwares</span>
             </a>

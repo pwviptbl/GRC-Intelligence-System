@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/softwares', [SoftwareController::class, 'index'])->name('softwares.index');
         Route::get('/softwares/export', [SoftwareController::class, 'print'])->name('softwares.export');
         Route::get('/tier_politicas', [TierPoliticaController::class, 'index'])->name('tier_politicas.index');
+        Route::get('/tier_politicas/export/all', [TierPoliticaController::class, 'printAll'])->name('tier_politicas.export.all');
         
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
@@ -89,8 +90,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         Route::resource('plano_acoes', PlanoAcaoController::class);
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
+        Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
         Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
         Route::patch('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
+        Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->name('calendario_controles.destroy');
         Route::get('/plano_acoes/export/all', [PlanoAcaoController::class, 'printAll'])->name('plano_acoes.export.all');
         Route::get('/plano_acoes/export/{plano_aco}', [PlanoAcaoController::class, 'print'])->name('plano_acoes.export');
         Route::patch('/plano_acoes/item/{item}', [PlanoAcaoController::class, 'updateItem'])->name('plano_acoes.update_item');

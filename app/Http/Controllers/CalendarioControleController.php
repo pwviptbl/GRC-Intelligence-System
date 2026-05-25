@@ -24,32 +24,33 @@ class CalendarioControleController extends Controller
 
         if ($tableAvailable) {
             $this->service->updateOverdueStatuses();
-
-            $query = ControleEvento::query()
-                ->with(['software', 'risco', 'tierPolitica'])
-                ->orderByDesc('data_prevista')
-                ->orderBy('software_id');
-
-            if ($request->filled('software_id')) {
-                $query->where('software_id', $request->software_id);
-            }
-
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-            }
-
-            if ($request->filled('tier')) {
-                $query->where('tier', $request->tier);
-            }
-
-            $eventos = $query->get();
+            $eventos = $this->filteredQuery($request)->get();
         }
 
         return view('calendario_controles.index', [
             'eventos' => $eventos,
             'softwares' => $softwares,
             'tableAvailable' => $tableAvailable,
-            'statusOptions' => ControleEvento::STATUS_OPTIONS,
+            'statusOptions' => $this->statusOptions(),
+        ]);
+    }
+
+    public function printAll(Request $request)
+    {
+        $eventos = $this->tableAvailable()
+            ? $this->filteredQuery($request)->get()
+            : collect();
+
+        return view('calendario_controles.print', [
+            'eventos' => $eventos,
+            'filters' => [
+                'software_id' => $request->input('software_id'),
+                'status' => $request->input('status'),
+                'tier' => $request->input('tier'),
+                'software_nome' => $request->filled('software_id')
+                    ? Software::find($request->software_id)?->nome
+                    : null,
+            ],
         ]);
     }
 
@@ -99,8 +100,47 @@ class CalendarioControleController extends Controller
         return redirect()->back()->with('success', 'Evento do calendario atualizado com sucesso!');
     }
 
+    public function destroy(ControleEvento $calendario_controle)
+    {
+        $calendario_controle->delete();
+
+        return redirect()->back()->with('success', 'Evento do calendario removido com sucesso!');
+    }
+
     protected function tableAvailable(): bool
     {
         return Schema::hasTable('controle_eventos');
+    }
+
+    protected function filteredQuery(Request $request)
+    {
+        $query = ControleEvento::query()
+            ->with(['software', 'risco', 'tierPolitica'])
+            ->orderByDesc('data_prevista')
+            ->orderBy('software_id');
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        } else {
+            $query->whereNotIn('status', ['cancelado', 'dispensado']);
+        }
+
+        if ($request->filled('tier')) {
+            $query->where('tier', $request->tier);
+        }
+
+        return $query;
+    }
+
+    protected function statusOptions(): array
+    {
+        return array_values(array_filter(
+            ControleEvento::STATUS_OPTIONS,
+            fn (string $status) => $status !== 'cancelado'
+        ));
     }
 }

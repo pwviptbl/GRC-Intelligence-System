@@ -94,12 +94,17 @@
             <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>
         </form>
         @if($tableAvailable)
-        <form action="{{ route('calendario_controles.generate') }}" method="POST" style="margin-top:12px; display:flex; gap:10px; align-items:end;">
+        <div style="margin-top:12px; display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+        <form action="{{ route('calendario_controles.generate') }}" method="POST" style="display:flex; gap:10px; align-items:end;">
             @csrf
             <input type="hidden" name="software_id" value="{{ request('software_id') }}">
             <button type="submit" class="btn-add">Gerar Calendario</button>
-            <div style="font-size:12px; color:var(--text-3)">Gera somente eventos manuais que ainda nao existem para o periodo atual da acao. Controles com bloqueio automatico ficam fora do calendario.</div>
         </form>
+            <a href="{{ route('calendario_controles.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
+                <span>📄 Exportar PDF</span>
+            </a>
+            <div style="font-size:12px; color:var(--text-3)">Gera somente eventos manuais que ainda nao existem para o periodo atual da acao. Controles com bloqueio automatico ficam fora do calendario.</div>
+        </div>
         @endif
     </div>
 
@@ -117,6 +122,7 @@
                     <th>Risco</th>
                     <th>Responsavel</th>
                     <th>Atualizacao</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
@@ -154,10 +160,17 @@
                             <button type="submit" class="btn-secondary" style="margin-top:8px; width:100%; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:8px 10px;">Salvar</button>
                         </form>
                     </td>
+                    <td>
+                        <form action="{{ route('calendario_controles.destroy', $evento) }}" method="POST" onsubmit="return confirm('Deseja excluir este evento do calendário?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn-del" style="font-size:18px;">🗑</button>
+                        </form>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="10">
+                    <td colspan="11">
                         <div class="empty-state">
                             <div class="empty-icon">🗓️</div>
                             <p>Nenhum evento de controle gerado ainda.</p>

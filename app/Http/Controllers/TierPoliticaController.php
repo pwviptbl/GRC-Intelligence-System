@@ -5,33 +5,36 @@ namespace App\Http\Controllers;
 use App\Models\TierPolitica;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+
 class TierPoliticaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $tableAvailable = $this->tableAvailable();
 
         $tierPoliticas = collect();
 
         if ($tableAvailable) {
-            $query = TierPolitica::query()->orderBy('tier')->orderBy('id');
-
-            if (request()->filled('tier')) {
-                $query->where('tier', request('tier'));
-            }
-
-            if (request()->filled('bloqueio')) {
-                $query->where('bloqueio_automatico', request('bloqueio') === '1');
-            }
-
-            if (request()->filled('ativo')) {
-                $query->where('ativo', request('ativo') === '1');
-            }
-
-            $tierPoliticas = $query->get();
+            $tierPoliticas = $this->filteredQuery($request)->get();
         }
 
         return view('tier_politicas.index', compact('tierPoliticas', 'tableAvailable'));
+    }
+
+    public function printAll(Request $request)
+    {
+        $tierPoliticas = $this->tableAvailable()
+            ? $this->filteredQuery($request)->get()
+            : collect();
+
+        return view('tier_politicas.print', [
+            'tierPoliticas' => $tierPoliticas,
+            'filters' => [
+                'tier' => $request->input('tier'),
+                'bloqueio' => $request->input('bloqueio'),
+                'ativo' => $request->input('ativo'),
+            ],
+        ]);
     }
 
     public function store(Request $request)
@@ -84,5 +87,24 @@ class TierPoliticaController extends Controller
     protected function tableAvailable(): bool
     {
         return Schema::hasTable('tier_politicas');
+    }
+
+    protected function filteredQuery(Request $request)
+    {
+        $query = TierPolitica::query()->orderBy('tier')->orderBy('id');
+
+        if ($request->filled('tier')) {
+            $query->where('tier', $request->tier);
+        }
+
+        if ($request->filled('bloqueio')) {
+            $query->where('bloqueio_automatico', $request->bloqueio === '1');
+        }
+
+        if ($request->filled('ativo')) {
+            $query->where('ativo', $request->ativo === '1');
+        }
+
+        return $query;
     }
 }
