@@ -85,7 +85,7 @@
 
     <aside class="sidebar">
       <div class="logo">
-        <h1>GRC Intel</h1>
+        <h1>GRC</h1>
         <p>{{ config('app.company') }}</p>
       </div>
       <nav>
