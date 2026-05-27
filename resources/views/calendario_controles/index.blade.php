@@ -156,9 +156,22 @@
                                     <option value="{{ $status }}" {{ $evento->status === $status ? 'selected' : '' }}>{{ $status }}</option>
                                 @endforeach
                             </select>
+                            <div style="margin-bottom:8px">
+                                <label style="font-size:10px; color:{{ $evento->status === 'atrasado' ? 'var(--red)' : 'var(--text-3)' }}; font-weight:600; display:block; margin-bottom:4px">
+                                    {{ $evento->status === 'atrasado' ? '⚠ REAGENDAR DATA' : 'Data Prevista' }}
+                                </label>
+                                <input
+                                    type="date"
+                                    name="data_prevista"
+                                    class="form-input"
+                                    value="{{ optional($evento->data_prevista)->format('Y-m-d') }}"
+                                    style="height:34px; font-size:12px; width:100%; box-sizing:border-box"
+                                >
+                            </div>
                             <textarea name="observacoes_execucao" class="form-textarea" rows="2" placeholder="Observacoes de execucao">{{ $evento->observacoes_execucao }}</textarea>
                             <button type="submit" class="btn-secondary" style="margin-top:8px; width:100%; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:8px 10px;">Salvar</button>
                         </form>
+
                     </td>
                     <td>
                         <form action="{{ route('calendario_controles.destroy', $evento) }}" method="POST" onsubmit="return confirm('Deseja excluir este evento do calendário?')">

@@ -74,9 +74,29 @@ class CalendarioControleController extends Controller
     public function update(Request $request, ControleEvento $calendario_controle)
     {
         $data = $request->validate([
-            'status' => 'required|in:' . implode(',', ControleEvento::STATUS_OPTIONS),
-            'observacoes_execucao' => 'nullable|string|max:1000',
+            'status'              => 'required|in:' . implode(',', ControleEvento::STATUS_OPTIONS),
+            'observacoes_execucao'=> 'nullable|string|max:1000',
+            'data_prevista'       => 'nullable|date',
         ]);
+
+        // Processa mudança de data
+        if (!empty($data['data_prevista'])) {
+            $novaData = \Carbon\Carbon::parse($data['data_prevista']);
+            $data['data_prevista'] = $novaData;
+
+            // Recalcula data_limite com base no SLA do snapshot
+            if ($calendario_controle->sla_correcao_snapshot) {
+                $data['data_limite'] = $this->service->resolveDeadline(
+                    $calendario_controle->sla_correcao_snapshot,
+                    $novaData
+                );
+            }
+
+            // Se a nova data é futura e o evento estava atrasado, volta para pendente
+            if ($novaData->isFuture() && $data['status'] === 'atrasado') {
+                $data['status'] = 'pendente';
+            }
+        }
 
         if ($data['status'] === 'em_execucao' && !$calendario_controle->iniciado_em) {
             $data['iniciado_em'] = now();

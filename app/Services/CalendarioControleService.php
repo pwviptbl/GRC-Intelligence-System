@@ -177,7 +177,9 @@ class CalendarioControleService
     public function updateOverdueStatuses(): void
     {
         ControleEvento::query()
-            ->whereIn('status', ['pendente', 'em_execucao'])
+            // Apenas eventos que ainda não foram iniciados
+            ->where('status', 'pendente')
+            ->whereNull('iniciado_em')
             ->whereDate('data_prevista', '<', now()->toDateString())
             ->update(['status' => 'atrasado']);
     }
@@ -279,7 +281,7 @@ class CalendarioControleService
         return implode("\n", $notes);
     }
 
-    protected function resolveDeadline(string $sla, Carbon $plannedDate): ?Carbon
+    public function resolveDeadline(string $sla, Carbon $plannedDate): ?Carbon
     {
         if (preg_match('/(\d+)/', $sla, $matches) !== 1) {
             return null;
