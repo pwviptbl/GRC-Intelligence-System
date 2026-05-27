@@ -116,7 +116,18 @@ class CalendarioControleController extends Controller
     {
         $query = ControleEvento::query()
             ->with(['software', 'risco', 'tierPolitica'])
-            ->orderByDesc('data_prevista')
+            // Tier 1 (Crítico) sempre primeiro
+            ->orderBy('tier')
+            // Dentro do mesmo tier: prioridade mais alta primeiro
+            ->orderByRaw("CASE prioridade
+                WHEN 'Crítica' THEN 1
+                WHEN 'Alta'    THEN 2
+                WHEN 'Média'   THEN 3
+                WHEN 'Baixa'   THEN 4
+                ELSE 5
+            END")
+            // Dentro da mesma prioridade: data mais próxima primeiro
+            ->orderBy('data_prevista')
             ->orderBy('software_id');
 
         if ($request->filled('software_id')) {

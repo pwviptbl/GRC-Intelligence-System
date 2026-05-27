@@ -60,21 +60,47 @@ class CalendarioControleService
                         continue;
                     }
 
+                    // BUG #2 FIX: detectar se o software nunca teve esta ação concluída
+                    $neverTested = !ControleEvento::query()
+                        ->where('software_id', $software->id)
+                        ->where('tier_politica_id', $policy->id)
+                        ->where('status', 'concluido')
+                        ->exists();
+
                     $candidates[] = [
-                        'software' => $software,
-                        'policy' => $policy,
-                        'risk' => $risk,
-                        'tier' => $tier,
-                        'weight' => $this->priorityWeight($tier, $risk),
+                        'software'     => $software,
+                        'policy'       => $policy,
+                        'risk'         => $risk,
+                        'tier'         => $tier,
+                        'never_tested' => $neverTested,
+                        'weight'       => $this->priorityWeight($tier, $risk, $neverTested),
                     ];
                 }
             }
 
+            // BUG #3 FIX: sorting com hierarquia correta — Tier domina, risco é secundário DENTRO do tier
             $candidates = collect($candidates)
                 ->sort(function (array $left, array $right) {
-                    return ($right['weight'] <=> $left['weight'])
-                        ?: ($left['tier'] <=> $right['tier'])
-                        ?: strcmp($left['software']->nome, $right['software']->nome)
+                    // 1º: Tier (1=crítico antes de 2=médio antes de 3=baixo)
+                    $tierCmp = $left['tier'] <=> $right['tier'];
+                    if ($tierCmp !== 0) {
+                        return $tierCmp;
+                    }
+
+                    // 2º: Nunca testado primeiro (dentro do mesmo tier)
+                    $virginCmp = (int) $right['never_tested'] <=> (int) $left['never_tested'];
+                    if ($virginCmp !== 0) {
+                        return $virginCmp;
+                    }
+
+                    // 3º: Peso calculado (risco desempata dentro do mesmo tier)
+                    $weightCmp = $right['weight'] <=> $left['weight'];
+                    if ($weightCmp !== 0) {
+                        return $weightCmp;
+                    }
+
+                    // 4º: Nome e policy como desempate estável
+                    return strcmp($left['software']->nome, $right['software']->nome)
                         ?: ($left['policy']->id <=> $right['policy']->id);
                 })
                 ->values();
@@ -85,14 +111,18 @@ class CalendarioControleService
                 /** @var Software $software */
                 $software = $candidate['software'];
                 /** @var TierPolitica $policy */
-                $policy = $candidate['policy'];
+                $policy   = $candidate['policy'];
                 /** @var Risco|null $risk */
-                $risk = $candidate['risk'];
-                $tier = $candidate['tier'];
+                $risk        = $candidate['risk'];
+                $tier        = $candidate['tier'];
+                $neverTested = $candidate['never_tested'];
 
+                // BUG #4 FIX: counter separado por tier+frequência para que
+                // Tier 1 ocupe as datas mais próximas, Tier 2 as seguintes, etc.
                 $frequencyKey = $this->frequencyKey($policy->frequencia);
-                $sequence = $frequencyCounters[$frequencyKey] ?? 0;
-                $frequencyCounters[$frequencyKey] = $sequence + 1;
+                $counterKey   = "t{$tier}:{$frequencyKey}";
+                $sequence     = $frequencyCounters[$counterKey] ?? 0;
+                $frequencyCounters[$counterKey] = $sequence + 1;
 
                 $schedule = $this->buildScheduleWindow($policy->frequencia, $sequence);
 
@@ -117,7 +147,7 @@ class CalendarioControleService
                     'sla_correcao_snapshot' => $policy->sla_correcao,
                     'bloqueio_automatico_snapshot' => $policy->bloqueio_automatico,
                     'responsavel_planejado' => $policy->responsavel,
-                    'observacoes_geracao' => $this->buildGenerationNotes($software, $risk),
+                    'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested),
                     'origem' => $risk ? 'tier+risk' : 'tier',
                     'periodo_referencia' => $schedule['periodo_referencia'],
                     'data_prevista' => $schedule['data_prevista'],
@@ -213,24 +243,37 @@ class CalendarioControleService
         };
     }
 
-    protected function priorityWeight(int $tier, ?Risco $risk): int
+    protected function priorityWeight(int $tier, ?Risco $risk, bool $neverTested = false): int
     {
-        return ($risk ? $this->riskWeight($risk->criticidade) * 10 : 0)
-            + match ($tier) {
-                1 => 3,
-                2 => 2,
-                default => 1,
-            };
+        // BUG #1 FIX: Tier é fator dominante (escala de milhar).
+        // Risco e nunca-testado desempate DENTRO do mesmo tier, nunca cruzam tiers.
+        $tierWeight = match ($tier) {
+            1 => 3000,
+            2 => 2000,
+            default => 1000,
+        };
+
+        // Software nunca testado nesta ação recebe boost dentro do tier
+        $virginBoost = $neverTested ? 500 : 0;
+
+        // Risco é fator secundário — max 40 pontos (Critico=4 × 10)
+        $riskWeight = $risk ? $this->riskWeight($risk->criticidade) * 10 : 0;
+
+        return $tierWeight + $virginBoost + $riskWeight;
     }
 
-    protected function buildGenerationNotes(Software $software, ?Risco $risk): string
+    protected function buildGenerationNotes(Software $software, ?Risco $risk, bool $neverTested = false): string
     {
         $notes = [
             "Classificacao do software: {$software->classificacao_label}",
         ];
 
+        if ($neverTested) {
+            $notes[] = "⚠️ PRIMEIRA EXECUCAO — este software nunca teve esta acao concluida anteriormente.";
+        }
+
         if ($risk) {
-            $notes[] = "Risco associado usado para priorizacao: {$risk->titulo} ({$risk->criticidade})";
+            $notes[] = "Risco associado para priorizacao: {$risk->titulo} ({$risk->criticidade})";
         }
 
         return implode("\n", $notes);
