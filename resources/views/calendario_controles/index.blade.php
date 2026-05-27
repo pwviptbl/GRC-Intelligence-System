@@ -103,7 +103,7 @@
             <a href="{{ route('calendario_controles.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar PDF</span>
             </a>
-            <div style="font-size:12px; color:var(--text-3)">Gera somente eventos manuais que ainda nao existem para o periodo atual da acao. Controles com bloqueio automatico ficam fora do calendario.</div>
+            <div style="font-size:12px; color:var(--text-3)">Gera eventos manuais em dias uteis futuros, replaneja pendentes/atrasados que ainda nao iniciaram e ignora controles com bloqueio automatico.</div>
         </div>
         @endif
     </div>
