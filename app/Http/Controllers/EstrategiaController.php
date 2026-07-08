@@ -17,7 +17,7 @@ class EstrategiaController extends Controller
         return view('estrategia.index');
     }
 
-    public function generateRoadmap(GeminiService $gemini)
+    public function generateRoadmap(Request $request, GeminiService $gemini)
     {
         // Coleta o contexto completo do sistema
         $softwares = Software::all(['nome', 'tecnologia'])->toArray();
@@ -33,15 +33,23 @@ class EstrategiaController extends Controller
         $contexto .= "- Planos de Ação Pendentes: " . json_encode($planos) . "\n";
         $contexto .= "- Políticas: " . json_encode($politicas) . "\n";
 
+        // Detalhes extras fornecidos pelo usuário
+        $detalhes = $request->input('detalhes');
+        if (!empty($detalhes)) {
+            $contexto .= "- Observações e Restrições Adicionais do Usuário: " . $detalhes . "\n";
+        }
+
         $prompt = $contexto . "\n
         Aja como um Gerente de Segurança da Informação (CISO) sênior. 
-        Com base nos dados acima, crie um Roadmap Estratégico de Curto Prazo (Próximas 4 semanas).
+        Com base nos dados acima e nos detalhes fornecidos pelo usuário, crie um Roadmap Estratégico de Curto Prazo (Próximas 4 semanas).
         
         Sua resposta deve ser em Português e estruturada em:
         1. **Análise de Cenário**: Resumo do maior perigo atual.
         2. **Prioridades Imediatas (Semana 1-2)**: 3 ações críticas e por que fazê-las.
         3. **Ações Táticas (Semana 3-4)**: 2 ações para melhorar a governança.
         4. **Sugestão de Pentest**: Qual software deve ser testado primeiro e quais vetores focar (ex: SQLi, Broken Auth).
+
+        Importante: Leve em consideração e adapte suas sugestões e roadmap baseando-se estritamente nas observações e restrições fornecidas pelo usuário (como as limitações de testes DAST, uso de proxies específicos, arquiteturas baseadas em frames/legadas, rotinas extensas, etc.).
 
         Use um tom profissional, direto e encorajador para um analista que trabalha sozinho. Não use Markdown complexo, apenas negrito e listas.";
 
