@@ -92,5 +92,98 @@ O sistema utiliza o modelo **Gemini 2.5 Flash Lite**. Certifique-se de configura
 GEMINI_API_KEY=sua_chave_aqui
 ```
 
+## 🧠 Agente via Terminal
+
+O projeto possui um gateway Artisan para automação assistida por agente/Codex:
+
+```bash
+php artisan grc:agent list-tools
+php artisan grc:agent call dashboard_summary
+php artisan grc:agent call list_risks --json='{"limit":5}'
+php artisan grc:agent call create_risk --dry-run --json='{"titulo":"...","descricao":"...","probabilidade":"Media","impacto":"Medio","responsavel":"..."}'
+```
+
+Em ambiente Sail/Compose, use `./vendor/bin/sail artisan` no lugar de `php artisan`.
+
+Ferramentas de escrita exigem `--confirm` para gravar. Use `--dry-run` antes de qualquer alteração:
+
+```bash
+php artisan grc:agent call create_risk --confirm --json='{"titulo":"...","descricao":"...","probabilidade":"Alta","impacto":"Alto","responsavel":"..."}'
+```
+
+O chat web usa o mesmo registro de ferramentas: consultas são executadas apenas pelas ferramentas tipadas e ações de escrita retornam uma prévia. Responda `confirmar` para gravar ou `cancelar` para descartar a operação pendente.
+
+## 🔌 MCP
+
+O mesmo registro tipado tambem esta exposto como servidor MCP:
+
+```bash
+php artisan grc:mcp
+```
+
+Esse comando sobe o transporte `stdio`, adequado para clientes MCP locais.
+
+O projeto tambem expõe um endpoint HTTP em `/mcp`, adequado para clientes remotos como o ChatGPT Web quando houver conectividade/autenticacao apropriada. Configure no `.env`:
+
+```env
+MCP_SERVER_TOKEN=troque-este-token
+MCP_ALLOWED_ORIGINS=https://chatgpt.com
+```
+
+Regras operacionais do MCP:
+
+- Ferramentas de leitura executam normalmente.
+- Ferramentas de escrita retornam `dry_run` por padrao.
+- Para gravar de fato, o cliente deve chamar a tool com `confirm=true`.
+- Requisicoes HTTP nao inicializadas devem enviar `MCP-Protocol-Version: 2025-11-25`.
+- O MCP permite listar, criar e atualizar politicas, regras de tier, procedimentos e etapas, riscos, incidentes e eventos do calendario.
+
+## 💻 Agente MCP do Host Linux
+
+O executor do computador fica fora do Laravel e fora do Docker em `host-agent/`. Assim, os comandos rodam como o usuario Linux que iniciou o servico e podem acessar projetos como e-Cidade e outros sistemas do host.
+
+```bash
+cd host-agent
+python3 -m pip install -r requirements.txt
+python3 server.py
+```
+
+Por padrao, o servidor usa Streamable HTTP somente em loopback:
+
+```text
+http://127.0.0.1:8765/mcp
+```
+
+Configuracao opcional em variaveis de ambiente:
+
+```env
+HOST_MCP_HOST=127.0.0.1
+HOST_MCP_PORT=8765
+HOST_MCP_TOKEN=
+HOST_AGENT_DEFAULT_CWD=/home/dbseller/Modelos
+```
+
+Ferramentas do host:
+
+- `run_command`
+- `start_command`, `poll_command`, `stop_command`
+- `read_file`
+- `write_file`
+- `list_directory`
+- `stat_path`
+- `find_files`
+- `search_text`
+
+Nao existe sandbox ou allowlist interna de comandos e caminhos. O limite efetivo e a permissao do usuario Linux que executa o processo. Para manter o servico residente:
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp host-agent/systemd/grc-host-agent.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now grc-host-agent
+```
+
+O ChatGPT web nao acessa `localhost` diretamente. Cadastre no ChatGPT a URL HTTPS remota fornecida pelo Secure MCP Tunnel ou por outro tunel reverso apontado para `127.0.0.1:8765/mcp`. O MCP de dados do GRC continua separado no endpoint Laravel `/mcp`.
+
 ---
 Desenvolvido por Marcio - Engenheiro de Software & Analista de Segurança.

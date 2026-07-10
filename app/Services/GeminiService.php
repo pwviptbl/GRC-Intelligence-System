@@ -2,18 +2,18 @@
 
 namespace App\Services;
 
+use App\Services\Agent\GrcToolRegistry;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class GeminiService
 {
     protected string $apiKey;
-    //protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+
+    // protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
     protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent';
 
-    public function __construct()
+    public function __construct(protected GrcToolRegistry $toolRegistry)
     {
         $this->apiKey = config('services.gemini.key');
     }
@@ -34,31 +34,31 @@ class GeminiService
             $options['history'] ?? [],
             $options['dataContext'] ?? null
         );
-        
+
         try {
-            $response = Http::post($this->baseUrl . '?key=' . $this->apiKey, [
+            $response = Http::post($this->baseUrl.'?key='.$this->apiKey, [
                 'contents' => [
                     [
                         'role' => 'user',
                         'parts' => [
-                            ['text' => $prompt]
-                        ]
-                    ]
+                            ['text' => $prompt],
+                        ],
+                    ],
                 ],
                 'generationConfig' => [
                     'temperature' => 0.2,
                     'topK' => 40,
                     'topP' => 0.95,
                     'maxOutputTokens' => 2048,
-                ]
+                ],
             ]);
 
             if ($response->failed()) {
-                throw new \Exception('Erro na API do Gemini: ' . $response->body());
+                throw new \Exception('Erro na API do Gemini: '.$response->body());
             }
 
             $text = $response->json('candidates.0.content.parts.0.text');
-            
+
             // Limpa Markdown JSON
             $cleanJson = preg_replace('/^```json\s*|\s*```$/m', '', $text);
             $data = json_decode($cleanJson, true);
@@ -67,11 +67,12 @@ class GeminiService
                 return ['resposta' => $text, 'tipo' => 'geral'];
             }
 
-            return $this->handleAction($data);
+            return $this->resolveAction($data);
 
         } catch (\Exception $e) {
-            Log::error('Gemini Chat Error: ' . $e->getMessage());
-            return ['resposta' => '❌ Erro ao processar mensagem: ' . $e->getMessage(), 'tipo' => 'erro'];
+            Log::error('Gemini Chat Error: '.$e->getMessage());
+
+            return ['resposta' => '❌ Erro ao processar mensagem: '.$e->getMessage(), 'tipo' => 'erro'];
         }
     }
 
@@ -85,52 +86,47 @@ class GeminiService
         }
 
         try {
-            $response = Http::post($this->baseUrl . '?key=' . $this->apiKey, [
+            $response = Http::post($this->baseUrl.'?key='.$this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
-                            ['text' => $prompt]
-                        ]
-                    ]
+                            ['text' => $prompt],
+                        ],
+                    ],
                 ],
                 'generationConfig' => [
                     'temperature' => 0.7,
                     'maxOutputTokens' => 4096,
-                ]
+                ],
             ]);
 
             if ($response->failed()) {
-                throw new \Exception('Erro na API do Gemini: ' . $response->body());
+                throw new \Exception('Erro na API do Gemini: '.$response->body());
             }
 
             return $response->json('candidates.0.content.parts.0.text') ?? 'A IA não retornou um conteúdo válido.';
         } catch (\Exception $e) {
-            Log::error('Gemini Governance Error: ' . $e->getMessage());
-            return '❌ Erro ao gerar documento: ' . $e->getMessage();
+            Log::error('Gemini Governance Error: '.$e->getMessage());
+
+            return '❌ Erro ao gerar documento: '.$e->getMessage();
         }
     }
 
     /**
-     * Lida com as ações JSON retornadas pela IA (Consultas, Cadastros, etc).
+     * Resolve a resposta estruturada do modelo sem permitir SQL arbitrario.
      */
-    protected function handleAction(array $data): array
+    public function resolveAction(array $data): array
     {
         $tipo = $data['tipo'] ?? 'geral';
 
         switch ($tipo) {
-            case 'consulta':
-                $sql = $data['sql'] ?? '';
-                $desc = $data['descricao'] ?? '';
-                return ['resposta' => "**$desc**\n\n" . $this->executeSql($sql), 'tipo' => 'consulta'];
-
-            case 'cadastro':
-                return $this->executeInsert($data);
-
             case 'analise':
-                $sql = $data['sql_contexto'] ?? '';
                 $analise = $data['analise'] ?? '';
-                $contexto = !empty($sql) ? "\n\n**Dados analisados:**\n" . $this->executeSql($sql) . "\n\n---\n" : "";
-                return ['resposta' => $contexto . $analise, 'tipo' => 'analise'];
+
+                return ['resposta' => $analise ?: 'Sem análise disponível.', 'tipo' => 'analise'];
+
+            case 'ferramenta':
+                return $this->resolveToolAction($data);
 
             case 'procedimento_json':
                 return $data;
@@ -140,87 +136,67 @@ class GeminiService
         }
     }
 
-    protected function executeSql(string $sql): string
+    /**
+     * Formata o envelope retornado pelo registro para a interface de chat.
+     */
+    public function formatToolResult(array $toolResult, string $description = ''): array
     {
-        if (!Str::startsWith(strtoupper(trim($sql)), 'SELECT')) {
-            return "⚠️ Apenas consultas SELECT são permitidas.";
+        if (! ($toolResult['ok'] ?? false)) {
+            $details = $toolResult['validation'] ?? ($toolResult['error'] ?? 'Falha ao executar a ferramenta.');
+
+            return [
+                'resposta' => "❌ {$this->formatToolData($details)}",
+                'tipo' => 'erro',
+            ];
         }
 
-        try {
-            $results = DB::select($sql);
-            if (empty($results)) return "Nenhum resultado encontrado.";
+        $tool = (string) ($toolResult['tool'] ?? 'ferramenta');
+        $title = $description !== '' ? $description : "Resultado: {$tool}";
+        $prefix = ($toolResult['dry_run'] ?? false) ? 'Previa validada' : 'Resultado';
 
-            $results = array_map(fn($item) => (array)$item, $results);
-            $columns = array_keys($results[0]);
-            
-            $header = "| " . implode(" | ", $columns) . " |";
-            $divider = "| " . implode(" | ", array_fill(0, count($columns), "---")) . " |";
-            $rows = array_map(fn($row) => "| " . implode(" | ", array_values($row)) . " |", $results);
-
-            return $header . "\n" . $divider . "\n" . implode("\n", $rows);
-        } catch (\Exception $e) {
-            return "❌ Erro no SQL: " . $e->getMessage();
-        }
+        return [
+            'resposta' => "**{$prefix} - {$title}**\n\n".$this->formatToolData($toolResult['result'] ?? []),
+            'tipo' => $this->toolRegistry->requiresConfirmation($tool) ? 'cadastro' : 'consulta',
+        ];
     }
 
-    protected function executeInsert(array $data): array
+    protected function resolveToolAction(array $data): array
     {
-        $op = $data['operacao'] ?? '';
-        $dados = $data['dados'] ?? [];
-        $desc = $data['descricao'] ?? '';
+        $tool = $data['ferramenta'] ?? '';
+        $payload = $data['argumentos'] ?? [];
+        $description = trim((string) ($data['descricao'] ?? ''));
 
-        try {
-            if ($op === 'insert_cliente') {
-                $nome = trim($dados['nome'] ?? '');
-                if (empty($nome)) throw new \Exception("Nome do cliente não fornecido.");
-                \App\Models\Cliente::create(['nome' => $nome]);
-                return ['resposta' => "✅ Cliente **$nome** cadastrado com sucesso!\n\n> $desc", 'tipo' => 'cadastro'];
-            }
-
-            if ($op === 'insert_software') {
-                $nome = trim($dados['nome'] ?? '');
-                if (empty($nome)) throw new \Exception("Nome do software não fornecido.");
-                \App\Models\Software::create([
-                    'nome' => $nome,
-                    'git_url' => $dados['git_url'] ?? null,
-                    'tecnologia' => $dados['tecnologia'] ?? null,
-                ]);
-                return ['resposta' => "✅ Software **$nome** cadastrado com sucesso!\n\n> $desc", 'tipo' => 'cadastro'];
-            }
-
-            if ($op === 'insert_instancia') {
-                $clienteNome = trim($dados['cliente_nome'] ?? '');
-                $softwareNome = trim($dados['software_nome'] ?? '');
-                $branch = trim($dados['branch'] ?? 'master');
-                $gitCustomUrl = $dados['git_custom_url'] ?? null;
-
-                $cliente = \App\Models\Cliente::whereRaw('LOWER(nome) = ?', [strtolower($clienteNome)])->first();
-                if (!$cliente) throw new \Exception("Cliente **$clienteNome** não encontrado. Cadastre-o primeiro.");
-
-                $software = \App\Models\Software::whereRaw('LOWER(nome) = ?', [strtolower($softwareNome)])->first();
-                if (!$software) throw new \Exception("Software **$softwareNome** não encontrado. Cadastre-o primeiro.");
-
-                \App\Models\InstanciaCliente::create([
-                    'cliente_id' => $cliente->id,
-                    'software_id' => $software->id,
-                    'branch' => $branch,
-                    'git_custom_url' => $gitCustomUrl,
-                ]);
-
-                return [
-                    'resposta' => "✅ Instância criada: **$clienteNome** → **$softwareNome** na branch `$branch`.\n\n> $desc",
-                    'tipo' => 'cadastro'
-                ];
-            }
-
-            return ['resposta' => "⚠️ Operação $op desconhecida ou não implementada.", 'tipo' => 'cadastro'];
-        } catch (\Exception $e) {
-            $msg = $e->getMessage();
-            if (str_contains($msg, 'Duplicate entry') || str_contains($msg, 'unique')) {
-                return ['resposta' => "⚠️ Este registro já existe no banco de dados.", 'tipo' => 'erro'];
-            }
-            return ['resposta' => "❌ Erro ao cadastrar: " . $msg, 'tipo' => 'erro'];
+        if (! is_string($tool) || ! is_array($payload) || ($payload !== [] && array_is_list($payload))) {
+            return ['resposta' => '❌ Chamada de ferramenta invalida.', 'tipo' => 'erro'];
         }
+
+        if (! $this->toolRegistry->toolDefinition($tool)) {
+            return ['resposta' => "❌ Ferramenta {$tool} nao esta disponivel.", 'tipo' => 'erro'];
+        }
+
+        $requiresConfirmation = $this->toolRegistry->requiresConfirmation($tool);
+        $toolResult = $this->toolRegistry->call($tool, $payload, $requiresConfirmation);
+        $result = $this->formatToolResult($toolResult, $description);
+
+        if ($requiresConfirmation && ($toolResult['ok'] ?? false)) {
+            $result['resposta'] .= "\n\nResponda **confirmar** para executar ou **cancelar** para descartar.";
+            $result['pending_action'] = [
+                'tool' => $tool,
+                'payload' => $payload,
+                'description' => $description,
+            ];
+        }
+
+        return $result;
+    }
+
+    protected function formatToolData(mixed $data): string
+    {
+        if (is_string($data)) {
+            return $data;
+        }
+
+        return "```json\n".json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)."\n```";
     }
 
     protected function buildChatPrompt(string $systemPrompt, string $message, array $history = [], ?string $dataContext = null): string
@@ -228,7 +204,8 @@ class GeminiService
         $historyText = collect($history)
             ->map(function ($item) {
                 $role = ($item['role'] ?? 'user') === 'ai' ? 'ASSISTENTE' : 'USUARIO';
-                return $role . ': ' . ($item['text'] ?? '');
+
+                return $role.': '.($item['text'] ?? '');
             })
             ->implode("\n");
 
@@ -237,60 +214,50 @@ class GeminiService
             : "DADOS CADASTRADOS IMPORTADOS NESTA CONVERSA:\nNenhum snapshot importado.\n\n";
 
         return "INSTRUCOES DO SISTEMA:\n{$systemPrompt}\n\n"
-            . "REGRAS ADICIONAIS DE CONTEXTO:\n"
-            . "- Considere o historico da conversa para entender impedimentos, contexto operacional e necessidades do usuario.\n"
-            . "- Quando houver dados cadastrados importados, use-os como fonte principal de contexto estruturado.\n"
-            . "- Nao invente dados cadastrais ausentes. Se algo nao estiver no snapshot, deixe isso claro.\n\n"
-            . $contextBlock
-            . "HISTORICO RECENTE DA CONVERSA:\n"
-            . ($historyText !== '' ? $historyText : "Sem historico anterior.")
-            . "\n\nMENSAGEM ATUAL DO USUARIO: {$message}";
+            ."REGRAS ADICIONAIS DE CONTEXTO:\n"
+            ."- Considere o historico da conversa para entender impedimentos, contexto operacional e necessidades do usuario.\n"
+            ."- Quando houver dados cadastrados importados, use-os como fonte principal de contexto estruturado.\n"
+            ."- Nao invente dados cadastrais ausentes. Se algo nao estiver no snapshot, deixe isso claro.\n\n"
+            .$contextBlock
+            ."HISTORICO RECENTE DA CONVERSA:\n"
+            .($historyText !== '' ? $historyText : 'Sem historico anterior.')
+            ."\n\nMENSAGEM ATUAL DO USUARIO: {$message}";
     }
 
     protected function getSystemPrompt(): string
     {
         $company = config('app.company');
+        $tools = json_encode($this->toolRegistry->listTools(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
         return <<<EOD
 Você é o assistente de IA do **GRC Intelligence System**, ferramenta da $company para Governança, Risco e Conformidade.
-Seu papel é ajudar o Analista de Segurança a gerenciar clientes, softwares e fornecer análises de risco.
+Seu papel é ajudar o Analista de Segurança a consultar dados GRC, criar registros pelas ferramentas permitidas e produzir análises de risco.
 
-## Banco de Dados (PostgreSQL) — Esquema
-- **clientes**: id, nome, created_at
-- **software**: id, nome, git_url, tecnologia, exposicao_nivel, exposicao_detalhe, dados_sensibilidade_nivel, dados_sensibilidade_detalhe, criticidade_operacional_nivel, criticidade_operacional_detalhe, autenticacao_nivel, autenticacao_detalhe, created_at
-- **instancia_clientes**: id, cliente_id, software_id, git_custom_url, branch, created_at
-- **politicas**: id, titulo, categoria, versao, status, conteudo
-- **riscos**: id, titulo, criticidade, status, responsavel, software_id
-- **tier_politicas**: id, tier, acao_controle, frequencia, sla_correcao, bloqueio_automatico, responsavel, observacoes
-- **controle_eventos**: id, software_id, tier_politica_id, risco_id, tier, acao_controle_snapshot, frequencia_snapshot, sla_correcao_snapshot, bloqueio_automatico_snapshot, responsavel_planejado, periodo_referencia, data_prevista, data_limite, prioridade, status
+## Ferramentas disponíveis
+Use somente uma ferramenta desta lista quando a resposta exigir dados atuais ou uma alteração. Nunca escreva SQL, nunca invente ferramentas e nunca proponha operações fora desta lista.
+{$tools}
 
-## Modos de Operação (Responda SEMPRE em JSON):
+## Modos de Operação (responda SEMPRE em JSON)
 
-### 1. CONSULTA (tipo: "consulta")
-Para perguntas sobre dados existentes (SELECT apenas). Use JOINs para trazer nomes em vez de IDs.
+### 1. FERRAMENTA (tipo: "ferramenta")
+Para consultar dados atuais ou executar uma operação permitida. Use os nomes e campos exatos da lista. Para escrita, colete todos os campos obrigatórios antes de chamar a ferramenta.
 ```json
-{"tipo": "consulta", "sql": "SELECT ...", "descricao": "Breve descrição"}
+{"tipo":"ferramenta","ferramenta":"list_risks","argumentos":{"status":"aberto","limit":20},"descricao":"Riscos abertos"}
 ```
 
-### 2. CADASTRO (tipo: "cadastro")
-Para registrar novos dados. Operações: "insert_cliente", "insert_software", "insert_instancia".
-Para instâncias, use "cliente_nome" e "software_nome" no objeto "dados".
+### 2. ANÁLISE DE RISCO (tipo: "analise")
+Para avaliações estratégicas com base no histórico e no snapshot carregado. Não inclua SQL ou chamadas de ferramenta neste modo.
 ```json
-{"tipo": "cadastro", "operacao": "insert_cliente", "dados": {"nome": "..."}, "descricao": "..."}
+{"tipo":"analise","analise":"Sua análise em Markdown"}
 ```
 
-### 3. ANÁLISE DE RISCO (tipo: "analise")
-Para avaliações estratégicas. Pode incluir um "sql_contexto" opcional para buscar dados.
-```json
-{"tipo": "analise", "sql_contexto": "SELECT ...", "analise": "Sua análise em Markdown"}
-```
-
-### 4. GERAL (tipo: "geral")
+### 3. GERAL (tipo: "geral")
 Para saudações ou dúvidas simples.
 ```json
-{"tipo": "geral", "resposta": "Sua resposta em texto simples"}
+{"tipo":"geral","resposta":"Sua resposta em texto simples"}
 ```
 
-### 5. PROCEDIMENTO (tipo: "procedimento_json")
+### 4. PROCEDIMENTO (tipo: "procedimento_json")
 Para gerar etapas estruturadas de um processo.
 ```json
 {
@@ -301,7 +268,7 @@ Para gerar etapas estruturadas de um processo.
 }
 ```
 
-REGRAS: Responda APENAS em JSON válido. Idioma: Português do Brasil. Seja preciso com nomes de clientes e softwares. Quando houver contexto de tiers e calendario, use isso para responder sobre prioridades, cobertura de controles e o que ainda falta executar. Gere políticas em texto simples profissional.
+REGRAS: Responda APENAS em JSON válido. Idioma: Português do Brasil. Quando não houver dados suficientes para uma ferramenta de escrita, faça uma pergunta objetiva em tipo "geral". Quando houver contexto de tiers e calendario, use isso para responder sobre prioridades, cobertura de controles e o que ainda falta executar. Gere políticas em texto simples profissional.
 EOD;
     }
 }

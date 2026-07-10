@@ -1,33 +1,38 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\SoftwareController;
-use App\Http\Controllers\InstanciaClienteController;
-use App\Http\Controllers\PoliticaController;
-use App\Http\Controllers\RiscoController;
-use App\Http\Controllers\IncidenteController;
-use App\Http\Controllers\LgpdController;
-use App\Http\Controllers\ChatController;
-use App\Http\Controllers\PlanoAcaoController;
-use App\Http\Controllers\TreinamentoController;
-use App\Http\Controllers\ProcedimentoController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\BackupController;
-use App\Http\Controllers\EstrategiaController;
-use App\Http\Controllers\RelatorioController;
-use App\Http\Controllers\TierPoliticaController;
 use App\Http\Controllers\CalendarioControleController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EstrategiaController;
+use App\Http\Controllers\IncidenteController;
+use App\Http\Controllers\InstanciaClienteController;
+use App\Http\Controllers\LgpdController;
+use App\Http\Controllers\McpController;
+use App\Http\Controllers\PlanoAcaoController;
+use App\Http\Controllers\PoliticaController;
+use App\Http\Controllers\ProcedimentoController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RelatorioController;
+use App\Http\Controllers\RiscoController;
+use App\Http\Controllers\SoftwareController;
+use App\Http\Controllers\TierPoliticaController;
+use App\Http\Controllers\TreinamentoController;
+use App\Http\Controllers\UserController;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
+Route::match(['GET', 'POST', 'DELETE'], '/mcp', [McpController::class, 'handle'])
+    ->withoutMiddleware([ValidateCsrfToken::class]);
+
 Route::middleware(['auth', 'verified'])->group(function () {
-    
-    Route::middleware('role:admin,governanca,operacional,auditor')->group(function() {
+
+    Route::middleware('role:admin,governanca,operacional,auditor')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/estrategia', [EstrategiaController::class, 'index'])->name('estrategia.index');
         Route::post('/estrategia/roadmap', [EstrategiaController::class, 'generateRoadmap'])->name('estrategia.roadmap');
@@ -36,9 +41,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard/export/executive', [DashboardController::class, 'exportExecutive'])->name('dashboard.export');
         Route::get('/dashboard/ai-summary', [DashboardController::class, 'aiSummary'])->name('dashboard.ai_summary');
     });
-    
+
     // Gestão de Usuários (Apenas Admin)
-    Route::middleware('role:admin')->group(function() {
+    Route::middleware('role:admin')->group(function () {
         Route::resource('usuarios', UserController::class);
         Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('/backups/create', [BackupController::class, 'create'])->name('backups.create');
@@ -47,18 +52,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // 1. MÓDULOS RESTRITOS (Ativos e Governança)
-    Route::middleware('role:admin,governanca,operacional,auditor')->group(function() {
+    Route::middleware('role:admin,governanca,operacional,auditor')->group(function () {
         Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');
         Route::get('/clientes/export', [ClienteController::class, 'print'])->name('clientes.export');
-        
+
         Route::get('/softwares', [SoftwareController::class, 'index'])->name('softwares.index');
         Route::get('/softwares/export', [SoftwareController::class, 'print'])->name('softwares.export');
         Route::get('/tier_politicas', [TierPoliticaController::class, 'index'])->name('tier_politicas.index');
         Route::get('/tier_politicas/export/all', [TierPoliticaController::class, 'printAll'])->name('tier_politicas.export.all');
-        
+
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
-        
+
         Route::get('/politicas', [PoliticaController::class, 'index'])->name('politicas.index');
         Route::get('/politicas/export/all', [PoliticaController::class, 'printAll'])->name('politicas.export.all');
         Route::get('/politicas/export/{politica}', [PoliticaController::class, 'print'])->name('politicas.export');
@@ -67,7 +72,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/procedimentos/export/{procedimento}', [ProcedimentoController::class, 'print'])->name('procedimentos.export');
     });
 
-    Route::middleware('role:admin,governanca')->group(function() {
+    Route::middleware('role:admin,governanca')->group(function () {
         Route::resource('clientes', ClienteController::class)->except(['index']);
         Route::resource('softwares', SoftwareController::class)->except(['index']);
         Route::resource('tier_politicas', TierPoliticaController::class)->except(['index']);
@@ -77,17 +82,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // 2. MÓDULOS OPERACIONAIS
-    Route::middleware('role:admin,governanca,operacional,auditor')->group(function() {
+    Route::middleware('role:admin,governanca,operacional,auditor')->group(function () {
         Route::resource('riscos', RiscoController::class);
         Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
         Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
-        
+
         Route::resource('incidentes', IncidenteController::class);
         Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
         Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
         Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->name('incidentes.add_evidence');
         Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->name('incidentes.remove_evidence');
-        
+
         Route::resource('plano_acoes', PlanoAcaoController::class);
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
         Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
@@ -105,7 +110,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
         Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');
         Route::patch('/lgpd/{item}', [LgpdController::class, 'update'])->name('lgpd.update');
-        
+
         Route::resource('treinamentos', TreinamentoController::class);
         Route::get('/treinamentos/export/all', [TreinamentoController::class, 'printAll'])->name('treinamentos.export.all');
         Route::get('/treinamentos/export/{treinamento}', [TreinamentoController::class, 'print'])->name('treinamentos.export');
@@ -117,7 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // 3. FERRAMENTAS DE IA
-    Route::middleware('role:admin,governanca,operacional')->group(function() {
+    Route::middleware('role:admin,governanca,operacional')->group(function () {
         Route::post('/politicas/generate', [PoliticaController::class, 'generateIA'])->name('politicas.generate');
         Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
         Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');

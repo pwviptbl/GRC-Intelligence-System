@@ -1,0 +1,1357 @@
+<?php
+
+namespace App\Services\Agent;
+
+use App\Models\Cliente;
+use App\Models\ControleEvento;
+use App\Models\Incidente;
+use App\Models\InstanciaCliente;
+use App\Models\LgpdItem;
+use App\Models\PlanoAcao;
+use App\Models\Politica;
+use App\Models\Procedimento;
+use App\Models\Risco;
+use App\Models\Software;
+use App\Models\TierPolitica;
+use App\Services\GrcContextService;
+use Illuminate\Support\Facades\DB;
+
+class GrcToolRegistry
+{
+    public const RISK_READ = 'read';
+
+    public const RISK_WRITE = 'write';
+
+    public function __construct(
+        protected GrcContextService $contextService,
+    ) {}
+
+    public function listTools(): array
+    {
+        return [
+            $this->tool(
+                'context_snapshot',
+                'Retorna o snapshot consolidado usado pelo assistente GRC.',
+                self::RISK_READ
+            ),
+            $this->tool(
+                'dashboard_summary',
+                'Retorna indicadores resumidos de ativos, riscos, incidentes, planos e LGPD.',
+                self::RISK_READ
+            ),
+            $this->tool(
+                'list_risks',
+                'Lista riscos com filtros opcionais.',
+                self::RISK_READ,
+                [
+                    'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
+                    'criticidade' => ['type' => 'string', 'enum' => ['Critico', 'Alto', 'Medio', 'Baixo']],
+                    'software_id' => ['type' => 'integer'],
+                    'cliente_id' => ['type' => 'integer'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'list_policies',
+                'Lista politicas de governanca com filtros opcionais.',
+                self::RISK_READ,
+                [
+                    'status' => ['type' => 'string'],
+                    'categoria' => ['type' => 'string'],
+                    'search' => ['type' => 'string'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'list_tier_policies',
+                'Lista regras de controle por tier.',
+                self::RISK_READ,
+                [
+                    'tier' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'ativo' => ['type' => 'boolean'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'list_procedures',
+                'Lista procedimentos operacionais e suas etapas.',
+                self::RISK_READ,
+                [
+                    'status' => ['type' => 'string'],
+                    'tipo' => ['type' => 'string'],
+                    'search' => ['type' => 'string'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'list_incidents',
+                'Lista incidentes com filtros opcionais.',
+                self::RISK_READ,
+                [
+                    'status' => ['type' => 'string', 'enum' => $this->incidentStatuses()],
+                    'severidade' => ['type' => 'string', 'enum' => ['Baixa', 'Media', 'Alta', 'Critica']],
+                    'software_id' => ['type' => 'integer'],
+                    'cliente_id' => ['type' => 'integer'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'list_control_calendar',
+                'Lista eventos do calendario de controles com filtros opcionais.',
+                self::RISK_READ,
+                [
+                    'status' => ['type' => 'string', 'enum' => ControleEvento::STATUS_OPTIONS],
+                    'tier' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'software_id' => ['type' => 'integer'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'create_risk',
+                'Cria um risco no inventario GRC.',
+                self::RISK_WRITE,
+                [
+                    'titulo' => ['type' => 'string'],
+                    'descricao' => ['type' => 'string'],
+                    'probabilidade' => ['type' => 'string', 'enum' => ['Alta', 'Media', 'Baixa']],
+                    'impacto' => ['type' => 'string', 'enum' => ['Alto', 'Medio', 'Baixo']],
+                    'responsavel' => ['type' => 'string'],
+                    'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
+                    'origem' => ['type' => 'string'],
+                    'ativo_afetado' => ['type' => 'string'],
+                    'plano_acao' => ['type' => 'string'],
+                    'software_id' => ['type' => 'integer'],
+                    'cliente_id' => ['type' => 'integer'],
+                ],
+                ['titulo', 'descricao', 'probabilidade', 'impacto', 'responsavel']
+            ),
+            $this->tool(
+                'update_risk',
+                'Atualiza os campos informados de um risco existente.',
+                self::RISK_WRITE,
+                array_merge(['risk_id' => ['type' => 'integer']], $this->riskInputSchema()),
+                ['risk_id']
+            ),
+            $this->tool(
+                'update_risk_status',
+                'Atualiza o status de um risco existente.',
+                self::RISK_WRITE,
+                [
+                    'risk_id' => ['type' => 'integer'],
+                    'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
+                ],
+                ['risk_id', 'status']
+            ),
+            $this->tool(
+                'create_policy',
+                'Cria uma politica de governanca.',
+                self::RISK_WRITE,
+                $this->policyInputSchema(),
+                ['titulo', 'categoria', 'conteudo']
+            ),
+            $this->tool(
+                'update_policy',
+                'Atualiza os campos informados de uma politica.',
+                self::RISK_WRITE,
+                array_merge(['policy_id' => ['type' => 'integer']], $this->policyInputSchema()),
+                ['policy_id']
+            ),
+            $this->tool(
+                'create_tier_policy',
+                'Cria uma regra de controle por tier.',
+                self::RISK_WRITE,
+                $this->tierPolicyInputSchema(),
+                ['tier', 'acao_controle', 'frequencia', 'sla_correcao', 'bloqueio_automatico', 'responsavel']
+            ),
+            $this->tool(
+                'update_tier_policy',
+                'Atualiza os campos informados de uma regra de tier.',
+                self::RISK_WRITE,
+                array_merge(['tier_policy_id' => ['type' => 'integer']], $this->tierPolicyInputSchema()),
+                ['tier_policy_id']
+            ),
+            $this->tool(
+                'create_procedure',
+                'Cria um procedimento operacional com etapas ordenadas.',
+                self::RISK_WRITE,
+                $this->procedureInputSchema(),
+                ['titulo', 'tipo', 'status', 'etapas']
+            ),
+            $this->tool(
+                'update_procedure',
+                'Atualiza um procedimento; quando etapas forem enviadas, substitui a lista atual.',
+                self::RISK_WRITE,
+                array_merge(['procedure_id' => ['type' => 'integer']], $this->procedureInputSchema()),
+                ['procedure_id']
+            ),
+            $this->tool(
+                'create_incident',
+                'Registra um incidente de seguranca.',
+                self::RISK_WRITE,
+                [
+                    'titulo' => ['type' => 'string'],
+                    'descricao' => ['type' => 'string'],
+                    'severidade' => ['type' => 'string', 'enum' => ['Baixa', 'Media', 'Alta', 'Critica']],
+                    'status' => ['type' => 'string', 'enum' => $this->incidentStatuses()],
+                    'data_deteccao' => ['type' => 'string', 'format' => 'date'],
+                    'detectado_por' => ['type' => 'string'],
+                    'licoes_aprendidas' => ['type' => 'string'],
+                    'software_id' => ['type' => 'integer'],
+                    'cliente_id' => ['type' => 'integer'],
+                    'risco_id' => ['type' => 'integer'],
+                ],
+                ['titulo', 'descricao', 'severidade', 'status', 'data_deteccao', 'detectado_por']
+            ),
+            $this->tool(
+                'update_incident',
+                'Atualiza os campos informados de um incidente.',
+                self::RISK_WRITE,
+                array_merge(['incident_id' => ['type' => 'integer']], $this->incidentInputSchema()),
+                ['incident_id']
+            ),
+            $this->tool(
+                'create_control_event',
+                'Cria manualmente um evento no calendario de controles.',
+                self::RISK_WRITE,
+                $this->controlEventInputSchema(),
+                ['software_id', 'tier_policy_id', 'periodo_referencia', 'data_prevista']
+            ),
+            $this->tool(
+                'update_control_event',
+                'Atualiza status, datas e observacoes de um evento do calendario.',
+                self::RISK_WRITE,
+                [
+                    'control_event_id' => ['type' => 'integer'],
+                    'status' => ['type' => 'string', 'enum' => ControleEvento::STATUS_OPTIONS],
+                    'data_prevista' => ['type' => 'string', 'format' => 'date'],
+                    'data_limite' => ['type' => 'string', 'format' => 'date'],
+                    'observacoes_execucao' => ['type' => 'string'],
+                ],
+                ['control_event_id']
+            ),
+            $this->tool(
+                'create_action_plan',
+                'Cria um plano de acao operacional.',
+                self::RISK_WRITE,
+                [
+                    'titulo' => ['type' => 'string'],
+                    'descricao' => ['type' => 'string'],
+                    'prioridade' => ['type' => 'string', 'enum' => ['baixa', 'media', 'alta', 'critica']],
+                    'status' => ['type' => 'string', 'enum' => $this->actionPlanStatuses()],
+                    'responsavel' => ['type' => 'string'],
+                    'origem' => ['type' => 'string'],
+                    'software_id' => ['type' => 'integer'],
+                    'cliente_id' => ['type' => 'integer'],
+                    'risco_id' => ['type' => 'integer'],
+                ],
+                ['titulo', 'descricao', 'prioridade', 'status']
+            ),
+        ];
+    }
+
+    public function toolDefinition(string $name): ?array
+    {
+        foreach ($this->listTools() as $tool) {
+            if ($tool['name'] === $name) {
+                return $tool;
+            }
+        }
+
+        return null;
+    }
+
+    public function requiresConfirmation(string $name): bool
+    {
+        $tool = $this->toolDefinition($name);
+
+        return $tool !== null && $tool['risk'] !== self::RISK_READ;
+    }
+
+    public function call(string $name, array $payload = [], bool $dryRun = false): array
+    {
+        if (! $this->toolDefinition($name)) {
+            return [
+                'ok' => false,
+                'tool' => $name,
+                'error' => 'Ferramenta desconhecida.',
+                'available_tools' => array_column($this->listTools(), 'name'),
+            ];
+        }
+
+        try {
+            $result = match ($name) {
+                'context_snapshot' => $this->contextSnapshot(),
+                'dashboard_summary' => $this->dashboardSummary(),
+                'list_risks' => $this->listRisks($payload),
+                'list_policies' => $this->listPolicies($payload),
+                'list_tier_policies' => $this->listTierPolicies($payload),
+                'list_procedures' => $this->listProcedures($payload),
+                'list_incidents' => $this->listIncidents($payload),
+                'list_control_calendar' => $this->listControlCalendar($payload),
+                'create_risk' => $this->createRisk($payload, $dryRun),
+                'update_risk' => $this->updateRisk($payload, $dryRun),
+                'update_risk_status' => $this->updateRiskStatus($payload, $dryRun),
+                'create_policy' => $this->createPolicy($payload, $dryRun),
+                'update_policy' => $this->updatePolicy($payload, $dryRun),
+                'create_tier_policy' => $this->createTierPolicy($payload, $dryRun),
+                'update_tier_policy' => $this->updateTierPolicy($payload, $dryRun),
+                'create_procedure' => $this->createProcedure($payload, $dryRun),
+                'update_procedure' => $this->updateProcedure($payload, $dryRun),
+                'create_incident' => $this->createIncident($payload, $dryRun),
+                'update_incident' => $this->updateIncident($payload, $dryRun),
+                'create_control_event' => $this->createControlEvent($payload, $dryRun),
+                'update_control_event' => $this->updateControlEvent($payload, $dryRun),
+                'create_action_plan' => $this->createActionPlan($payload, $dryRun),
+            };
+
+            return [
+                'ok' => true,
+                'tool' => $name,
+                'dry_run' => $dryRun,
+                'result' => $result,
+            ];
+        } catch (ToolValidationException $exception) {
+            return [
+                'ok' => false,
+                'tool' => $name,
+                'dry_run' => $dryRun,
+                'error' => 'Payload invalido.',
+                'validation' => $exception->errors(),
+            ];
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return [
+                'ok' => false,
+                'tool' => $name,
+                'dry_run' => $dryRun,
+                'error' => $exception->getMessage(),
+            ];
+        }
+    }
+
+    protected function contextSnapshot(): array
+    {
+        return $this->contextService->buildDataContextArray();
+    }
+
+    protected function dashboardSummary(): array
+    {
+        $lgpdTotal = LgpdItem::count() ?: 1;
+        $lgpdConforme = LgpdItem::where('conforme', 'conforme')->count();
+
+        return [
+            'ativos' => [
+                'clientes' => Cliente::count(),
+                'softwares' => Software::count(),
+                'instancias' => InstanciaCliente::count(),
+            ],
+            'riscos' => [
+                'criticos_abertos' => Risco::where('criticidade', 'Critico')->where('status', '!=', 'fechado')->count(),
+                'altos_abertos' => Risco::where('criticidade', 'Alto')->where('status', '!=', 'fechado')->count(),
+                'total_abertos' => Risco::where('status', '!=', 'fechado')->count(),
+                'total' => Risco::count(),
+            ],
+            'incidentes' => [
+                'abertos' => Incidente::where('status', '!=', 'fechado')->count(),
+                'total' => Incidente::count(),
+            ],
+            'planos_acao' => [
+                'pendentes' => PlanoAcao::where('status', 'pendente')->count(),
+                'em_andamento' => PlanoAcao::where('status', 'em_andamento')->count(),
+                'concluidos' => PlanoAcao::where('status', 'concluida')->count(),
+                'total' => PlanoAcao::count(),
+            ],
+            'lgpd' => [
+                'total' => LgpdItem::count(),
+                'conforme' => $lgpdConforme,
+                'percentual' => round(($lgpdConforme / $lgpdTotal) * 100),
+            ],
+        ];
+    }
+
+    protected function listRisks(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
+            'criticidade' => ['nullable', 'in:Critico,Alto,Medio,Baixo'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = Risco::query()
+            ->with(['software:id,nome', 'cliente:id,nome'])
+            ->latest();
+
+        foreach (['status', 'criticidade', 'software_id', 'cliente_id'] as $field) {
+            if (! empty($data[$field])) {
+                $query->where($field, $data[$field]);
+            }
+        }
+
+        return $query
+            ->limit((int) ($data['limit'] ?? 20))
+            ->get()
+            ->map(fn (Risco $risco) => $this->riskPayload($risco))
+            ->values()
+            ->all();
+    }
+
+    protected function listPolicies(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'status' => ['nullable', 'string', 'max:100'],
+            'categoria' => ['nullable', 'string', 'max:255'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = Politica::query()->latest();
+        foreach (['status', 'categoria'] as $field) {
+            if (! empty($data[$field])) {
+                $query->where($field, $data[$field]);
+            }
+        }
+        if (! empty($data['search'])) {
+            $query->where(fn ($q) => $q
+                ->where('titulo', 'like', '%'.$data['search'].'%')
+                ->orWhere('conteudo', 'like', '%'.$data['search'].'%'));
+        }
+
+        return $query->limit((int) ($data['limit'] ?? 20))->get()
+            ->map(fn (Politica $politica) => $this->policyPayload($politica))->all();
+    }
+
+    protected function listTierPolicies(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'tier' => ['nullable', 'integer', 'in:1,2,3'],
+            'ativo' => ['nullable', 'boolean'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = TierPolitica::query()->orderBy('tier')->orderBy('id');
+        foreach (['tier', 'ativo'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== null) {
+                $query->where($field, $data[$field]);
+            }
+        }
+
+        return $query->limit((int) ($data['limit'] ?? 20))->get()
+            ->map(fn (TierPolitica $tier) => $this->tierPolicyPayload($tier))->all();
+    }
+
+    protected function listProcedures(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'status' => ['nullable', 'string', 'max:100'],
+            'tipo' => ['nullable', 'string', 'max:255'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = Procedimento::query()->with(['etapas' => fn ($q) => $q->orderBy('ordem')])->latest();
+        foreach (['status', 'tipo'] as $field) {
+            if (! empty($data[$field])) {
+                $query->where($field, $data[$field]);
+            }
+        }
+        if (! empty($data['search'])) {
+            $query->where('titulo', 'like', '%'.$data['search'].'%');
+        }
+
+        return $query->limit((int) ($data['limit'] ?? 20))->get()
+            ->map(fn (Procedimento $procedimento) => $this->procedurePayload($procedimento))->all();
+    }
+
+    protected function listIncidents(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'status' => ['nullable', 'in:'.implode(',', $this->incidentStatuses())],
+            'severidade' => ['nullable', 'in:Baixa,Media,Alta,Critica'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = Incidente::query()->with(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo'])->latest();
+        foreach (['status', 'severidade', 'software_id', 'cliente_id'] as $field) {
+            if (! empty($data[$field])) {
+                $query->where($field, $data[$field]);
+            }
+        }
+
+        return $query->limit((int) ($data['limit'] ?? 20))->get()
+            ->map(fn (Incidente $incidente) => $this->incidentPayload($incidente))->all();
+    }
+
+    protected function listControlCalendar(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'status' => ['nullable', 'in:'.implode(',', ControleEvento::STATUS_OPTIONS)],
+            'tier' => ['nullable', 'integer', 'in:1,2,3'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = ControleEvento::query()
+            ->with(['software:id,nome', 'risco:id,titulo,criticidade'])
+            ->orderBy('tier')
+            ->orderByRaw("CASE prioridade WHEN 'Critica' THEN 1 WHEN 'Crítica' THEN 1 WHEN 'Alta' THEN 2 WHEN 'Media' THEN 3 WHEN 'Média' THEN 3 WHEN 'Baixa' THEN 4 ELSE 5 END")
+            ->orderBy('data_prevista');
+
+        if (! empty($data['status'])) {
+            $query->where('status', $data['status']);
+        } else {
+            $query->whereNotIn('status', ['cancelado', 'dispensado']);
+        }
+
+        foreach (['tier', 'software_id'] as $field) {
+            if (! empty($data[$field])) {
+                $query->where($field, $data[$field]);
+            }
+        }
+
+        return $query
+            ->limit((int) ($data['limit'] ?? 20))
+            ->get()
+            ->map(fn (ControleEvento $evento) => $this->controlEventPayload($evento))
+            ->values()
+            ->all();
+    }
+
+    protected function createRisk(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string'],
+            'origem' => ['nullable', 'string', 'max:255'],
+            'ativo_afetado' => ['nullable', 'string', 'max:255'],
+            'probabilidade' => ['required', 'in:Alta,Media,Baixa'],
+            'impacto' => ['required', 'in:Alto,Medio,Baixo'],
+            'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
+            'plano_acao' => ['nullable', 'string'],
+            'responsavel' => ['required', 'string', 'max:255'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+        ]);
+
+        $data = array_merge([
+            'origem' => 'Tecnico',
+            'ativo_afetado' => '',
+            'status' => 'aberto',
+            'plano_acao' => '',
+        ], $data);
+        $data['criticidade'] = $this->calculateRiskCriticality($data['probabilidade'], $data['impacto']);
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        return $this->riskPayload(Risco::create($data)->load(['software:id,nome', 'cliente:id,nome']));
+    }
+
+    protected function updateRisk(array $payload, bool $dryRun): array
+    {
+        $rules = $this->riskValidationRules();
+        $rules['risk_id'] = ['required', 'integer', 'exists:riscos,id'];
+        $data = $this->validate($payload, $rules);
+        $risco = Risco::query()->findOrFail($data['risk_id']);
+        unset($data['risk_id']);
+        $this->requireChanges($data);
+
+        if (isset($data['probabilidade']) || isset($data['impacto'])) {
+            $data['criticidade'] = $this->calculateRiskCriticality(
+                $data['probabilidade'] ?? $risco->probabilidade,
+                $data['impacto'] ?? $risco->impacto
+            );
+        }
+
+        if ($dryRun) {
+            return ['would_update' => ['id' => $risco->id, 'changes' => $data]];
+        }
+
+        $risco->update($data);
+
+        return $this->riskPayload($risco->refresh()->load(['software:id,nome', 'cliente:id,nome']));
+    }
+
+    protected function updateRiskStatus(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'risk_id' => ['required', 'integer', 'exists:riscos,id'],
+            'status' => ['required', 'in:'.implode(',', $this->riskStatuses())],
+        ]);
+
+        $risco = Risco::query()->findOrFail($data['risk_id']);
+        $preview = [
+            'id' => $risco->id,
+            'titulo' => $risco->titulo,
+            'status_atual' => $risco->status,
+            'novo_status' => $data['status'],
+        ];
+
+        if ($dryRun) {
+            return ['would_update' => $preview];
+        }
+
+        $risco->update(['status' => $data['status']]);
+
+        return $this->riskPayload($risco->refresh()->load(['software:id,nome', 'cliente:id,nome']));
+    }
+
+    protected function createPolicy(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, $this->policyValidationRules(true));
+        $data = array_merge(['versao' => '1.0', 'status' => 'rascunho'], $data);
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        return $this->policyPayload(Politica::create($data));
+    }
+
+    protected function updatePolicy(array $payload, bool $dryRun): array
+    {
+        $rules = $this->policyValidationRules();
+        $rules['policy_id'] = ['required', 'integer', 'exists:politicas,id'];
+        $data = $this->validate($payload, $rules);
+        $politica = Politica::query()->findOrFail($data['policy_id']);
+        unset($data['policy_id']);
+        $this->requireChanges($data);
+
+        if ($dryRun) {
+            return ['would_update' => ['id' => $politica->id, 'changes' => $data]];
+        }
+
+        $politica->update($data);
+
+        return $this->policyPayload($politica->refresh());
+    }
+
+    protected function createTierPolicy(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, $this->tierPolicyValidationRules(true));
+        $data = array_merge(['ativo' => true, 'observacoes' => null], $data);
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        return $this->tierPolicyPayload(TierPolitica::create($data));
+    }
+
+    protected function updateTierPolicy(array $payload, bool $dryRun): array
+    {
+        $rules = $this->tierPolicyValidationRules();
+        $rules['tier_policy_id'] = ['required', 'integer', 'exists:tier_politicas,id'];
+        $data = $this->validate($payload, $rules);
+        $tier = TierPolitica::query()->findOrFail($data['tier_policy_id']);
+        unset($data['tier_policy_id']);
+        $this->requireChanges($data);
+
+        if ($dryRun) {
+            return ['would_update' => ['id' => $tier->id, 'changes' => $data]];
+        }
+
+        $tier->update($data);
+
+        return $this->tierPolicyPayload($tier->refresh());
+    }
+
+    protected function createProcedure(array $payload, bool $dryRun): array
+    {
+        $data = $this->validateProcedure($payload, true);
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        return DB::transaction(function () use ($data) {
+            $etapas = $data['etapas'];
+            unset($data['etapas']);
+            $procedimento = Procedimento::create($data);
+            $this->replaceProcedureSteps($procedimento, $etapas);
+
+            return $this->procedurePayload($procedimento->load('etapas'));
+        });
+    }
+
+    protected function updateProcedure(array $payload, bool $dryRun): array
+    {
+        $data = $this->validateProcedure($payload, false);
+        $procedimento = Procedimento::query()->findOrFail($data['procedure_id']);
+        unset($data['procedure_id']);
+        $this->requireChanges($data);
+
+        if ($dryRun) {
+            return ['would_update' => ['id' => $procedimento->id, 'changes' => $data]];
+        }
+
+        return DB::transaction(function () use ($procedimento, $data) {
+            $etapas = $data['etapas'] ?? null;
+            unset($data['etapas']);
+            $procedimento->update($data);
+            if ($etapas !== null) {
+                $this->replaceProcedureSteps($procedimento, $etapas);
+            }
+
+            return $this->procedurePayload($procedimento->refresh()->load('etapas'));
+        });
+    }
+
+    protected function createIncident(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string'],
+            'severidade' => ['required', 'in:Baixa,Media,Alta,Critica'],
+            'status' => ['required', 'in:'.implode(',', $this->incidentStatuses())],
+            'data_deteccao' => ['required', 'date'],
+            'detectado_por' => ['required', 'string', 'max:255'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
+            'licoes_aprendidas' => ['nullable', 'string'],
+        ]);
+
+        $data['licoes_aprendidas'] = $data['licoes_aprendidas'] ?? '';
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        return $this->incidentPayload(Incidente::create($data)
+            ->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']));
+    }
+
+    protected function updateIncident(array $payload, bool $dryRun): array
+    {
+        $rules = $this->incidentValidationRules();
+        $rules['incident_id'] = ['required', 'integer', 'exists:incidentes,id'];
+        $data = $this->validate($payload, $rules);
+        $incidente = Incidente::query()->findOrFail($data['incident_id']);
+        unset($data['incident_id']);
+        $this->requireChanges($data);
+
+        if ($dryRun) {
+            return ['would_update' => ['id' => $incidente->id, 'changes' => $data]];
+        }
+
+        $incidente->update($data);
+
+        return $this->incidentPayload($incidente->refresh()
+            ->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']));
+    }
+
+    protected function createControlEvent(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, $this->controlEventValidationRules(true));
+        $tier = TierPolitica::query()->findOrFail($data['tier_policy_id']);
+        $data = array_merge([
+            'tier_politica_id' => $data['tier_policy_id'],
+            'tier' => $tier->tier,
+            'acao_controle_snapshot' => $tier->acao_controle,
+            'frequencia_snapshot' => $tier->frequencia,
+            'sla_correcao_snapshot' => $tier->sla_correcao,
+            'bloqueio_automatico_snapshot' => $tier->bloqueio_automatico,
+            'responsavel_planejado' => $data['responsavel_planejado'] ?? $tier->responsavel,
+            'origem' => 'agent',
+            'prioridade' => 'Media',
+            'status' => 'pendente',
+        ], $data);
+        unset($data['tier_policy_id']);
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        return $this->controlEventPayload(ControleEvento::create($data)
+            ->load(['software:id,nome', 'risco:id,titulo,criticidade']));
+    }
+
+    protected function updateControlEvent(array $payload, bool $dryRun): array
+    {
+        $rules = $this->controlEventValidationRules();
+        $rules['control_event_id'] = ['required', 'integer', 'exists:controle_eventos,id'];
+        $data = $this->validate($payload, $rules);
+        $evento = ControleEvento::query()->findOrFail($data['control_event_id']);
+        unset($data['control_event_id']);
+        $this->requireChanges($data);
+
+        if (($data['status'] ?? null) === 'em_execucao' && ! $evento->iniciado_em) {
+            $data['iniciado_em'] = now();
+        }
+        if (($data['status'] ?? null) === 'concluido') {
+            $data['iniciado_em'] = $evento->iniciado_em ?: now();
+            $data['concluido_em'] = now();
+        }
+        if (($data['status'] ?? null) === 'pendente') {
+            $data['iniciado_em'] = null;
+            $data['concluido_em'] = null;
+        }
+
+        if ($dryRun) {
+            return ['would_update' => ['id' => $evento->id, 'changes' => $data]];
+        }
+
+        $evento->update($data);
+
+        return $this->controlEventPayload($evento->refresh()
+            ->load(['software:id,nome', 'risco:id,titulo,criticidade']));
+    }
+
+    protected function createActionPlan(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string'],
+            'responsavel' => ['nullable', 'string', 'max:255'],
+            'prioridade' => ['required', 'in:baixa,media,alta,critica'],
+            'status' => ['required', 'in:'.implode(',', $this->actionPlanStatuses())],
+            'origem' => ['nullable', 'string', 'max:255'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
+        ]);
+
+        $data = array_merge([
+            'responsavel' => '',
+            'origem' => 'Agent',
+        ], $data);
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        $plano = PlanoAcao::create($data)->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']);
+
+        return [
+            'id' => $plano->id,
+            'titulo' => $plano->titulo,
+            'prioridade' => $plano->prioridade,
+            'status' => $plano->status,
+            'responsavel' => $plano->responsavel,
+            'software' => $plano->software?->nome,
+            'cliente' => $plano->cliente?->nome,
+            'risco' => $plano->risco?->titulo,
+        ];
+    }
+
+    protected function riskInputSchema(): array
+    {
+        return [
+            'titulo' => ['type' => 'string'],
+            'descricao' => ['type' => 'string'],
+            'probabilidade' => ['type' => 'string', 'enum' => ['Alta', 'Media', 'Baixa']],
+            'impacto' => ['type' => 'string', 'enum' => ['Alto', 'Medio', 'Baixo']],
+            'responsavel' => ['type' => 'string'],
+            'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
+            'origem' => ['type' => 'string'],
+            'ativo_afetado' => ['type' => 'string'],
+            'politica_ref' => ['type' => 'string'],
+            'procedimento_ref' => ['type' => 'string'],
+            'plano_acao' => ['type' => 'string'],
+            'software_id' => ['type' => 'integer'],
+            'cliente_id' => ['type' => 'integer'],
+        ];
+    }
+
+    protected function policyInputSchema(): array
+    {
+        return [
+            'titulo' => ['type' => 'string'],
+            'categoria' => ['type' => 'string'],
+            'versao' => ['type' => 'string'],
+            'status' => ['type' => 'string'],
+            'conteudo' => ['type' => 'string'],
+        ];
+    }
+
+    protected function tierPolicyInputSchema(): array
+    {
+        return [
+            'tier' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+            'acao_controle' => ['type' => 'string'],
+            'frequencia' => ['type' => 'string'],
+            'sla_correcao' => ['type' => 'string'],
+            'bloqueio_automatico' => ['type' => 'boolean'],
+            'ativo' => ['type' => 'boolean'],
+            'responsavel' => ['type' => 'string'],
+            'observacoes' => ['type' => 'string'],
+        ];
+    }
+
+    protected function procedureInputSchema(): array
+    {
+        return [
+            'titulo' => ['type' => 'string'],
+            'tipo' => ['type' => 'string'],
+            'status' => ['type' => 'string'],
+            'etapas' => [
+                'type' => 'array',
+                'minItems' => 1,
+                'items' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'nome_etapa' => ['type' => 'string'],
+                        'responsavel' => ['type' => 'string'],
+                        'descricao' => ['type' => 'string'],
+                        'sla' => ['type' => 'string'],
+                    ],
+                    'required' => ['nome_etapa', 'descricao'],
+                    'additionalProperties' => false,
+                ],
+            ],
+        ];
+    }
+
+    protected function incidentInputSchema(): array
+    {
+        return [
+            'titulo' => ['type' => 'string'],
+            'descricao' => ['type' => 'string'],
+            'severidade' => ['type' => 'string', 'enum' => ['Baixa', 'Media', 'Alta', 'Critica']],
+            'status' => ['type' => 'string', 'enum' => $this->incidentStatuses()],
+            'data_deteccao' => ['type' => 'string', 'format' => 'date'],
+            'detectado_por' => ['type' => 'string'],
+            'licoes_aprendidas' => ['type' => 'string'],
+            'software_id' => ['type' => 'integer'],
+            'cliente_id' => ['type' => 'integer'],
+            'risco_id' => ['type' => 'integer'],
+        ];
+    }
+
+    protected function controlEventInputSchema(): array
+    {
+        return [
+            'software_id' => ['type' => 'integer'],
+            'tier_policy_id' => ['type' => 'integer'],
+            'risco_id' => ['type' => 'integer'],
+            'periodo_referencia' => ['type' => 'string'],
+            'data_prevista' => ['type' => 'string', 'format' => 'date'],
+            'data_limite' => ['type' => 'string', 'format' => 'date'],
+            'prioridade' => ['type' => 'string', 'enum' => ['Baixa', 'Media', 'Alta', 'Critica']],
+            'status' => ['type' => 'string', 'enum' => ControleEvento::STATUS_OPTIONS],
+            'responsavel_planejado' => ['type' => 'string'],
+            'observacoes_geracao' => ['type' => 'string'],
+        ];
+    }
+
+    protected function tool(
+        string $name,
+        string $description,
+        string $risk,
+        array $properties = [],
+        array $required = []
+    ): array {
+        return [
+            'name' => $name,
+            'description' => $description,
+            'risk' => $risk,
+            'input_schema' => [
+                'type' => 'object',
+                'properties' => $properties,
+                'required' => $required,
+                'additionalProperties' => false,
+            ],
+        ];
+    }
+
+    protected function riskValidationRules(): array
+    {
+        return [
+            'titulo' => ['nullable', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string'],
+            'origem' => ['nullable', 'string', 'max:255'],
+            'ativo_afetado' => ['nullable', 'string', 'max:255'],
+            'probabilidade' => ['nullable', 'in:Alta,Media,Baixa'],
+            'impacto' => ['nullable', 'in:Alto,Medio,Baixo'],
+            'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
+            'politica_ref' => ['nullable', 'string', 'max:255'],
+            'procedimento_ref' => ['nullable', 'string', 'max:255'],
+            'plano_acao' => ['nullable', 'string'],
+            'responsavel' => ['nullable', 'string', 'max:255'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+        ];
+    }
+
+    protected function policyValidationRules(bool $creating = false): array
+    {
+        return [
+            'titulo' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'categoria' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'versao' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'string', 'max:100'],
+            'conteudo' => [$creating ? 'required' : 'nullable', 'string'],
+        ];
+    }
+
+    protected function tierPolicyValidationRules(bool $creating = false): array
+    {
+        return [
+            'tier' => [$creating ? 'required' : 'nullable', 'integer', 'in:1,2,3'],
+            'acao_controle' => [$creating ? 'required' : 'nullable', 'string', 'max:1000'],
+            'frequencia' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'sla_correcao' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'bloqueio_automatico' => [$creating ? 'required' : 'nullable', 'boolean'],
+            'ativo' => ['nullable', 'boolean'],
+            'responsavel' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'observacoes' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    protected function incidentValidationRules(bool $creating = false): array
+    {
+        return [
+            'titulo' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'descricao' => [$creating ? 'required' : 'nullable', 'string'],
+            'severidade' => [$creating ? 'required' : 'nullable', 'in:Baixa,Media,Alta,Critica'],
+            'status' => [$creating ? 'required' : 'nullable', 'in:'.implode(',', $this->incidentStatuses())],
+            'data_deteccao' => [$creating ? 'required' : 'nullable', 'date'],
+            'detectado_por' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
+            'licoes_aprendidas' => ['nullable', 'string'],
+        ];
+    }
+
+    protected function controlEventValidationRules(bool $creating = false): array
+    {
+        if (! $creating) {
+            return [
+                'status' => ['nullable', 'in:'.implode(',', ControleEvento::STATUS_OPTIONS)],
+                'data_prevista' => ['nullable', 'date'],
+                'data_limite' => ['nullable', 'date'],
+                'observacoes_execucao' => ['nullable', 'string', 'max:1000'],
+            ];
+        }
+
+        return [
+            'software_id' => ['required', 'integer', 'exists:software,id'],
+            'tier_policy_id' => ['required', 'integer', 'exists:tier_politicas,id'],
+            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
+            'periodo_referencia' => ['required', 'string', 'max:255'],
+            'data_prevista' => ['required', 'date'],
+            'data_limite' => ['nullable', 'date'],
+            'prioridade' => ['nullable', 'in:Baixa,Media,Alta,Critica'],
+            'status' => ['nullable', 'in:'.implode(',', ControleEvento::STATUS_OPTIONS)],
+            'responsavel_planejado' => ['nullable', 'string', 'max:255'],
+            'observacoes_geracao' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    protected function validateProcedure(array $payload, bool $creating): array
+    {
+        $rules = [
+            'titulo' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'tipo' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
+            'status' => [$creating ? 'required' : 'nullable', 'string', 'max:100'],
+            'etapas' => [$creating ? 'required' : 'nullable', 'array'],
+        ];
+        if (! $creating) {
+            $rules['procedure_id'] = ['required', 'integer', 'exists:procedimentos,id'];
+        }
+        $data = $this->validate($payload, $rules);
+
+        if (array_key_exists('etapas', $data) && $data['etapas'] !== null) {
+            if ($data['etapas'] === []) {
+                throw new ToolValidationException(['etapas' => ['Informe ao menos uma etapa.']]);
+            }
+            $data['etapas'] = array_values(array_map(
+                fn ($etapa) => $this->validate(is_array($etapa) ? $etapa : [], [
+                    'nome_etapa' => ['required', 'string', 'max:255'],
+                    'responsavel' => ['nullable', 'string', 'max:255'],
+                    'descricao' => ['required', 'string'],
+                    'sla' => ['nullable', 'string', 'max:255'],
+                ]),
+                $data['etapas']
+            ));
+        }
+
+        return $data;
+    }
+
+    protected function requireChanges(array $data): void
+    {
+        if ($data === []) {
+            throw new ToolValidationException(['changes' => ['Informe ao menos um campo para atualizar.']]);
+        }
+    }
+
+    protected function replaceProcedureSteps(Procedimento $procedimento, array $etapas): void
+    {
+        $procedimento->etapas()->delete();
+        foreach ($etapas as $index => $etapa) {
+            $procedimento->etapas()->create(array_merge([
+                'ordem' => $index + 1,
+                'responsavel' => '',
+                'sla' => '',
+            ], $etapa));
+        }
+    }
+
+    protected function validate(array $payload, array $rules): array
+    {
+        $errors = [];
+        $validated = [];
+        $allowedFields = array_keys($rules);
+
+        foreach (array_diff(array_keys($payload), $allowedFields) as $field) {
+            $errors[$field][] = 'Campo nao permitido.';
+        }
+
+        foreach ($rules as $field => $fieldRules) {
+            $fieldRules = array_map('strval', $fieldRules);
+            $exists = array_key_exists($field, $payload);
+            $value = $payload[$field] ?? null;
+            $nullable = in_array('nullable', $fieldRules, true);
+            $required = in_array('required', $fieldRules, true);
+
+            if (! $exists || $value === null || $value === '') {
+                if ($required) {
+                    $errors[$field][] = 'Campo obrigatorio.';
+                }
+
+                if ($exists && $nullable) {
+                    $validated[$field] = null;
+                }
+
+                continue;
+            }
+
+            foreach ($fieldRules as $rule) {
+                if (in_array($rule, ['required', 'nullable'], true)) {
+                    continue;
+                }
+
+                if ($rule === 'string') {
+                    if (! is_string($value) && ! is_numeric($value)) {
+                        $errors[$field][] = 'Deve ser texto.';
+
+                        continue;
+                    }
+
+                    $value = (string) $value;
+
+                    continue;
+                }
+
+                if ($rule === 'integer') {
+                    if (filter_var($value, FILTER_VALIDATE_INT) === false) {
+                        $errors[$field][] = 'Deve ser inteiro.';
+
+                        continue;
+                    }
+
+                    $value = (int) $value;
+
+                    continue;
+                }
+
+                if ($rule === 'boolean') {
+                    if (! is_bool($value) && ! in_array($value, [0, 1, '0', '1'], true)) {
+                        $errors[$field][] = 'Deve ser booleano.';
+
+                        continue;
+                    }
+
+                    $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+
+                    continue;
+                }
+
+                if ($rule === 'array') {
+                    if (! is_array($value) || ! array_is_list($value)) {
+                        $errors[$field][] = 'Deve ser uma lista.';
+                    }
+
+                    continue;
+                }
+
+                if ($rule === 'date') {
+                    if (strtotime((string) $value) === false) {
+                        $errors[$field][] = 'Deve ser uma data valida.';
+                    }
+
+                    continue;
+                }
+
+                if (str_starts_with($rule, 'max:')) {
+                    $max = (int) substr($rule, 4);
+                    if (is_string($value) && strlen($value) > $max) {
+                        $errors[$field][] = "Deve ter no maximo {$max} caracteres.";
+                    }
+
+                    continue;
+                }
+
+                if (str_starts_with($rule, 'min:')) {
+                    $min = (int) substr($rule, 4);
+                    if (is_numeric($value) && (int) $value < $min) {
+                        $errors[$field][] = "Deve ser no minimo {$min}.";
+                    }
+
+                    continue;
+                }
+
+                if (str_starts_with($rule, 'in:')) {
+                    $allowed = explode(',', substr($rule, 3));
+                    if (! in_array((string) $value, $allowed, true)) {
+                        $errors[$field][] = 'Valor fora da lista permitida: '.implode(', ', $allowed).'.';
+                    }
+
+                    continue;
+                }
+
+                if (str_starts_with($rule, 'exists:')) {
+                    [$table, $column] = array_pad(explode(',', substr($rule, 7), 2), 2, 'id');
+                    if (! DB::table($table)->where($column, $value)->exists()) {
+                        $errors[$field][] = "Registro nao encontrado em {$table}.";
+                    }
+                }
+            }
+
+            $validated[$field] = $value;
+        }
+
+        if (! empty($errors)) {
+            throw new ToolValidationException($errors);
+        }
+
+        return $validated;
+    }
+
+    protected function riskPayload(Risco $risco): array
+    {
+        return [
+            'id' => $risco->id,
+            'titulo' => $risco->titulo,
+            'criticidade' => $risco->criticidade,
+            'probabilidade' => $risco->probabilidade,
+            'impacto' => $risco->impacto,
+            'status' => $risco->status,
+            'responsavel' => $risco->responsavel,
+            'software' => $risco->software?->nome,
+            'cliente' => $risco->cliente?->nome,
+            'updated_at' => optional($risco->updated_at)->toDateTimeString(),
+        ];
+    }
+
+    protected function policyPayload(Politica $politica): array
+    {
+        return [
+            'id' => $politica->id,
+            'titulo' => $politica->titulo,
+            'categoria' => $politica->categoria,
+            'versao' => $politica->versao,
+            'status' => $politica->status,
+            'conteudo' => $politica->conteudo,
+            'updated_at' => optional($politica->updated_at)->toDateTimeString(),
+        ];
+    }
+
+    protected function tierPolicyPayload(TierPolitica $tier): array
+    {
+        return [
+            'id' => $tier->id,
+            'tier' => $tier->tier,
+            'acao_controle' => $tier->acao_controle,
+            'frequencia' => $tier->frequencia,
+            'sla_correcao' => $tier->sla_correcao,
+            'bloqueio_automatico' => $tier->bloqueio_automatico,
+            'ativo' => $tier->ativo,
+            'responsavel' => $tier->responsavel,
+            'observacoes' => $tier->observacoes,
+        ];
+    }
+
+    protected function procedurePayload(Procedimento $procedimento): array
+    {
+        return [
+            'id' => $procedimento->id,
+            'titulo' => $procedimento->titulo,
+            'tipo' => $procedimento->tipo,
+            'status' => $procedimento->status,
+            'etapas' => $procedimento->etapas->sortBy('ordem')->values()->map(fn ($etapa) => [
+                'id' => $etapa->id,
+                'ordem' => $etapa->ordem,
+                'nome_etapa' => $etapa->nome_etapa,
+                'responsavel' => $etapa->responsavel,
+                'descricao' => $etapa->descricao,
+                'sla' => $etapa->sla,
+            ])->all(),
+            'updated_at' => optional($procedimento->updated_at)->toDateTimeString(),
+        ];
+    }
+
+    protected function incidentPayload(Incidente $incidente): array
+    {
+        return [
+            'id' => $incidente->id,
+            'titulo' => $incidente->titulo,
+            'descricao' => $incidente->descricao,
+            'severidade' => $incidente->severidade,
+            'status' => $incidente->status,
+            'data_deteccao' => $incidente->data_deteccao,
+            'detectado_por' => $incidente->detectado_por,
+            'licoes_aprendidas' => $incidente->licoes_aprendidas,
+            'software' => $incidente->software?->nome,
+            'cliente' => $incidente->cliente?->nome,
+            'risco' => $incidente->risco?->titulo,
+            'updated_at' => optional($incidente->updated_at)->toDateTimeString(),
+        ];
+    }
+
+    protected function controlEventPayload(ControleEvento $evento): array
+    {
+        return [
+            'id' => $evento->id,
+            'software' => $evento->software?->nome,
+            'tier' => $evento->tier,
+            'acao' => $evento->acao_controle_snapshot,
+            'responsavel' => $evento->responsavel_planejado,
+            'periodo_referencia' => $evento->periodo_referencia,
+            'data_prevista' => optional($evento->data_prevista)->format('Y-m-d'),
+            'data_limite' => optional($evento->data_limite)->format('Y-m-d'),
+            'prioridade' => $evento->prioridade,
+            'status' => $evento->status,
+            'observacoes_execucao' => $evento->observacoes_execucao,
+            'risco' => $evento->risco ? [
+                'id' => $evento->risco->id,
+                'titulo' => $evento->risco->titulo,
+                'criticidade' => $evento->risco->criticidade,
+            ] : null,
+        ];
+    }
+
+    protected function calculateRiskCriticality(string $probabilidade, string $impacto): string
+    {
+        $matrix = [
+            'Alta' => ['Alto' => 'Critico', 'Medio' => 'Alto', 'Baixo' => 'Medio'],
+            'Media' => ['Alto' => 'Alto', 'Medio' => 'Medio', 'Baixo' => 'Baixo'],
+            'Baixa' => ['Alto' => 'Medio', 'Medio' => 'Baixo', 'Baixo' => 'Baixo'],
+        ];
+
+        return $matrix[$probabilidade][$impacto] ?? 'Medio';
+    }
+
+    protected function riskStatuses(): array
+    {
+        return ['aberto', 'em_tratamento', 'monitorando', 'fechado'];
+    }
+
+    protected function incidentStatuses(): array
+    {
+        return ['aberto', 'contencao', 'erradicacao', 'recuperacao', 'fechado'];
+    }
+
+    protected function actionPlanStatuses(): array
+    {
+        return ['pendente', 'em_andamento', 'concluida'];
+    }
+}

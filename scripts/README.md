@@ -4,6 +4,13 @@ Esta pasta contém scripts úteis para testes, administração local e depuraç�
 
 ## Lista de Scripts
 
+### 0. Diagnóstico e Subida do Stack (`grc_stack_status.sh`)
+Script operacional para validar e subir o stack local do GRC, garantir tokens MCP, reiniciar o Host Agent, testar os endpoints MCP HTTP e, quando o `ngrok` estiver autenticado, abrir os túneis públicos e imprimir as URLs finais com credenciais e instruções de conexão.
+**Uso:**
+```bash
+./scripts/grc_stack_status.sh
+```
+
 ### 1. Popular Dados de Teste (`popular_banco.py`)
 Script que preenche o banco de dados `grc.db` com dados fictícios de ponta a ponta (clientes, instâncias, incidentes, treinamentos, avaliações LGPD e planos de ação) para demonstrar as volumetrias do dashboard.
 **Uso:**
