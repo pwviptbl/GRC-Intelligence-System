@@ -151,6 +151,10 @@
             :class="{ 'active': view.includes('tier_politicas') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">📐</span> Tiers
           </a>
+          <a href="{{ route('atividades.index') }}" class="nav-btn submenu"
+            :class="{ 'active': view.includes('atividades') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🧩</span> Atividades
+          </a>
           <a href="{{ route('procedimentos.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('procedimentos') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔄</span> Procedimentos

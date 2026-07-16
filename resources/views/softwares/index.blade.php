@@ -13,6 +13,7 @@
         id: '', 
         nome: '', 
         tecnologia: '', 
+        ativo: '1',
         git_url: '',
         exposicao_nivel: '',
         exposicao_detalhe: '',
@@ -31,12 +32,18 @@
         return 'background:rgba(255,255,255,.05);color:var(--text-3);border-color:rgba(255,255,255,.08)';
     },
 
+    statusStyle(active) {
+        if (active) return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
+        return 'background:rgba(255,255,255,.05);color:var(--text-3);border-color:rgba(255,255,255,.08)';
+    },
+
     openCreate() {
         this.editMode = false;
         this.form = { 
             id: '', 
             nome: '', 
             tecnologia: '', 
+            ativo: '1',
             git_url: '',
             exposicao_nivel: '',
             exposicao_detalhe: '',
@@ -57,7 +64,7 @@
         }
 
         this.editMode = true;
-        this.form = { ...s };
+        this.form = { ...s, ativo: s.ativo ? '1' : '0' };
         this.formAction = `/softwares/${s.id}`;
         this.showModal = true;
     }
@@ -84,6 +91,14 @@
         <div class="stat-card c2">
             <div class="stat-label">Total de Softwares</div>
             <div class="stat-value">{{ $softwares->count() }}</div>
+        </div>
+        <div class="stat-card" style="background:rgba(0,255,159,.06); border:1px solid rgba(0,255,159,.12);">
+            <div class="stat-label">Ativos</div>
+            <div class="stat-value" style="color:var(--green)">{{ $softwares->where('ativo', true)->count() }}</div>
+        </div>
+        <div class="stat-card" style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);">
+            <div class="stat-label">Desativados</div>
+            <div class="stat-value" style="color:var(--text-3)">{{ $softwares->where('ativo', false)->count() }}</div>
         </div>
         <div class="stat-card" style="background:rgba(255,83,112,.06); border:1px solid rgba(255,83,112,.12);">
             <div class="stat-label">Classificação Alta</div>
@@ -117,6 +132,7 @@
                     <th>#</th>
                     <th>Nome</th>
                     <th>Tecnologia</th>
+                    <th>Status</th>
                     <th>Classificação</th>
                     <th>Exposição</th>
                     <th>Dados</th>
@@ -140,6 +156,7 @@
                             <span style="color:var(--text-3)">—</span>
                         @endif
                     </td>
+                    <td><span class="badge" :style="statusStyle({{ $s->ativo ? 'true' : 'false' }})">{{ $s->ativo_label }}</span></td>
                     <td>
                         <span class="badge" :style="classificationStyle('{{ $s->classificacao_nivel }}')">{{ $s->classificacao_label }}</span>
                     </td>
@@ -174,7 +191,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ in_array(auth()->user()->role, ['admin', 'governanca']) ? 10 : 9 }}">
+                    <td colspan="{{ in_array(auth()->user()->role, ['admin', 'governanca']) ? 11 : 10 }}">
                         <div class="empty-state">
                             <div class="empty-icon">💾</div>
                             <p>Nenhum software cadastrado ainda.</p>
@@ -203,6 +220,13 @@
                 <div class="form-group">
                     <label>Tecnologia</label>
                     <input type="text" name="tecnologia" x-model="form.tecnologia" class="form-input" placeholder="Ex: PHP / Laravel" />
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="ativo" x-model="form.ativo" class="form-select" required>
+                        <option value="1">Ativo</option>
+                        <option value="0">Desativado</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>URL Git</label>

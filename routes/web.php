@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\CalendarioControleController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClienteController;
@@ -60,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/softwares/export', [SoftwareController::class, 'print'])->name('softwares.export');
         Route::get('/tier_politicas', [TierPoliticaController::class, 'index'])->name('tier_politicas.index');
         Route::get('/tier_politicas/export/all', [TierPoliticaController::class, 'printAll'])->name('tier_politicas.export.all');
+        Route::get('/atividades', [AtividadeController::class, 'index'])->name('atividades.index');
 
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
@@ -76,6 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('clientes', ClienteController::class)->except(['index']);
         Route::resource('softwares', SoftwareController::class)->except(['index']);
         Route::resource('tier_politicas', TierPoliticaController::class)->except(['index']);
+        Route::resource('atividades', AtividadeController::class)->except(['index', 'create', 'show', 'edit']);
         Route::resource('instancias', InstanciaClienteController::class)->except(['index']);
         Route::resource('politicas', PoliticaController::class)->except(['index']);
         Route::resource('procedimentos', ProcedimentoController::class)->except(['index']);
@@ -97,6 +100,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
         Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
         Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
+        Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');
+        Route::post('/calendario_controles/plan-triaged', [CalendarioControleController::class, 'planTriaged'])->name('calendario_controles.plan_triaged');
+        Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->name('calendario_controles.discard_suggestions');
         Route::patch('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
         Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->name('calendario_controles.destroy');
         Route::get('/plano_acoes/export/all', [PlanoAcaoController::class, 'printAll'])->name('plano_acoes.export.all');

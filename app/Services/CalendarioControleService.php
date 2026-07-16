@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Atividade;
 use App\Models\ControleEvento;
 use App\Models\Risco;
 use App\Models\Software;
@@ -11,10 +12,11 @@ use Illuminate\Support\Facades\DB;
 
 class CalendarioControleService
 {
-    public function generate(array $filters = []): array
+    public function generateSuggestions(array $filters = []): array
     {
-        $rescheduled = $this->rescheduleOpenBacklog($filters);
-        $softwareQuery = Software::query()->orderBy('nome');
+        $softwareQuery = Software::query()
+            ->where('ativo', true)
+            ->orderBy('nome');
 
         if (!empty($filters['software_id'])) {
             $softwareQuery->whereKey($filters['software_id']);
@@ -53,6 +55,30 @@ class CalendarioControleService
                 }
 
                 $risk = $this->resolveRelevantRisk($software);
+                $baselinePolicy = $policies->first();
+                $activities = $this->resolveApplicableActivities($software, $tier);
+
+                if ($activities->isNotEmpty()) {
+                    foreach ($activities as $activity) {
+                        $neverTested = !ControleEvento::query()
+                            ->where('software_id', $software->id)
+                            ->where('atividade_id', $activity->id)
+                            ->where('status', 'concluido')
+                            ->exists();
+
+                        $candidates[] = [
+                            'software' => $software,
+                            'policy' => $baselinePolicy,
+                            'activity' => $activity,
+                            'risk' => $risk,
+                            'tier' => $tier,
+                            'never_tested' => $neverTested,
+                            'weight' => $this->priorityWeight($tier, $risk, $neverTested),
+                        ];
+                    }
+
+                    continue;
+                }
 
                 foreach ($policies as $policy) {
                     if ($policy->bloqueio_automatico) {
@@ -70,6 +96,7 @@ class CalendarioControleService
                     $candidates[] = [
                         'software'     => $software,
                         'policy'       => $policy,
+                        'activity'     => null,
                         'risk'         => $risk,
                         'tier'         => $tier,
                         'never_tested' => $neverTested,
@@ -112,6 +139,8 @@ class CalendarioControleService
                 $software = $candidate['software'];
                 /** @var TierPolitica $policy */
                 $policy   = $candidate['policy'];
+                /** @var Atividade|null $activity */
+                $activity = $candidate['activity'];
                 /** @var Risco|null $risk */
                 $risk        = $candidate['risk'];
                 $tier        = $candidate['tier'];
@@ -119,20 +148,51 @@ class CalendarioControleService
 
                 // BUG #4 FIX: counter separado por tier+frequência para que
                 // Tier 1 ocupe as datas mais próximas, Tier 2 as seguintes, etc.
-                $frequencyKey = $this->frequencyKey($policy->frequencia);
+                $frequencySource = $activity?->frequencia_sugerida ?: $policy->frequencia;
+                $frequencyKey = $this->frequencyKey($frequencySource);
                 $counterKey   = "t{$tier}:{$frequencyKey}";
                 $sequence     = $frequencyCounters[$counterKey] ?? 0;
                 $frequencyCounters[$counterKey] = $sequence + 1;
 
-                $schedule = $this->buildScheduleWindow($policy->frequencia, $sequence);
+                $schedule = $this->buildScheduleWindow($frequencySource, $sequence);
 
-                $existing = ControleEvento::query()
-                    ->where('software_id', $software->id)
-                    ->where('tier_politica_id', $policy->id)
-                    ->where('periodo_referencia', $schedule['periodo_referencia'])
-                    ->first();
+                $existing = $this->resolveExistingEvent($software, $policy, $activity, $schedule['periodo_referencia']);
 
                 if ($existing) {
+                    if (in_array($existing->status, ['dispensado', 'cancelado'], true)) {
+                        $existing->update([
+                            'atividade_id' => $activity?->id,
+                            'risco_id' => $risk?->id,
+                            'tier' => $tier,
+                            'acao_controle_snapshot' => $activity?->atividade ?: $policy->acao_controle,
+                            'frequencia_snapshot' => $frequencySource,
+                            'sla_correcao_snapshot' => $activity?->sla_sugerido ?: $policy->sla_correcao,
+                            'bloqueio_automatico_snapshot' => $policy->bloqueio_automatico,
+                            'responsavel_planejado' => $activity?->responsavel_padrao ?: $policy->responsavel,
+                            'modulo' => $activity?->modulo,
+                            'categoria' => $activity?->categoria,
+                            'rotina' => $activity?->rotina,
+                            'esforco' => $activity?->esforco ?: $this->defaultEffortForFrequency($frequencySource),
+                            'tipo_demanda' => $activity?->tipo_demanda,
+                            'score_impacto' => null,
+                            'score_exposicao' => null,
+                            'score_confianca' => null,
+                            'triagem_observacoes' => null,
+                            'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity),
+                            'origem' => $activity ? 'atividade+tier' : ($risk ? 'tier+risk' : 'tier'),
+                            'data_prevista' => $schedule['data_prevista'],
+                            'data_limite' => $this->resolveDeadline($activity?->sla_sugerido ?: $policy->sla_correcao, $schedule['data_prevista']),
+                            'prioridade' => $this->resolvePriority($tier, $risk),
+                            'status' => 'sugestao',
+                            'iniciado_em' => null,
+                            'concluido_em' => null,
+                            'observacoes_execucao' => null,
+                        ]);
+
+                        $created++;
+                        continue;
+                    }
+
                     $skipped++;
                     continue;
                 }
@@ -140,20 +200,26 @@ class CalendarioControleService
                 ControleEvento::create([
                     'software_id' => $software->id,
                     'tier_politica_id' => $policy->id,
+                    'atividade_id' => $activity?->id,
                     'risco_id' => $risk?->id,
                     'tier' => $tier,
-                    'acao_controle_snapshot' => $policy->acao_controle,
-                    'frequencia_snapshot' => $policy->frequencia,
-                    'sla_correcao_snapshot' => $policy->sla_correcao,
+                    'acao_controle_snapshot' => $activity?->atividade ?: $policy->acao_controle,
+                    'frequencia_snapshot' => $frequencySource,
+                    'sla_correcao_snapshot' => $activity?->sla_sugerido ?: $policy->sla_correcao,
                     'bloqueio_automatico_snapshot' => $policy->bloqueio_automatico,
-                    'responsavel_planejado' => $policy->responsavel,
-                    'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested),
-                    'origem' => $risk ? 'tier+risk' : 'tier',
+                    'responsavel_planejado' => $activity?->responsavel_padrao ?: $policy->responsavel,
+                    'modulo' => $activity?->modulo,
+                    'categoria' => $activity?->categoria,
+                    'rotina' => $activity?->rotina,
+                    'esforco' => $activity?->esforco ?: $this->defaultEffortForFrequency($frequencySource),
+                    'tipo_demanda' => $activity?->tipo_demanda,
+                    'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity),
+                    'origem' => $activity ? 'atividade+tier' : ($risk ? 'tier+risk' : 'tier'),
                     'periodo_referencia' => $schedule['periodo_referencia'],
                     'data_prevista' => $schedule['data_prevista'],
-                    'data_limite' => $this->resolveDeadline($policy->sla_correcao, $schedule['data_prevista']),
+                    'data_limite' => $this->resolveDeadline($activity?->sla_sugerido ?: $policy->sla_correcao, $schedule['data_prevista']),
                     'prioridade' => $this->resolvePriority($tier, $risk),
-                    'status' => 'pendente',
+                    'status' => 'sugestao',
                 ]);
 
                 $created++;
@@ -169,16 +235,73 @@ class CalendarioControleService
             'skipped' => $skipped,
             'prioritized' => $prioritized,
             'automatic' => $automatic,
-            'rescheduled' => $rescheduled,
             'messages' => $messages,
         ];
+    }
+
+    public function generate(array $filters = []): array
+    {
+        return $this->generateSuggestions($filters);
+    }
+
+    public function approveSuggestions(array $ids): int
+    {
+        return ControleEvento::query()
+            ->whereIn('id', $ids)
+            ->where('status', 'sugestao')
+            ->update(['status' => 'triagem']);
+    }
+
+    public function planTriaged(array $ids): int
+    {
+        $planned = 0;
+
+        ControleEvento::query()
+            ->whereIn('id', $ids)
+            ->where('status', 'triagem')
+            ->orderByDesc('score_impacto')
+            ->orderByDesc('score_exposicao')
+            ->orderByDesc('score_confianca')
+            ->get()
+            ->each(function (ControleEvento $evento) use (&$planned) {
+                if (! $this->isTriageReady($evento)) {
+                    return;
+                }
+
+                $evento->update([
+                    'status' => $evento->data_prevista && $evento->data_prevista->isPast()
+                        ? 'atrasado'
+                        : 'planejado',
+                ]);
+
+                $planned++;
+            });
+
+        return $planned;
+    }
+
+    public function discardSuggestions(array $ids): int
+    {
+        return ControleEvento::query()
+            ->whereIn('id', $ids)
+            ->whereIn('status', ['sugestao', 'triagem'])
+            ->update([
+                'status' => 'dispensado',
+                'observacoes_execucao' => DB::raw(
+                    "CASE
+                        WHEN observacoes_execucao IS NULL OR observacoes_execucao = ''
+                            THEN 'Sugestao dispensada na revisao.'
+                        ELSE observacoes_execucao || '\nSugestao dispensada na revisao.'
+                    END"
+                ),
+            ]);
     }
 
     public function updateOverdueStatuses(): void
     {
         ControleEvento::query()
             // Apenas eventos que ainda não foram iniciados
-            ->where('status', 'pendente')
+            ->whereIn('status', ['planejado', 'pendente'])
             ->whereNull('iniciado_em')
             ->whereDate('data_prevista', '<', now()->toDateString())
             ->update(['status' => 'atrasado']);
@@ -264,11 +387,18 @@ class CalendarioControleService
         return $tierWeight + $virginBoost + $riskWeight;
     }
 
-    protected function buildGenerationNotes(Software $software, ?Risco $risk, bool $neverTested = false): string
+    protected function buildGenerationNotes(Software $software, ?Risco $risk, bool $neverTested = false, ?Atividade $activity = null): string
     {
         $notes = [
             "Classificacao do software: {$software->classificacao_label}",
         ];
+
+        if ($activity) {
+            $notes[] = 'Atividade aplicada: ' . $activity->atividade;
+            $notes[] = 'Escopo sugerido: ' . $activity->scope_label;
+        } else {
+            $notes[] = 'Escopo ainda nao detalhado em modulo/categoria/rotina.';
+        }
 
         if ($neverTested) {
             $notes[] = "⚠️ PRIMEIRA EXECUCAO — este software nunca teve esta acao concluida anteriormente.";
@@ -279,6 +409,51 @@ class CalendarioControleService
         }
 
         return implode("\n", $notes);
+    }
+
+    protected function resolveApplicableActivities(Software $software, int $tier)
+    {
+        return Atividade::query()
+            ->where('ativo', true)
+            ->where('tier_minimo', '>=', $tier)
+            ->where(function ($query) use ($software) {
+                $query->whereNull('software_id')
+                    ->orWhere('software_id', $software->id);
+            })
+            ->orderByRaw('CASE WHEN software_id IS NULL THEN 1 ELSE 0 END')
+            ->orderByRaw("CASE WHEN rotina IS NULL OR rotina = '' THEN 1 ELSE 0 END")
+            ->orderByRaw("CASE WHEN modulo IS NULL OR modulo = '' THEN 1 ELSE 0 END")
+            ->orderBy('atividade')
+            ->get();
+    }
+
+    protected function resolveExistingEvent(Software $software, TierPolitica $policy, ?Atividade $activity, string $periodoReferencia): ?ControleEvento
+    {
+        return ControleEvento::query()
+            ->where('software_id', $software->id)
+            ->where('tier_politica_id', $policy->id)
+            ->where('periodo_referencia', $periodoReferencia)
+            ->first();
+    }
+
+    protected function defaultEffortForFrequency(string $frequency): string
+    {
+        return match ($this->frequencyKey($frequency)) {
+            'semanal' => 'P',
+            'quinzenal', 'mensal' => 'M',
+            'trimestral' => 'G',
+            'semestral', 'anual' => 'GG',
+            default => 'M',
+        };
+    }
+
+    protected function isTriageReady(ControleEvento $evento): bool
+    {
+        return $evento->tipo_demanda !== null
+            && $evento->esforco !== null
+            && $evento->score_impacto !== null
+            && $evento->score_exposicao !== null
+            && $evento->score_confianca !== null;
     }
 
     public function resolveDeadline(string $sla, Carbon $plannedDate): ?Carbon

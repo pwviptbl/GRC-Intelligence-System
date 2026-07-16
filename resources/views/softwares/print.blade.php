@@ -32,6 +32,7 @@
                 <th width="60">ID</th>
                 <th>Nome do Software</th>
                 <th>Tecnologia</th>
+                <th>Status</th>
                 <th>Classificação</th>
                 <th>Exposição</th>
                 <th>Dados</th>
@@ -46,6 +47,7 @@
                 <td>#{{ $s->id }}</td>
                 <td><strong>{{ $s->nome }}</strong></td>
                 <td><span class="tech-badge">{{ $s->tecnologia ?: 'N/D' }}</span></td>
+                <td>{{ $s->ativo_label }}</td>
                 <td class="classificacao">{{ $s->classificacao_label }}</td>
                 <td>{{ $s->exposicao_label }}</td>
                 <td>{{ $s->dados_sensibilidade_label }}</td>

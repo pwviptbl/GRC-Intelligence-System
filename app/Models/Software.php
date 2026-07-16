@@ -24,6 +24,7 @@ class Software extends Model
         'nome',
         'git_url',
         'tecnologia',
+        'ativo',
         'exposicao_nivel',
         'exposicao_detalhe',
         'dados_sensibilidade_nivel',
@@ -35,6 +36,7 @@ class Software extends Model
     ];
 
     protected $casts = [
+        'ativo' => 'boolean',
         'exposicao_nivel' => 'integer',
         'dados_sensibilidade_nivel' => 'integer',
         'criticidade_operacional_nivel' => 'integer',
@@ -51,6 +53,7 @@ class Software extends Model
         'classificacao_label',
         'tier_sugerido',
         'tier_sugerido_label',
+        'ativo_label',
     ];
 
     public function instancias()
@@ -66,6 +69,11 @@ class Software extends Model
     public function controleEventos()
     {
         return $this->hasMany(ControleEvento::class);
+    }
+
+    public function atividades()
+    {
+        return $this->hasMany(Atividade::class);
     }
 
     public function getExposicaoLabelAttribute(): string
@@ -142,6 +150,11 @@ class Software extends Model
     public function getTierSugeridoLabelAttribute(): string
     {
         return $this->tier_sugerido ? 'Tier ' . $this->tier_sugerido : 'N/D';
+    }
+
+    public function getAtivoLabelAttribute(): string
+    {
+        return $this->ativo ? 'Ativo' : 'Desativado';
     }
 
     protected function criterionScores(): array

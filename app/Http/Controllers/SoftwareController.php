@@ -53,6 +53,7 @@ class SoftwareController extends Controller
                 Rule::unique('software', 'nome')->ignore($software?->id),
             ],
             'tecnologia' => 'nullable|string|max:255',
+            'ativo' => 'required|boolean',
             'git_url' => 'nullable|url|max:255',
             'exposicao_nivel' => 'nullable|integer|in:1,2,3',
             'exposicao_detalhe' => 'nullable|string|max:255',

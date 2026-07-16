@@ -21,24 +21,33 @@ class CalendarioControleController extends Controller
         $softwares = Software::query()->orderBy('nome')->get();
 
         $eventos = collect();
+        $sugestoes = collect();
+        $triagens = collect();
 
         if ($tableAvailable) {
             $this->service->updateOverdueStatuses();
-            $eventos = $this->filteredQuery($request)->get();
+            $eventos = $this->filteredOperationalQuery($request)->get();
+            $sugestoes = $this->filteredSuggestionsQuery($request)->get();
+            $triagens = $this->filteredTriageQuery($request)->get();
         }
 
         return view('calendario_controles.index', [
             'eventos' => $eventos,
+            'sugestoes' => $sugestoes,
+            'triagens' => $triagens,
             'softwares' => $softwares,
             'tableAvailable' => $tableAvailable,
             'statusOptions' => $this->statusOptions(),
+            'categoryOptions' => ControleEvento::CATEGORY_OPTIONS,
+            'effortOptions' => ControleEvento::EFFORT_OPTIONS,
+            'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
         ]);
     }
 
     public function printAll(Request $request)
     {
         $eventos = $this->tableAvailable()
-            ? $this->filteredQuery($request)->get()
+            ? $this->filteredPrintQuery($request)->get()
             : collect();
 
         return view('calendario_controles.print', [
@@ -47,6 +56,8 @@ class CalendarioControleController extends Controller
                 'software_id' => $request->input('software_id'),
                 'status' => $request->input('status'),
                 'tier' => $request->input('tier'),
+                'modulo' => $request->input('modulo'),
+                'categoria' => $request->input('categoria'),
                 'software_nome' => $request->filled('software_id')
                     ? Software::find($request->software_id)?->nome
                     : null,
@@ -64,11 +75,32 @@ class CalendarioControleController extends Controller
             'software_id' => 'nullable|integer|exists:software,id',
         ]);
 
-        $result = $this->service->generate($filters);
+        $result = $this->service->generateSuggestions($filters);
 
         return redirect()
             ->route('calendario_controles.index', $filters)
-            ->with('success', "Geracao concluida: {$result['created']} evento(s) criado(s), {$result['rescheduled']} replanejado(s), {$result['skipped']} ignorado(s), {$result['automatic']} automatico(s) fora do calendario, {$result['prioritized']} priorizado(s) por risco.");
+            ->with('success', "Geracao concluida: {$result['created']} sugestao(oes) criada(s), {$result['skipped']} ignorada(s), {$result['automatic']} automatica(s) fora do fluxo operacional, {$result['prioritized']} priorizada(s) por risco.");
+    }
+
+    public function approveSuggestions(Request $request)
+    {
+        $approved = $this->service->approveSuggestions($this->validateSuggestionSelection($request));
+
+        return redirect()->back()->with('success', "{$approved} sugestao(oes) enviada(s) para triagem.");
+    }
+
+    public function planTriaged(Request $request)
+    {
+        $planned = $this->service->planTriaged($this->validateSuggestionSelection($request));
+
+        return redirect()->back()->with('success', "{$planned} demanda(s) triada(s) enviada(s) para planejamento.");
+    }
+
+    public function discardSuggestions(Request $request)
+    {
+        $discarded = $this->service->discardSuggestions($this->validateSuggestionSelection($request));
+
+        return redirect()->back()->with('success', "{$discarded} sugestao(oes) dispensada(s) na revisao.");
     }
 
     public function update(Request $request, ControleEvento $calendario_controle)
@@ -77,6 +109,15 @@ class CalendarioControleController extends Controller
             'status'              => 'required|in:' . implode(',', ControleEvento::STATUS_OPTIONS),
             'observacoes_execucao'=> 'nullable|string|max:1000',
             'data_prevista'       => 'nullable|date',
+            'modulo'              => 'nullable|string|max:255',
+            'categoria'           => 'nullable|in:' . implode(',', ControleEvento::CATEGORY_OPTIONS),
+            'rotina'              => 'nullable|string|max:255',
+            'esforco'             => 'nullable|in:' . implode(',', ControleEvento::EFFORT_OPTIONS),
+            'tipo_demanda'        => 'nullable|in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
+            'score_impacto'       => 'nullable|integer|min:1|max:5',
+            'score_exposicao'     => 'nullable|integer|min:1|max:5',
+            'score_confianca'     => 'nullable|integer|min:1|max:5',
+            'triagem_observacoes' => 'nullable|string|max:1500',
         ]);
 
         // Processa mudança de data
@@ -107,10 +148,10 @@ class CalendarioControleController extends Controller
             $data['iniciado_em'] = $calendario_controle->iniciado_em ?: now();
         }
 
-        if (in_array($data['status'], ['pendente', 'cancelado', 'dispensado'], true)) {
+        if (in_array($data['status'], ['planejado', 'pendente', 'triagem', 'cancelado', 'dispensado'], true)) {
             $data['concluido_em'] = null;
 
-            if ($data['status'] === 'pendente') {
+            if (in_array($data['status'], ['planejado', 'pendente', 'triagem'], true)) {
                 $data['iniciado_em'] = null;
             }
         }
@@ -132,7 +173,7 @@ class CalendarioControleController extends Controller
         return Schema::hasTable('controle_eventos');
     }
 
-    protected function filteredQuery(Request $request)
+    protected function filteredOperationalQuery(Request $request)
     {
         $query = ControleEvento::query()
             ->with(['software', 'risco', 'tierPolitica'])
@@ -154,10 +195,123 @@ class CalendarioControleController extends Controller
             $query->where('software_id', $request->software_id);
         }
 
+        if ($request->filled('modulo')) {
+            $query->where('modulo', 'like', '%'.$request->modulo.'%');
+        }
+
+        if ($request->filled('categoria')) {
+            $query->where('categoria', $request->categoria);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         } else {
-            $query->whereNotIn('status', ['cancelado', 'dispensado']);
+            $query->whereNotIn('status', ['sugestao', 'triagem', 'cancelado', 'dispensado']);
+        }
+
+        if ($request->filled('tier')) {
+            $query->where('tier', $request->tier);
+        }
+
+        return $query;
+    }
+
+    protected function filteredSuggestionsQuery(Request $request)
+    {
+        $query = ControleEvento::query()
+            ->with(['software', 'risco', 'tierPolitica'])
+            ->where('status', 'sugestao')
+            ->orderBy('tier')
+            ->orderByRaw("CASE prioridade
+                WHEN 'Crítica' THEN 1
+                WHEN 'Alta'    THEN 2
+                WHEN 'Média'   THEN 3
+                WHEN 'Baixa'   THEN 4
+                ELSE 5
+            END")
+            ->orderBy('data_prevista')
+            ->orderBy('software_id');
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('modulo')) {
+            $query->where('modulo', 'like', '%'.$request->modulo.'%');
+        }
+
+        if ($request->filled('categoria')) {
+            $query->where('categoria', $request->categoria);
+        }
+
+        if ($request->filled('tier')) {
+            $query->where('tier', $request->tier);
+        }
+
+        return $query;
+    }
+
+    protected function filteredTriageQuery(Request $request)
+    {
+        $query = ControleEvento::query()
+            ->with(['software', 'risco', 'tierPolitica'])
+            ->where('status', 'triagem')
+            ->orderByRaw('COALESCE(score_impacto, 0) DESC')
+            ->orderByRaw('COALESCE(score_exposicao, 0) DESC')
+            ->orderByRaw('COALESCE(score_confianca, 0) DESC')
+            ->orderBy('tier')
+            ->orderBy('data_prevista');
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('modulo')) {
+            $query->where('modulo', 'like', '%'.$request->modulo.'%');
+        }
+
+        if ($request->filled('categoria')) {
+            $query->where('categoria', $request->categoria);
+        }
+
+        if ($request->filled('tier')) {
+            $query->where('tier', $request->tier);
+        }
+
+        return $query;
+    }
+
+    protected function filteredPrintQuery(Request $request)
+    {
+        $query = ControleEvento::query()
+            ->with(['software', 'risco', 'tierPolitica'])
+            ->orderBy('tier')
+            ->orderByRaw("CASE prioridade
+                WHEN 'Crítica' THEN 1
+                WHEN 'Alta'    THEN 2
+                WHEN 'Média'   THEN 3
+                WHEN 'Baixa'   THEN 4
+                ELSE 5
+            END")
+            ->orderBy('data_prevista')
+            ->orderBy('software_id');
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('modulo')) {
+            $query->where('modulo', 'like', '%'.$request->modulo.'%');
+        }
+
+        if ($request->filled('categoria')) {
+            $query->where('categoria', $request->categoria);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        } else {
+            $query->whereIn('status', ControleEvento::ACTIVE_STATUSES);
         }
 
         if ($request->filled('tier')) {
@@ -171,7 +325,17 @@ class CalendarioControleController extends Controller
     {
         return array_values(array_filter(
             ControleEvento::STATUS_OPTIONS,
-            fn (string $status) => $status !== 'cancelado'
+            fn (string $status) => ! in_array($status, ['sugestao', 'triagem', 'cancelado'], true)
         ));
+    }
+
+    protected function validateSuggestionSelection(Request $request): array
+    {
+        $validated = $request->validate([
+            'suggestion_ids' => 'required|array|min:1',
+            'suggestion_ids.*' => 'integer|exists:controle_eventos,id',
+        ]);
+
+        return $validated['suggestion_ids'];
     }
 }
