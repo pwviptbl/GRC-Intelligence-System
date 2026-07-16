@@ -5,6 +5,246 @@
 @section('badge', $procedimentos->count() . ' Procedimentos')
 
 @section('content')
+<style>
+    .procedures-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .procedures-header h3 {
+        margin: 0;
+        color: var(--text-1);
+        font-size: 16px;
+    }
+
+    .procedures-header-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .procedures-header-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .procedures-suggestions {
+        position: relative;
+        padding: 20px;
+        margin-bottom: 25px;
+        border: 1px solid rgba(0, 255, 255, .1);
+        border-radius: 8px;
+        background: rgba(0, 255, 255, .05);
+        overflow-wrap: anywhere;
+    }
+
+    .procedures-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+        gap: 20px;
+    }
+
+    .procedure-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-width: 0;
+        padding: 20px;
+        border: 1px solid rgba(255, 255, 255, .05);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .02);
+    }
+
+    .procedure-card h3,
+    .procedure-step-preview {
+        overflow-wrap: anywhere;
+    }
+
+    .procedure-step-preview {
+        min-width: 0;
+        color: var(--text-2);
+        font-size: 11px;
+    }
+
+    .procedures-modal {
+        width: min(850px, calc(100vw - 32px)) !important;
+        max-width: none;
+        max-height: calc(100vh - 32px) !important;
+        overflow-y: auto;
+    }
+
+    .procedures-view-modal {
+        width: min(750px, calc(100vw - 32px)) !important;
+    }
+
+    .procedures-modal-header,
+    .procedures-steps-header,
+    .procedure-step-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .procedures-modal-header {
+        align-items: flex-start;
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+        border-bottom: 1px solid rgba(255, 255, 255, .1);
+    }
+
+    .procedures-modal-header > div,
+    .procedure-view-content {
+        min-width: 0;
+    }
+
+    .procedures-modal-header h2,
+    .procedure-view-step h4,
+    .procedure-view-step p {
+        overflow-wrap: anywhere;
+    }
+
+    .procedures-close {
+        flex: 0 0 auto;
+        border: 0;
+        background: transparent;
+        color: var(--text-3);
+        font-size: 24px;
+        cursor: pointer;
+    }
+
+    .procedure-view-step {
+        display: flex;
+        gap: 16px;
+        min-width: 0;
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, .05);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .02);
+    }
+
+    .procedure-view-step-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .procedures-main-grid,
+    .procedure-fields-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 15px;
+    }
+
+    .procedures-steps-title-actions,
+    .procedure-order-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .procedure-step-editor {
+        min-width: 0;
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, .05);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .02);
+    }
+
+    @media (max-width: 780px) {
+        .procedures-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .procedures-header-actions {
+            width: 100%;
+        }
+
+        .procedures-main-grid,
+        .procedure-fields-grid {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        }
+
+        .procedures-main-grid .form-group:first-child,
+        .procedure-fields-grid .form-group:first-child {
+            grid-column: 1 / -1;
+        }
+
+        .procedures-steps-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 560px) {
+        .procedures-header-actions > * {
+            flex: 1 1 calc(50% - 5px);
+        }
+
+        .procedures-suggestions,
+        .procedure-card {
+            padding: 16px;
+        }
+
+        .procedures-modal {
+            width: calc(100vw - 20px) !important;
+            max-height: calc(100vh - 20px) !important;
+            padding: 18px;
+        }
+
+        .procedures-main-grid,
+        .procedure-fields-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .procedures-main-grid .form-group:first-child,
+        .procedure-fields-grid .form-group:first-child {
+            grid-column: auto;
+        }
+
+        .procedure-view-step {
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .procedure-view-step-heading,
+        .procedure-step-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .procedure-order-actions {
+            width: 100%;
+        }
+
+        .procedures-modal .modal-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .procedures-modal .modal-actions button {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+</style>
+
 <div class="table-view" x-data="{
     showModal: false,
     showViewModal: false,
@@ -111,14 +351,14 @@
         if(this.form.etapas.length > 1) this.form.etapas.splice(index, 1);
     }
 }">
-    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="color:var(--text-1); font-size:16px">📋 Registro de Procedimentos</h3>
-        <div style="display:flex; gap:10px">
-            <a href="{{ route('procedimentos.export.all') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
+    <div class="procedures-header">
+        <h3>📋 Registro de Procedimentos</h3>
+        <div class="procedures-header-actions">
+            <a href="{{ route('procedimentos.export.all') }}" target="_blank" class="btn-secondary procedures-header-button" style="background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1)">
                 <span>📄 Exportar Todos</span>
             </a>
             @if(in_array(auth()->user()->role, ['admin', 'governanca', 'operacional']))
-            <button class="btn-secondary" @click="getSuggestions()" :disabled="suggesting" style="padding:10px 20px; border-radius:8px; background:rgba(0,255,255,0.05); color:var(--cyan); border:1px solid var(--cyan); cursor:pointer; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px">
+            <button class="btn-secondary procedures-header-button" @click="getSuggestions()" :disabled="suggesting" style="background:rgba(0,255,255,0.05); color:var(--cyan); border:1px solid var(--cyan); cursor:pointer">
                 <span x-show="!suggesting">💡 Sugerir Novos</span>
                 <span x-show="suggesting">⌛ Consultando...</span>
             </button>
@@ -131,7 +371,7 @@
     </div>
 
     <!-- Sugestões da IA -->
-    <div x-show="showSuggest" x-transition style="margin-bottom:25px; background:rgba(0,255,255,0.05); border:1px solid rgba(0,255,255,0.1); border-radius:12px; padding:20px; position:relative">
+    <div x-show="showSuggest" x-transition class="procedures-suggestions">
         <button @click="showSuggest = false" style="position:absolute; top:15px; right:15px; background:none; border:none; color:var(--text-3); cursor:pointer">✕</button>
         <h4 style="color:var(--cyan); margin-bottom:15px; display:flex; align-items:center; gap:10px">
             <span>✨ Sugestões da Inteligência Artificial</span>
@@ -139,9 +379,9 @@
         <div style="color:var(--text-2); font-size:13px; line-height:1.6; white-space: pre-line" x-text="suggestions"></div>
     </div>
 
-    <div class="grid-view" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px">
+    <div class="grid-view procedures-grid">
         @foreach($procedimentos as $proc)
-        <div class="card" style="padding:20px;border-radius:12px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05); display:flex; flex-direction:column; justify-content:space-between">
+        <div class="card procedure-card">
             <div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:12px">
                     <span class="tech-badge">{{ strtoupper($proc->tipo) }}</span>
@@ -164,7 +404,7 @@
                         @foreach($proc->etapas->sortBy('ordem')->take(3) as $etapa)
                         <div style="display:flex;gap:8px;align-items:center">
                             <div style="width:16px;height:16px;background:var(--cyan);color:var(--bg-1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;flex-shrink:0">{{ $etapa->ordem }}</div>
-                            <div style="font-size:11px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $etapa->nome_etapa }}</div>
+                            <div class="procedure-step-preview">{{ $etapa->nome_etapa }}</div>
                         </div>
                         @endforeach
                         @if($proc->etapas->count() > 3)
@@ -186,21 +426,21 @@
 
     <!-- Modal de Visualização Detalhada -->
     <div class="modal-overlay" x-show="showViewModal" style="display: none;" @click.self="showViewModal = false" x-transition>
-        <div class="modal" style="width: 750px; max-height: 90vh; overflow-y: auto;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:15px">
+        <div class="modal procedures-modal procedures-view-modal">
+            <div class="procedures-modal-header">
                 <div>
                     <h2 style="color:var(--cyan); margin:0" x-text="viewProc.titulo"></h2>
                     <span class="tech-badge" style="margin-top:5px" x-text="viewProc.tipo"></span>
                 </div>
-                <button @click="showViewModal = false" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:24px">&times;</button>
+                <button @click="showViewModal = false" class="procedures-close" aria-label="Fechar">&times;</button>
             </div>
             
             <div style="display:flex; flex-direction:column; gap:20px">
                 <template x-for="etapa in viewProc.etapas" :key="etapa.id">
-                    <div style="display:flex; gap:20px; padding:15px; background:rgba(255,255,255,0.02); border-radius:10px; border:1px solid rgba(255,255,255,0.05)">
+                    <div class="procedure-view-step">
                         <div style="width:30px;height:30px;background:var(--cyan);color:var(--bg-1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;flex-shrink:0" x-text="etapa.ordem"></div>
-                        <div style="flex:1">
-                            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px">
+                        <div class="procedure-view-content" style="flex:1">
+                            <div class="procedure-view-step-heading">
                                 <h4 style="margin:0; color:var(--text-1); font-size:15px" x-text="etapa.nome_etapa"></h4>
                                 <span style="font-size:10px; color:var(--yellow); border:1px solid rgba(255,215,64,0.2); padding:2px 8px; border-radius:4px" x-show="etapa.sla" x-text="'SLA: ' + etapa.sla"></span>
                             </div>
@@ -221,7 +461,7 @@
 
     <!-- Modal Novo/Editar Procedimento -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
-        <div class="modal" style="width: 850px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal procedures-modal">
             <h3>📋 <span x-text="editMode ? 'Editar Procedimento' : 'Novo Procedimento'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
@@ -229,7 +469,7 @@
                     <input type="hidden" name="_method" value="PATCH">
                 </template>
 
-                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px;">
+                <div class="procedures-main-grid">
                     <div class="form-group">
                         <label>Título do Procedimento</label>
                         <input type="text" name="titulo" x-model="form.titulo" class="form-input" required />
@@ -259,8 +499,8 @@
                 </div>
 
                 <div style="margin-top:25px">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-                        <div style="display:flex; align-items:center; gap:15px">
+                    <div class="procedures-steps-header" style="margin-bottom:15px">
+                        <div class="procedures-steps-title-actions">
                             <h4 style="color:var(--cyan); margin:0; font-size:14px">Etapas do Processo</h4>
                             <button type="button" @click="generateEtapas()" x-show="!editMode" class="btn-save" style="font-size:10px; padding:4px 10px; background:rgba(0,229,255,0.1); border-color:rgba(0,229,255,0.2); color:var(--cyan)" :disabled="generating">
                                 <span x-text="generating ? '⏳ Gerando etapas...' : '🤖 Sugerir Etapas via IA'"></span>
@@ -271,10 +511,10 @@
 
                     <div style="display:flex; flex-direction:column; gap:15px">
                         <template x-for="(etapa, index) in form.etapas" :key="index">
-                            <div style="padding:15px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:8px">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+                            <div class="procedure-step-editor">
+                                <div class="procedure-step-header" style="margin-bottom:10px">
                                     <span style="font-size:11px; font-weight:bold; color:var(--text-3)" x-text="'Etapa #' + (index + 1)"></span>
-                                    <div style="display:flex; align-items:center; gap:8px">
+                                    <div class="procedure-order-actions">
                                         <label style="font-size:10px; color:var(--text-3)">Posição</label>
                                         <input
                                             type="number"
@@ -290,7 +530,7 @@
                                     </div>
                                 </div>
                                 <input type="hidden" :name="'etapas['+index+'][id]'" x-model="etapa.id">
-                                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px">
+                                <div class="procedure-fields-grid" style="gap:10px">
                                     <div class="form-group">
                                         <label>Nome da Etapa</label>
                                         <input type="text" :name="'etapas['+index+'][nome_etapa]'" x-model="etapa.nome_etapa" class="form-input" required />
