@@ -5,6 +5,46 @@
 @section('badge', $tierPoliticas->count() . ' Ações Configuradas')
 
 @section('content')
+<style>
+    .tiers-filter-grid { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end; margin-bottom:14px; }
+    .tiers-guide-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; font-size:12px; color:var(--text-3); }
+    .tiers-header-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .tiers-mobile-list { display:none; }
+    .tier-modal { width:min(700px, 94vw); max-width:700px; }
+    .tier-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+    @media (max-width: 900px) {
+        .tiers-filter-grid { grid-template-columns:1fr 1fr; }
+        .tiers-filter-grid > button { width:100%; }
+        .tiers-guide-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width: 760px) {
+        .tiers-desktop-table { display:none; }
+        .tiers-mobile-list { display:grid; gap:10px; }
+        .tier-mobile-card { padding:13px; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; }
+        .tier-mobile-card.disabled { opacity:.6; }
+        .tier-mobile-head,
+        .tier-mobile-meta,
+        .tier-mobile-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .tier-mobile-action { margin-top:10px; color:var(--text-1); font-size:13px; line-height:1.45; }
+        .tier-mobile-meta { justify-content:flex-start; flex-wrap:wrap; margin-top:10px; color:var(--text-2); font-size:11px; }
+        .tier-mobile-meta span { padding:5px 7px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); border-radius:5px; }
+        .tier-mobile-owner { margin-top:9px; color:var(--text-3); font-size:11px; line-height:1.4; }
+        .tier-mobile-actions { justify-content:flex-end; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.06); }
+        .tier-mobile-actions button { min-width:38px; min-height:36px; }
+        .tier-form-grid { grid-template-columns:1fr; gap:0; }
+        .modal-overlay { align-items:flex-start; padding:12px; overflow-y:auto; }
+        .modal-overlay .tier-modal { width:100%; max-width:100%; padding:18px; }
+    }
+    @media (max-width: 520px) {
+        .tiers-filter-grid { grid-template-columns:1fr; }
+        .table-header { flex-direction:column; align-items:stretch; gap:10px; }
+        .tiers-header-actions { display:grid; grid-template-columns:1fr 1fr; }
+        .tiers-header-actions > * { justify-content:center; min-height:42px; padding:8px 10px !important; }
+        .tiers-header-actions .btn-add { grid-column:1 / -1; }
+    }
+</style>
+@php($canManageTiers = in_array(auth()->user()->role, ['admin', 'governanca']))
 <div class="table-view" x-data="{
     showModal: false,
     editMode: false,
@@ -127,7 +167,7 @@
     </div>
 
     <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
-        <form action="{{ route('tier_politicas.index') }}" method="GET" style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end; margin-bottom:14px;">
+        <form action="{{ route('tier_politicas.index') }}" method="GET" class="tiers-filter-grid">
             <div class="form-group" style="margin-bottom:0">
                 <label>Filtro por Tier</label>
                 <select name="tier" class="form-select">
@@ -156,7 +196,7 @@
             <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>
         </form>
         <div style="font-size:12px; font-weight:700; color:var(--text-2); margin-bottom:10px">Estrutura operacional por acao</div>
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; font-size:12px; color:var(--text-3)">
+        <div class="tiers-guide-grid">
             <div><strong style="color:var(--text-1)">Acao</strong><br>Cada linha representa um controle dentro do tier.</div>
             <div><strong style="color:var(--text-1)">Frequencia e SLA</strong><br>Cadencia e prazo maximo de correcao.</div>
             <div><strong style="color:var(--text-1)">Bloqueio e Responsavel</strong><br>Rigor da esteira e dono da execucao.</div>
@@ -165,20 +205,20 @@
 
     <div class="table-header">
         <h3>Acoes Operacionais por Tier</h3>
-        <div style="display:flex; gap:10px;">
+        <div class="tiers-header-actions">
             <a href="{{ route('tier_politicas.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar PDF</span>
             </a>
             <a href="{{ route('softwares.index') }}" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>💾 Ver Softwares</span>
             </a>
-            @if(in_array(auth()->user()->role, ['admin', 'governanca']))
+            @if($canManageTiers)
             <button class="btn-add" @click="openCreate()">+ Nova Acao</button>
             @endif
         </div>
     </div>
 
-    <div class="table-card">
+    <div class="table-card tiers-desktop-table">
         <table class="data-table">
             <thead>
                 <tr>
@@ -190,7 +230,7 @@
                     <th>Status</th>
                     <th>Responsavel</th>
                     <th>Observacoes</th>
-                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
+                    @if($canManageTiers)
                     <th>Acoes</th>
                     @endif
                 </tr>
@@ -206,7 +246,7 @@
                     <td><span class="badge" :style="statusStyle(@js($policy))">{{ $policy->ativo_label }}</span></td>
                     <td>{{ $policy->responsavel }}</td>
                     <td style="color:var(--text-3)">{{ $policy->observacoes ?: '—' }}</td>
-                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
+                    @if($canManageTiers)
                     <td>
                         <div style="display:flex; gap:10px; align-items:center">
                             <button
@@ -232,7 +272,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ in_array(auth()->user()->role, ['admin', 'governanca']) ? 9 : 8 }}">
+                    <td colspan="{{ $canManageTiers ? 9 : 8 }}">
                         <div class="empty-state">
                             <div class="empty-icon">📐</div>
                             <p>Nenhuma acao de tier cadastrada ainda.</p>
@@ -244,8 +284,42 @@
         </table>
     </div>
 
+    <div class="tiers-mobile-list">
+        @forelse($tierPoliticas as $policy)
+            <article class="tier-mobile-card {{ $policy->ativo ? '' : 'disabled' }}">
+                <div class="tier-mobile-head">
+                    <span class="badge" :style="tierStyle('{{ $policy->tier }}')">{{ $policy->tier_label }}</span>
+                    <span class="badge" :style="statusStyle(@js($policy))">{{ $policy->ativo_label }}</span>
+                </div>
+                <div class="tier-mobile-action">{{ $policy->acao_controle }}</div>
+                <div class="tier-mobile-meta">
+                    <span>{{ $policy->frequencia }}</span>
+                    <span>SLA {{ $policy->sla_correcao }}</span>
+                    <span>{{ $policy->bloqueio_automatico_label }}</span>
+                </div>
+                <div class="tier-mobile-owner">
+                    {{ $policy->responsavel ?: 'Sem responsavel' }}
+                    @if($policy->observacoes) · {{ $policy->observacoes }} @endif
+                </div>
+                @if($canManageTiers)
+                    <div class="tier-mobile-actions">
+                        <button type="button" data-policy="{{ base64_encode($policy->toJson()) }}" @click="openDuplicate($el.dataset.policy)" class="btn-del" title="Duplicar" aria-label="Duplicar" style="color:var(--cyan)">⧉</button>
+                        <button type="button" data-policy="{{ base64_encode($policy->toJson()) }}" @click="openEdit($el.dataset.policy)" class="btn-del" title="Editar" aria-label="Editar" style="color:var(--yellow)">✎</button>
+                        <form action="{{ route('tier_politicas.destroy', $policy) }}" method="POST" onsubmit="return confirm('Deseja remover esta politica de tier?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn-del" title="Excluir" aria-label="Excluir">×</button>
+                        </form>
+                    </div>
+                @endif
+            </article>
+        @empty
+            <div class="empty-state" style="padding:30px 12px;"><p>Nenhuma acao de tier cadastrada ainda.</p></div>
+        @endforelse
+    </div>
+
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
-        <div class="modal" @click.away="showModal = false">
+        <div class="modal tier-modal" @click.away="showModal = false">
             <h3>📐 <span x-text="editMode ? 'Editar Acao de Tier' : 'Nova Acao de Tier'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
@@ -266,7 +340,7 @@
                     <label>Acao (Controle)</label>
                     <textarea name="acao_controle" x-model="form.acao_controle" class="form-textarea" rows="3" placeholder="Ex: Pentest semestral, SAST na pipeline e revisao manual antes de release." required></textarea>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="tier-form-grid">
                     <div class="form-group">
                         <label>Frequencia</label>
                         <input type="text" name="frequencia" x-model="form.frequencia" class="form-input" placeholder="Ex: Mensal" required />
@@ -276,7 +350,7 @@
                         <input type="text" name="sla_correcao" x-model="form.sla_correcao" class="form-input" placeholder="Ex: 7 dias corridos" required />
                     </div>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="tier-form-grid">
                     <div class="form-group">
                         <label>Bloqueio Automatico</label>
                         <select name="bloqueio_automatico" x-model="form.bloqueio_automatico" class="form-select" required>
@@ -292,7 +366,7 @@
                         </select>
                     </div>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="tier-form-grid">
                     <div class="form-group">
                         <label>Responsavel</label>
                         <input type="text" name="responsavel" x-model="form.responsavel" class="form-input" placeholder="Ex: Analista / Devs / Junior" required />

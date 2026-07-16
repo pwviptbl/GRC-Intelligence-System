@@ -5,6 +5,57 @@
 @section('badge', $softwares->count() . ' Total')
 
 @section('content')
+<style>
+    .software-header-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .softwares-mobile-list { display:none; }
+    .software-modal { width:min(780px, 94vw); max-width:780px; }
+    .software-rating-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+    @media (max-width: 760px) {
+        .softwares-desktop-table { display:none; }
+        .softwares-mobile-list { display:grid; gap:10px; }
+        .software-mobile-card {
+            padding:13px;
+            background:var(--bg-surface);
+            border:1px solid var(--border);
+            border-radius:8px;
+        }
+        .software-mobile-card.disabled { opacity:.62; }
+        .software-mobile-head,
+        .software-mobile-meta,
+        .software-mobile-actions {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+        }
+        .software-mobile-name { min-width:0; color:var(--text-1); font-size:14px; font-weight:600; line-height:1.4; }
+        .software-mobile-tech { margin-top:4px; color:var(--text-3); font-size:11px; }
+        .software-mobile-meta { margin-top:11px; justify-content:flex-start; flex-wrap:wrap; }
+        .software-mobile-ratings {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin-top:12px;
+        }
+        .software-mobile-rating { padding:8px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); border-radius:6px; }
+        .software-mobile-rating small { display:block; margin-bottom:4px; color:var(--text-3); font-size:9px; text-transform:uppercase; }
+        .software-mobile-rating span { color:var(--text-2); font-size:11px; line-height:1.35; }
+        .software-mobile-repo { display:block; margin-top:10px; overflow:hidden; color:var(--cyan-dim); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+        .software-mobile-actions { justify-content:flex-end; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.06); }
+        .software-mobile-actions button { min-width:38px; min-height:36px; }
+        .software-rating-grid { grid-template-columns:1fr; gap:0; }
+        .modal-overlay { align-items:flex-start; padding:12px; overflow-y:auto; }
+        .modal-overlay .software-modal { width:100%; max-width:100%; padding:18px; }
+    }
+    @media (max-width: 520px) {
+        .table-header { flex-direction:column; align-items:stretch; gap:10px; }
+        .software-header-actions { display:grid; grid-template-columns:1fr 1fr; }
+        .software-header-actions > * { justify-content:center; min-height:42px; padding:8px 10px !important; }
+        .software-header-actions .btn-add { grid-column:1 / -1; }
+    }
+</style>
+@php($canManageSoftware = in_array(auth()->user()->role, ['admin', 'governanca']))
 <div class="table-view" x-data="{ 
     showModal: false, 
     editMode: false,
@@ -112,20 +163,20 @@
     
     <div class="table-header">
         <h3>Softwares Cadastrados</h3>
-        <div style="display: flex; gap: 10px;">
+        <div class="software-header-actions">
             <a href="{{ route('tier_politicas.index') }}" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📐 Politica de Tiers</span>
             </a>
             <a href="{{ route('softwares.export') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar PDF</span>
             </a>
-            @if(in_array(auth()->user()->role, ['admin', 'governanca']))
+            @if($canManageSoftware)
             <button class="btn-add" @click="openCreate()">+ Novo Software</button>
             @endif
         </div>
     </div>
 
-    <div class="table-card">
+    <div class="table-card softwares-desktop-table">
         <table class="data-table">
             <thead>
                 <tr>
@@ -139,7 +190,7 @@
                     <th>Criticidade</th>
                     <th>Autenticação</th>
                     <th>Repositório</th>
-                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
+                    @if($canManageSoftware)
                     <th>Ações</th>
                     @endif
                 </tr>
@@ -171,7 +222,7 @@
                             <span style="color:var(--text-3)">—</span>
                         @endif
                     </td>
-                    @if(in_array(auth()->user()->role, ['admin', 'governanca']))
+                    @if($canManageSoftware)
                     <td>
                         <div style="display:flex; gap:10px; align-items:center">
                             <button
@@ -191,7 +242,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ in_array(auth()->user()->role, ['admin', 'governanca']) ? 11 : 10 }}">
+                    <td colspan="{{ $canManageSoftware ? 11 : 10 }}">
                         <div class="empty-state">
                             <div class="empty-icon">💾</div>
                             <p>Nenhum software cadastrado ainda.</p>
@@ -203,9 +254,55 @@
         </table>
     </div>
 
+    <div class="softwares-mobile-list">
+        @forelse($softwares as $s)
+            <article class="software-mobile-card {{ $s->ativo ? '' : 'disabled' }}">
+                <div class="software-mobile-head">
+                    <div style="min-width:0">
+                        <div class="software-mobile-name">{{ $s->nome }}</div>
+                        <div class="software-mobile-tech">{{ $s->tecnologia ?: 'Tecnologia nao informada' }}</div>
+                    </div>
+                    <span class="badge" :style="statusStyle({{ $s->ativo ? 'true' : 'false' }})">{{ $s->ativo_label }}</span>
+                </div>
+                <div class="software-mobile-meta">
+                    <span class="badge" :style="classificationStyle('{{ $s->classificacao_nivel }}')">{{ $s->classificacao_label }}</span>
+                </div>
+                <div class="software-mobile-ratings">
+                    <div class="software-mobile-rating"><small>Exposicao</small><span>{{ $s->exposicao_label }}</span></div>
+                    <div class="software-mobile-rating"><small>Dados</small><span>{{ $s->dados_sensibilidade_label }}</span></div>
+                    <div class="software-mobile-rating"><small>Criticidade</small><span>{{ $s->criticidade_operacional_label }}</span></div>
+                    <div class="software-mobile-rating"><small>Autenticacao</small><span>{{ $s->autenticacao_label }}</span></div>
+                </div>
+                @if($s->git_url)
+                    <a href="{{ $s->git_url }}" target="_blank" rel="noopener" class="software-mobile-repo">{{ $s->git_url }}</a>
+                @endif
+                @if($canManageSoftware)
+                    <div class="software-mobile-actions">
+                        <button
+                            type="button"
+                            data-software="{{ base64_encode($s->toJson()) }}"
+                            @click="openEdit($el.dataset.software)"
+                            class="btn-del"
+                            title="Editar"
+                            aria-label="Editar"
+                            style="color:var(--yellow)"
+                        >✎</button>
+                        <form action="{{ route('softwares.destroy', $s) }}" method="POST" onsubmit="return confirm('Deseja remover este software?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn-del" title="Excluir" aria-label="Excluir">×</button>
+                        </form>
+                    </div>
+                @endif
+            </article>
+        @empty
+            <div class="empty-state" style="padding:30px 12px;"><p>Nenhum software cadastrado ainda.</p></div>
+        @endforelse
+    </div>
+
     <!-- Modal Novo/Editar Software -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
-        <div class="modal" @click.away="showModal = false">
+        <div class="modal software-modal" @click.away="showModal = false">
             <h3>💾 <span x-text="editMode ? 'Editar Software' : 'Novo Software'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
@@ -232,7 +329,7 @@
                     <label>URL Git</label>
                     <input type="url" name="git_url" x-model="form.git_url" class="form-input" placeholder="https://github.com/..." />
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="software-rating-grid">
                     <div class="form-group">
                         <label>Exposição</label>
                         <select name="exposicao_nivel" x-model="form.exposicao_nivel" class="form-select">

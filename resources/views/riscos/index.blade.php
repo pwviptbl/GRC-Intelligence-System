@@ -5,6 +5,49 @@
 @section('badge', $riscos->count() . ' Registrados')
 
 @section('content')
+<style>
+    .risks-header-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .risks-filter-grid { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:12px; align-items:end; }
+    .risks-mobile-list { display:none; }
+    .risk-view-modal { width:min(700px, 94vw); max-width:700px; max-height:90vh; overflow-y:auto; }
+    .risk-edit-modal { width:min(850px, 94vw); max-width:850px; }
+    .risk-view-grid,
+    .risk-edit-grid,
+    .risk-pair-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .risk-pair-grid { gap:10px; margin-top:10px; }
+
+    @media (max-width: 1180px) {
+        .risks-filter-grid { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+        .risks-filter-grid { grid-template-columns:1fr 1fr; }
+        .risks-desktop-table { display:none; }
+        .risks-mobile-list { display:grid; gap:10px; }
+        .risk-mobile-card { padding:13px; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; }
+        .risk-mobile-head,
+        .risk-mobile-meta,
+        .risk-mobile-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .risk-mobile-title { margin-top:10px; color:var(--text-1); font-size:13px; font-weight:600; line-height:1.45; }
+        .risk-mobile-meta { justify-content:flex-start; flex-wrap:wrap; margin-top:9px; color:var(--text-2); font-size:11px; }
+        .risk-mobile-context { margin-top:8px; color:var(--text-3); font-size:11px; line-height:1.4; }
+        .risk-mobile-actions { justify-content:flex-end; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.06); }
+        .risk-mobile-actions button,
+        .risk-mobile-actions a { display:inline-flex; align-items:center; justify-content:center; min-width:38px; min-height:36px; }
+        .risk-view-grid,
+        .risk-edit-grid,
+        .risk-pair-grid { grid-template-columns:1fr; gap:0; }
+        .modal-overlay { align-items:flex-start; padding:12px; overflow-y:auto; }
+        .modal-overlay .risk-view-modal,
+        .modal-overlay .risk-edit-modal { width:100%; max-width:100%; max-height:none; padding:18px; }
+    }
+    @media (max-width: 520px) {
+        .risks-filter-grid { grid-template-columns:1fr; }
+        .table-header { flex-direction:column; align-items:stretch !important; gap:10px; }
+        .risks-header-actions { display:grid; grid-template-columns:1fr; }
+        .risks-header-actions > * { justify-content:center; min-height:42px; padding:8px 10px !important; }
+    }
+</style>
+@php($canManageRisks = auth()->user()->role !== 'auditor')
 <div class="table-view" x-data="{ 
     showModal: false, 
     showViewModal: false,
@@ -84,11 +127,11 @@
 
     <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="color:var(--text-1); font-size:16px">📋 Registro de Riscos</h3>
-        <div style="display:flex; gap:10px">
+        <div class="risks-header-actions">
             <a href="{{ route('riscos.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar Inventário</span>
             </a>
-            @if(auth()->user()->role !== 'auditor')
+            @if($canManageRisks)
             <button class="btn-add" @click="openCreate()">+ Registrar Risco</button>
             @endif
         </div>
@@ -96,7 +139,7 @@
 
     <!-- Filtros -->
     <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
-        <form action="{{ route('riscos.index') }}" method="GET" style="display:grid; grid-template-columns: repeat(6, 1fr); gap:12px; align-items: end;">
+        <form action="{{ route('riscos.index') }}" method="GET" class="risks-filter-grid">
             <div class="form-group" style="margin-bottom:0">
                 <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px">Status</label>
                 <select name="status" class="form-select" style="height:35px; font-size:12px; width:100%">
@@ -150,7 +193,7 @@
         </form>
     </div>
 
-    <div class="table-card">
+    <div class="table-card risks-desktop-table">
         <table class="data-table">
             <thead>
                 <tr>
@@ -172,7 +215,7 @@
                         <div style="display:flex;gap:12px;align-items:center">
                             <a href="{{ route('riscos.export', $r) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
                             <button @click="openView({{ $r->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
-                            @if(auth()->user()->role !== 'auditor')
+                            @if($canManageRisks)
                             <button @click="openEdit({{ $r->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
                             <form action="{{ route('riscos.destroy', $r) }}" method="POST" style="margin:0">
                                 @csrf @method('DELETE')
@@ -189,15 +232,50 @@
         </table>
     </div>
 
+    <div class="risks-mobile-list">
+        @forelse($riscos as $r)
+            <article class="risk-mobile-card">
+                <div class="risk-mobile-head">
+                    <span class="badge" :style="criticidadeStyle('{{ $r->criticidade }}')">{{ $r->criticidade }}</span>
+                    <span class="badge">{{ $r->status }}</span>
+                </div>
+                <div class="risk-mobile-title">{{ $r->titulo }}</div>
+                <div class="risk-mobile-meta">
+                    <span class="tech-badge">{{ $r->origem }}</span>
+                    <span>Prob. {{ $r->probabilidade }}</span>
+                    <span>Impacto {{ $r->impacto }}</span>
+                </div>
+                <div class="risk-mobile-context">
+                    {{ $r->software?->nome ?: ($r->ativo_afetado ?: 'Sem ativo vinculado') }}
+                    @if($r->responsavel) · {{ $r->responsavel }} @endif
+                </div>
+                <div class="risk-mobile-actions">
+                    <a href="{{ route('riscos.export', $r) }}" target="_blank" rel="noopener" class="btn-del" title="Exportar PDF" aria-label="Exportar PDF">▤</a>
+                    <button type="button" @click="openView(@js($r))" class="btn-del" title="Visualizar" aria-label="Visualizar" style="color:var(--cyan)">◉</button>
+                    @if($canManageRisks)
+                        <button type="button" @click="openEdit(@js($r))" class="btn-del" title="Editar" aria-label="Editar" style="color:var(--yellow)">✎</button>
+                        <form action="{{ route('riscos.destroy', $r) }}" method="POST" style="margin:0" onsubmit="return confirm('Remover este risco?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn-del" title="Excluir" aria-label="Excluir">×</button>
+                        </form>
+                    @endif
+                </div>
+            </article>
+        @empty
+            <div class="empty-state" style="padding:30px 12px;">Nenhum risco registrado.</div>
+        @endforelse
+    </div>
+
     <!-- Modal de Visualização -->
     <div class="modal-overlay" x-show="showViewModal" style="display: none;" @click.self="showViewModal = false" x-transition>
-        <div class="modal" style="width: 700px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal risk-view-modal">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); padding-bottom:10px">
                 <h2 style="color:var(--cyan); margin:0" x-text="viewRisk.titulo"></h2>
                 <span class="badge" :style="criticidadeStyle(viewRisk.criticidade)" x-text="viewRisk.criticidade"></span>
             </div>
             
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px">
+            <div class="risk-view-grid" style="margin-bottom:20px">
                 <div>
                     <label style="font-size:11px; color:var(--text-3); text-transform:uppercase">Origem</label>
                     <div style="color:var(--text-1); font-weight:500" x-text="viewRisk.origem"></div>
@@ -242,7 +320,7 @@
 
     <!-- Modal Novo/Editar Risco -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
-        <div class="modal" style="width: 850px;">
+        <div class="modal risk-edit-modal">
             <h3>⚠️ <span x-text="editMode ? 'Editar Risco' : 'Registrar Novo Risco'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
@@ -250,7 +328,7 @@
                     <input type="hidden" name="_method" value="PATCH">
                 </template>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="risk-edit-grid">
                     <div>
                         <div class="form-group">
                             <label>Título</label>
@@ -260,7 +338,7 @@
                             <label>Descrição</label>
                             <textarea name="descricao" x-model="form.descricao" class="form-input" rows="4" required></textarea>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:10px">
+                        <div class="risk-pair-grid">
                             <div class="form-group">
                                 <label>Probabilidade</label>
                                 <select name="probabilidade" x-model="form.probabilidade" class="form-select">
@@ -274,7 +352,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:10px">
+                        <div class="risk-pair-grid">
                             <div class="form-group">
                                 <label>Status</label>
                                 <select name="status" x-model="form.status" class="form-select">

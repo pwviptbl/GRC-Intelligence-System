@@ -71,24 +71,94 @@
       box-sizing: border-box;
     }
     .topbar { background: var(--bg-surface); padding: 20px; border-bottom: 1px solid var(--border); }
+    .mobile-menu-btn,
+    .sidebar-close,
+    .sidebar-backdrop { display: none; }
+    .app-content { padding: 24px 28px; overflow-y: auto; height: 100%; min-width: 0; }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        width: min(300px, 86vw) !important;
+        transform: translateX(-100%);
+        transition: transform .2s ease;
+        box-shadow: 16px 0 40px rgba(0,0,0,.35);
+      }
+      .sidebar.mobile-open { transform: translateX(0); }
+      .main { width: 100%; margin-left: 0 !important; min-width: 0; }
+      .mobile-menu-btn,
+      .sidebar-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: rgba(255,255,255,.035);
+        color: var(--text-1);
+        cursor: pointer;
+        font-size: 20px;
+      }
+      .sidebar-close { position: absolute; top: 9px; right: 10px; z-index: 2; }
+      .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 900;
+        border: 0;
+        background: rgba(0,0,0,.62);
+      }
+      .topbar { gap: 12px; padding: 12px 16px; }
+      .topbar-title { min-width: 0; flex: 1; }
+      .topbar h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .topbar p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .app-content { padding: 18px 16px; }
+      .table-view { padding: 0; }
+      .table-card { max-width: 100%; overflow-x: auto; }
+      .stats-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .stat-card { min-width: 0; padding: 14px; }
+      .stat-card .stat-value { font-size: 22px; }
+    }
+    @media (max-width: 520px) {
+      .topbar { align-items: flex-start; }
+      .topbar .badge { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .topbar p { display: none; }
+      .app-content { padding: 14px 12px; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .modal-actions { flex-wrap: wrap; }
+      .modal-actions > button { min-height: 40px; }
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
   <div id="app" x-data="{
+    sidebarOpen: false,
     menuAtivosAberto: false,
     menuGovernancaAberto: false,
     menuRiscosAberto: false,
     view: '{{ request()->route()->getName() ?? 'dashboard' }}'
   }">
 
-    <aside class="sidebar">
+    <button
+      type="button"
+      class="sidebar-backdrop"
+      x-show="sidebarOpen"
+      x-transition.opacity
+      @click="sidebarOpen = false"
+      aria-label="Fechar menu"
+      style="display:none"
+    ></button>
+
+    <aside class="sidebar" :class="{ 'mobile-open': sidebarOpen }">
+      <button type="button" class="sidebar-close" @click="sidebarOpen = false" aria-label="Fechar menu" title="Fechar menu">×</button>
       <div class="logo">
         <h1>GRC</h1>
         <p>{{ config('app.company') }}</p>
       </div>
-      <nav>
+      <nav @click="if ($event.target.closest('a') && window.innerWidth <= 900) sidebarOpen = false">
         <a href="{{ route('profile.edit') }}" class="user-info" title="Perfil">
           <span style="font-size:18px">👤</span>
           <div>
@@ -219,7 +289,8 @@
 
     <main class="main">
       <div class="topbar">
-        <div>
+        <button type="button" class="mobile-menu-btn" @click="sidebarOpen = true" aria-label="Abrir menu" title="Abrir menu">☰</button>
+        <div class="topbar-title">
           <h2>@yield('title', 'Dashboard')</h2>
           <p>@yield('description', 'Visão Geral do Sistema')</p>
         </div>
@@ -228,7 +299,7 @@
         @endif
       </div>
 
-      <div class="content view active" style="padding: 24px 28px; overflow-y: auto; height: 100%;">
+      <div class="content view active app-content">
         @yield('content')
       </div>
     </main>
