@@ -108,6 +108,47 @@
         background: rgba(255, 83, 112, .15);
     }
 
+    .backups-tool-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, .03);
+        color: var(--text-2);
+        cursor: pointer;
+    }
+
+    .backups-tool-button:hover {
+        background: var(--bg-hover);
+        color: var(--cyan);
+    }
+
+    .backups-state {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .backup-state-badge {
+        padding: 3px 7px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-3);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .backup-state-valid { border-color: rgba(0, 255, 159, .25); color: var(--green); }
+    .backup-state-invalid { border-color: rgba(255, 83, 112, .3); color: var(--red); }
+    .backup-state-protected { border-color: rgba(255, 215, 64, .3); color: var(--yellow); }
+
     @media (max-width: 900px) {
         .backups-actions {
             grid-template-columns: minmax(0, 1fr);
@@ -245,7 +286,7 @@
     <div class="table-card">
         <div class="backups-list-header">
             <h3 style="margin:0; color:var(--text-1); font-size:15px;">Arquivos de Backup</h3>
-            <span class="backups-directory">Diretório: storage/app/backups</span>
+            <span class="backups-directory">Automático: segunda-feira, 02:00 · Retenção: {{ config('backup.retention') }} semanas</span>
         </div>
 
         <table class="data-table backups-table">
@@ -254,7 +295,8 @@
                     <th>Arquivo</th>
                     <th>Tamanho</th>
                     <th>Gerado em</th>
-                    <th width="120">Ação</th>
+                    <th>Estado</th>
+                    <th width="220">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -263,9 +305,29 @@
                         <td data-label="Arquivo" class="backups-filename">{{ $backup['name'] }}</td>
                         <td data-label="Tamanho">{{ $backup['size_human'] }}</td>
                         <td data-label="Gerado em">{{ \Carbon\Carbon::createFromTimestamp($backup['last_modified'], config('app.timezone'))->format('d/m/Y H:i:s') }}</td>
-                        <td data-label="Ação" class="backups-action-cell">
+                        <td data-label="Estado">
+                            <div class="backups-state">
+                                <span class="backup-state-badge">{{ $backup['origin'] === 'automatic' ? 'Automático' : 'Manual' }}</span>
+                                <span class="backup-state-badge backup-state-{{ $backup['integrity'] }}">
+                                    {{ $backup['integrity'] === 'valid' ? 'Válido' : ($backup['integrity'] === 'invalid' ? 'Inválido' : 'Não verificado') }}
+                                </span>
+                                @if($backup['protected'])
+                                    <span class="backup-state-badge backup-state-protected">Protegido</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td data-label="Ações" class="backups-action-cell">
                             <div class="backups-file-actions">
                                 <a href="{{ route('backups.download', ['file' => $backup['name']]) }}" class="btn-save backups-download">⬇️ Download</a>
+                                <form action="{{ route('backups.validate', ['file' => $backup['name']]) }}" method="POST" class="backups-delete-form">
+                                    @csrf
+                                    <button type="submit" class="backups-tool-button" title="Validar integridade" aria-label="Validar integridade">✓</button>
+                                </form>
+                                <form action="{{ route('backups.protection', ['file' => $backup['name']]) }}" method="POST" class="backups-delete-form">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="backups-tool-button" title="{{ $backup['protected'] ? 'Remover proteção' : 'Proteger contra exclusão automática' }}" aria-label="{{ $backup['protected'] ? 'Remover proteção' : 'Proteger backup' }}">{{ $backup['protected'] ? '🔓' : '🔒' }}</button>
+                                </form>
                                 <form action="{{ route('backups.destroy', ['file' => $backup['name']]) }}" method="POST" class="backups-delete-form" onsubmit="return confirm('Excluir permanentemente este backup?')">
                                     @csrf
                                     @method('DELETE')
@@ -276,7 +338,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="empty-state">Nenhum backup gerado ainda.</td>
+                        <td colspan="5" class="empty-state">Nenhum backup gerado ainda.</td>
                     </tr>
                 @endforelse
             </tbody>

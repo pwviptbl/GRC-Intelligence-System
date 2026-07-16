@@ -24,6 +24,21 @@ services:
         depends_on:
             - pgsql
             - redis
+    scheduler:
+        image: 'sail-8.5/app'
+        command: php artisan schedule:work
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            SUPERVISOR_PHP_USER: root
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
+            - pgsql
+            - redis
     pgsql:
         image: 'postgres:18-alpine'
         ports:

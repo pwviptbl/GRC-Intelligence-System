@@ -25,12 +25,18 @@ class BackupController extends Controller
             ->filter(fn (string $path) => str_ends_with(strtolower($path), '.zip'))
             ->map(function (string $path) use ($disk) {
                 $size = $disk->size($path);
+                $name = basename($path);
+                $metadata = $this->readMetadata($name);
 
                 return [
-                    'name' => basename($path),
+                    'name' => $name,
                     'size' => $size,
                     'size_human' => $this->humanFileSize($size),
                     'last_modified' => $disk->lastModified($path),
+                    'origin' => $metadata['origin'] ?? 'manual',
+                    'protected' => (bool) ($metadata['protected'] ?? false),
+                    'integrity' => $metadata['integrity'] ?? 'unverified',
+                    'checksum' => $metadata['checksum'] ?? null,
                 ];
             })
             ->sortByDesc('last_modified')
@@ -41,22 +47,34 @@ class BackupController extends Controller
 
     public function create(): RedirectResponse
     {
+        try {
+            $zipName = $this->generateBackup('manual');
+
+            return redirect()->route('backups.index')
+                ->with('success', 'Backup gerado com sucesso: ' . $zipName);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('backups.index')
+                ->with('error', 'Falha ao gerar backup: ' . $e->getMessage());
+        }
+    }
+
+    public function generateBackup(string $origin = 'automatic'): string
+    {
         $this->migrateLegacyBackups();
 
-        $disk = Storage::disk('local');
         $backupDirPath = $this->backupDirectoryPath();
-
         $timestamp = now()->format('Ymd_His');
         $tempDir = $backupDirPath . '/tmp_' . $timestamp . '_' . bin2hex(random_bytes(3));
-
-        File::ensureDirectoryExists($tempDir);
-
-        $dumpPath = $tempDir . '/database.sql';
-        $manifestPath = $tempDir . '/manifest.json';
         $zipName = 'grc-backup-' . $timestamp . '.zip';
         $zipPath = $backupDirPath . '/' . $zipName;
 
+        File::ensureDirectoryExists($tempDir);
         try {
+            $dumpPath = $tempDir . '/database.sql';
+            $manifestPath = $tempDir . '/manifest.json';
+
             $this->dumpDatabase($dumpPath);
 
             File::put($manifestPath, json_encode([
@@ -68,14 +86,15 @@ class BackupController extends Controller
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
             $this->buildZip($zipPath, $dumpPath, $manifestPath, storage_path('app/public'));
+            $this->writeMetadata($zipName, [
+                'origin' => $origin,
+                'protected' => false,
+                'integrity' => 'valid',
+                'checksum' => hash_file('sha256', $zipPath),
+                'validated_at' => now()->toIso8601String(),
+            ]);
 
-            return redirect()->route('backups.index')
-                ->with('success', 'Backup gerado com sucesso: ' . $zipName);
-        } catch (\Throwable $e) {
-            report($e);
-
-            return redirect()->route('backups.index')
-                ->with('error', 'Falha ao gerar backup: ' . $e->getMessage());
+            return $zipName;
         } finally {
             File::deleteDirectory($tempDir);
         }
@@ -119,8 +138,75 @@ class BackupController extends Controller
                 ->with('error', 'Não foi possível excluir o backup: ' . $safeName);
         }
 
+        $disk->delete($this->metadataPath($safeName));
+
         return redirect()->route('backups.index')
             ->with('success', 'Backup excluído com sucesso: ' . $safeName);
+    }
+
+    public function toggleProtection(string $file): RedirectResponse
+    {
+        $safeName = $this->existingBackupName($file);
+        $metadata = $this->readMetadata($safeName);
+        $metadata['protected'] = !(bool) ($metadata['protected'] ?? false);
+        $this->writeMetadata($safeName, $metadata);
+
+        return redirect()->route('backups.index')->with(
+            'success',
+            $metadata['protected'] ? 'Backup protegido contra exclusão automática.' : 'Proteção automática removida.'
+        );
+    }
+
+    public function validateIntegrity(string $file): RedirectResponse
+    {
+        $safeName = $this->existingBackupName($file);
+        $path = Storage::disk('local')->path(self::BACKUP_DIR . '/' . $safeName);
+        $valid = false;
+
+        if (class_exists(ZipArchive::class)) {
+            $zip = new ZipArchive();
+            if ($zip->open($path) === true) {
+                $valid = $zip->locateName('database.sql') !== false
+                    && $zip->locateName('manifest.json') !== false;
+                $zip->close();
+            }
+        }
+
+        $metadata = $this->readMetadata($safeName);
+        $metadata['integrity'] = $valid ? 'valid' : 'invalid';
+        $metadata['checksum'] = hash_file('sha256', $path);
+        $metadata['validated_at'] = now()->toIso8601String();
+        $this->writeMetadata($safeName, $metadata);
+
+        return redirect()->route('backups.index')->with(
+            $valid ? 'success' : 'error',
+            $valid ? 'Integridade do backup validada com sucesso.' : 'Backup inválido ou incompleto.'
+        );
+    }
+
+    public function pruneAutomaticBackups(?int $retention = null): int
+    {
+        $retention ??= max(1, (int) config('backup.retention', 8));
+        $disk = Storage::disk('local');
+
+        $removable = collect($disk->files(self::BACKUP_DIR))
+            ->filter(fn (string $path) => str_ends_with(strtolower($path), '.zip'))
+            ->map(fn (string $path) => [
+                'path' => $path,
+                'name' => basename($path),
+                'modified' => $disk->lastModified($path),
+                'metadata' => $this->readMetadata(basename($path)),
+            ])
+            ->filter(fn (array $backup) => ($backup['metadata']['origin'] ?? 'manual') === 'automatic'
+                && !(bool) ($backup['metadata']['protected'] ?? false))
+            ->sortByDesc('modified')
+            ->skip($retention);
+
+        foreach ($removable as $backup) {
+            $disk->delete([$backup['path'], $this->metadataPath($backup['name'])]);
+        }
+
+        return $removable->count();
     }
 
     public function restore(Request $request): RedirectResponse
@@ -349,6 +435,49 @@ class BackupController extends Controller
         $value = $bytes / (1024 ** $power);
 
         return number_format($value, $power === 0 ? 0 : 2, ',', '.') . ' ' . $units[$power];
+    }
+
+    private function existingBackupName(string $file): string
+    {
+        $safeName = basename($file);
+        if ($safeName !== $file || !str_ends_with(strtolower($safeName), '.zip')) {
+            abort(404);
+        }
+
+        if (!Storage::disk('local')->exists(self::BACKUP_DIR . '/' . $safeName)) {
+            abort(404);
+        }
+
+        return $safeName;
+    }
+
+    private function metadataPath(string $file): string
+    {
+        return self::BACKUP_DIR . '/' . $file . '.meta.json';
+    }
+
+    private function readMetadata(string $file): array
+    {
+        $disk = Storage::disk('local');
+        $path = $this->metadataPath($file);
+
+        if (!$disk->exists($path)) {
+            return [];
+        }
+
+        $metadata = json_decode($disk->get($path), true);
+
+        return is_array($metadata) ? $metadata : [];
+    }
+
+    private function writeMetadata(string $file, array $metadata): void
+    {
+        $metadata['updated_at'] = now()->toIso8601String();
+
+        Storage::disk('local')->put(
+            $this->metadataPath($file),
+            json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
+        );
     }
 
     private function backupDirectoryPath(): string

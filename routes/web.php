@@ -49,6 +49,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/backups/create', [BackupController::class, 'create'])->name('backups.create');
         Route::get('/backups/download/{file}', [BackupController::class, 'download'])->where('file', '.*')->name('backups.download');
         Route::delete('/backups/{file}', [BackupController::class, 'destroy'])->where('file', '[^/]+')->name('backups.destroy');
+        Route::patch('/backups/{file}/protection', [BackupController::class, 'toggleProtection'])->where('file', '[^/]+')->name('backups.protection');
+        Route::post('/backups/{file}/validate', [BackupController::class, 'validateIntegrity'])->where('file', '[^/]+')->name('backups.validate');
         Route::post('/backups/restore', [BackupController::class, 'restore'])->name('backups.restore');
     });
 
