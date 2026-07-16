@@ -78,6 +78,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('clientes', ClienteController::class)->except(['index']);
         Route::resource('softwares', SoftwareController::class)->except(['index']);
         Route::resource('tier_politicas', TierPoliticaController::class)->except(['index']);
+        Route::post('/atividades/{atividade}/duplicate', [AtividadeController::class, 'duplicate'])->name('atividades.duplicate');
         Route::resource('atividades', AtividadeController::class)->except(['index', 'create', 'show', 'edit']);
         Route::resource('instancias', InstanciaClienteController::class)->except(['index']);
         Route::resource('politicas', PoliticaController::class)->except(['index']);
@@ -98,6 +99,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('plano_acoes', PlanoAcaoController::class);
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
+        Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
         Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
         Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
         Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');

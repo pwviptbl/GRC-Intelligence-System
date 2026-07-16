@@ -52,6 +52,19 @@ class AtividadeController extends Controller
         return redirect()->back()->with('success', 'Atividade atualizada com sucesso!');
     }
 
+    public function duplicate(Atividade $atividade)
+    {
+        if (! $this->tableAvailable()) {
+            return redirect()->back()->withErrors('A tabela de atividades ainda nao existe. Rode a migration antes de duplicar a atividade.');
+        }
+
+        $copia = $atividade->replicate();
+        $copia->atividade = $this->nextDuplicateName($atividade->atividade);
+        $copia->save();
+
+        return redirect()->back()->with('success', 'Atividade duplicada com sucesso!');
+    }
+
     public function destroy(Atividade $atividade)
     {
         if (! $this->tableAvailable()) {
@@ -85,6 +98,25 @@ class AtividadeController extends Controller
     protected function tableAvailable(): bool
     {
         return Schema::hasTable('atividades');
+    }
+
+    protected function nextDuplicateName(string $name): string
+    {
+        $baseName = preg_replace('/ \((Copia(?: \d+)?)\)$/', '', $name) ?: $name;
+        $candidate = $baseName . ' (Copia)';
+
+        if (! Atividade::query()->where('atividade', $candidate)->exists()) {
+            return $candidate;
+        }
+
+        $suffix = 2;
+
+        do {
+            $candidate = sprintf('%s (Copia %d)', $baseName, $suffix);
+            $suffix++;
+        } while (Atividade::query()->where('atividade', $candidate)->exists());
+
+        return $candidate;
     }
 
     protected function filteredQuery(Request $request)

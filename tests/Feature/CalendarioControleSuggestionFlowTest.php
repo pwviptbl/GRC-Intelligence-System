@@ -65,6 +65,58 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
     }
 
+    public function test_generation_uses_activity_before_tier_fallback(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        $tierPolicy = TierPolitica::create([
+            'tier' => 1,
+            'acao_controle' => 'Controle generico de tier',
+            'frequencia' => 'Mensal',
+            'sla_correcao' => '9 dias',
+            'bloqueio_automatico' => false,
+            'ativo' => true,
+            'responsavel' => 'Time Base',
+        ]);
+        $atividade = Atividade::create([
+            'software_id' => null,
+            'atividade' => 'Pentest interno',
+            'modulo' => null,
+            'categoria' => null,
+            'rotina' => null,
+            'esforco' => 'GG',
+            'tier_minimo' => 1,
+            'tipo_demanda' => 'Campanha',
+            'frequencia_sugerida' => 'Semestral',
+            'sla_sugerido' => '15 dias',
+            'responsavel_padrao' => 'Time GRC',
+            'ativo' => true,
+        ]);
+
+        $this->post(route('calendario_controles.generate'))
+            ->assertRedirect(route('calendario_controles.index'));
+
+        $this->assertDatabaseHas('controle_eventos', [
+            'software_id' => $software->id,
+            'tier_politica_id' => $tierPolicy->id,
+            'atividade_id' => $atividade->id,
+            'acao_controle_snapshot' => 'Pentest interno',
+            'frequencia_snapshot' => 'Semestral',
+            'sla_correcao_snapshot' => '15 dias',
+            'responsavel_planejado' => 'Time GRC',
+            'origem' => 'atividade+tier',
+            'status' => 'sugestao',
+        ]);
+
+        $this->assertDatabaseMissing('controle_eventos', [
+            'software_id' => $software->id,
+            'tier_politica_id' => $tierPolicy->id,
+            'atividade_id' => null,
+            'acao_controle_snapshot' => 'Controle generico de tier',
+        ]);
+    }
+
     public function test_generation_skips_existing_policy_period_even_when_activity_differs(): void
     {
         $this->actingAs($this->adminUser());
@@ -236,6 +288,56 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'id' => $triaged->id,
             'status' => 'planejado',
         ]);
+    }
+
+    public function test_incomplete_triaged_items_stay_blocked_with_warning_message(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        $tierPolicy = $this->createTierPolicy();
+
+        $triaged = ControleEvento::create([
+            'software_id' => $software->id,
+            'tier_politica_id' => $tierPolicy->id,
+            'tier' => 1,
+            'acao_controle_snapshot' => 'Executar analise autenticada',
+            'frequencia_snapshot' => 'Mensal',
+            'sla_correcao_snapshot' => '7 dias',
+            'bloqueio_automatico_snapshot' => false,
+            'responsavel_planejado' => 'Time GRC',
+            'origem' => 'tier',
+            'periodo_referencia' => 'mensal:2026-07',
+            'data_prevista' => now()->addDays(3)->toDateString(),
+            'data_limite' => now()->addDays(10)->toDateString(),
+            'prioridade' => 'Alta',
+            'status' => 'triagem',
+        ]);
+
+        $this->post(route('calendario_controles.plan_triaged'), [
+            'suggestion_ids' => [$triaged->id],
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('warning');
+
+        $this->assertDatabaseHas('controle_eventos', [
+            'id' => $triaged->id,
+            'status' => 'triagem',
+        ]);
+    }
+
+    public function test_execution_kanban_has_its_own_screen(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $response = $this->get(route('calendario_controles.kanban'));
+
+        $response
+            ->assertOk()
+            ->assertSee('Execucao de Controles')
+            ->assertSee('Kanban de execucao')
+            ->assertDontSee('Captacao de Demandas')
+            ->assertDontSee('Triagem de Demanda');
     }
 
     public function test_agent_created_control_event_defaults_to_suggestion(): void

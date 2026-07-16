@@ -191,6 +191,10 @@
                         @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                             <td>
                                 <div style="display:flex; gap:10px; align-items:center">
+                                    <form action="{{ route('atividades.duplicate', $atividade) }}" method="POST" onsubmit="return confirm('Deseja duplicar esta atividade?')">
+                                        @csrf
+                                        <button type="submit" class="btn-del" title="Duplicar" style="color:var(--cyan)">⧉</button>
+                                    </form>
                                     <button
                                         data-activity="{{ base64_encode($atividade->toJson()) }}"
                                         @click="openEdit($el.dataset.activity)"

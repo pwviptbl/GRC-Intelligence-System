@@ -179,8 +179,11 @@
         <a href="{{ route('plano_acoes.index') }}" class="nav-btn" :class="{ 'active': view.includes('plano_acoes') }">
           <span class="icon" style="margin-right: 10px;">✅</span> Plano de Ação
         </a>
-        <a href="{{ route('calendario_controles.index') }}" class="nav-btn" :class="{ 'active': view.includes('calendario_controles') }">
+        <a href="{{ route('calendario_controles.index') }}" class="nav-btn" :class="{ 'active': view === 'calendario_controles.index' }">
           <span class="icon" style="margin-right: 10px;">🗓️</span> Calendário de Controles
+        </a>
+        <a href="{{ route('calendario_controles.kanban') }}" class="nav-btn submenu" :class="{ 'active': view === 'calendario_controles.kanban' }">
+          <span class="icon" style="margin-right: 10px;">▦</span> Execução
         </a>
         <a href="{{ route('lgpd.index') }}" class="nav-btn" :class="{ 'active': view.includes('lgpd') }">
           <span class="icon" style="margin-right: 10px;">📋</span> LGPD

@@ -1,11 +1,175 @@
 @extends('layouts.grc')
 
-@section('title', 'Central de Controles')
-@section('description', 'Captacao, triagem, planejamento e execucao de controles')
+@section('title', $kanbanMode ? 'Execucao de Controles' : 'Central de Controles')
+@section('description', $kanbanMode ? 'Acompanhamento do trabalho aprovado' : 'Captacao, triagem e planejamento de controles')
 @section('badge', ($sugestoes->count() + $triagens->count() + $eventos->count()) . ' Itens')
 
 @section('content')
+<style>
+    .controls-filter-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr auto;
+        gap: 12px;
+        align-items: end;
+    }
+    .execution-board {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(250px, 1fr));
+        gap: 12px;
+        padding-bottom: 8px;
+        overflow-x: auto;
+    }
+    .execution-column {
+        min-width: 0;
+        background: rgba(255,255,255,.018);
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .execution-column-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 46px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .execution-column-title {
+        color: var(--text-1);
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .execution-column-count {
+        min-width: 24px;
+        padding: 3px 7px;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 12px;
+        color: var(--text-2);
+        text-align: center;
+        font: 600 11px var(--mono);
+    }
+    .execution-column-body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 150px;
+        max-height: 620px;
+        padding: 8px;
+        overflow-y: auto;
+    }
+    .execution-card {
+        width: 100%;
+        padding: 11px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+    .execution-card:hover,
+    .execution-card:focus-visible {
+        border-color: var(--border-glow);
+        background: var(--bg-hover);
+        outline: none;
+    }
+    .execution-card-top,
+    .execution-card-meta,
+    .execution-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .execution-card-software {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--text-1);
+        font-size: 12px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .execution-card-action {
+        margin-top: 9px;
+        color: var(--text-1);
+        font-size: 12px;
+        line-height: 1.45;
+    }
+    .execution-card-scope {
+        margin-top: 5px;
+        color: var(--text-3);
+        font-size: 11px;
+        line-height: 1.4;
+    }
+    .execution-card-meta {
+        margin-top: 10px;
+        color: var(--text-2);
+        font-size: 11px;
+    }
+    .execution-card-footer {
+        margin-top: 9px;
+        padding-top: 9px;
+        border-top: 1px solid rgba(255,255,255,.06);
+        color: var(--text-3);
+        font-size: 10px;
+    }
+    .execution-empty {
+        padding: 28px 10px;
+        color: var(--text-3);
+        font-size: 11px;
+        text-align: center;
+    }
+    .execution-modal-summary,
+    .execution-form-grid {
+        display: grid;
+        gap: 16px;
+    }
+    .execution-modal-summary { grid-template-columns: 1.2fr 1fr; margin-bottom: 18px; }
+    .execution-form-grid { grid-template-columns: repeat(3, 1fr); }
+
+    @media (max-width: 1180px) {
+        .controls-filter-grid { grid-template-columns: repeat(3, 1fr); }
+        .execution-board { grid-template-columns: repeat(4, minmax(270px, 1fr)); }
+    }
+    @media (max-width: 760px) {
+        .controls-filter-grid { grid-template-columns: 1fr 1fr; }
+        .controls-filter-grid > button { width: 100%; }
+        .execution-board {
+            grid-template-columns: repeat(4, minmax(82vw, 82vw));
+            scroll-snap-type: x mandatory;
+        }
+        .execution-column { scroll-snap-align: start; }
+        .execution-column-body { max-height: none; }
+        .execution-modal-summary,
+        .execution-form-grid { grid-template-columns: 1fr; }
+        .modal-overlay { align-items: flex-start; padding: 12px; overflow-y: auto; }
+        .modal-overlay .modal { width: 100%; max-width: 100% !important; padding: 18px; }
+        .modal-actions { position: sticky; bottom: 0; padding-top: 12px; background: var(--bg-card); }
+    }
+    @media (max-width: 480px) {
+        .controls-filter-grid { grid-template-columns: 1fr; }
+        .execution-board { grid-template-columns: repeat(4, minmax(88vw, 88vw)); }
+    }
+</style>
 <div class="table-view" x-data="{
+    showExecutionModal: false,
+    executionFormAction: '',
+    executionDeleteAction: '',
+    executionForm: {
+        id: '',
+        software_nome: '',
+        scope_label: '',
+        acao_controle_snapshot: '',
+        status: 'planejado',
+        data_prevista: '',
+        modulo: '',
+        categoria: '',
+        rotina: '',
+        esforco: '',
+        observacoes_execucao: '',
+    },
     statusStyle(status) {
         if (status === 'sugestao') return 'background:rgba(255,255,255,.06);color:var(--text-2);border-color:rgba(255,255,255,.12)';
         if (status === 'triagem') return 'background:rgba(126,87,255,.12);color:#b9a6ff;border-color:rgba(126,87,255,.25)';
@@ -26,6 +190,28 @@
         if (String(tier) === '1') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
         if (String(tier) === '2') return 'background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)';
         return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
+    },
+    openExecution(activity) {
+        if (typeof activity === 'string') {
+            activity = JSON.parse(atob(activity));
+        }
+
+        this.executionForm = {
+            id: activity.id,
+            software_nome: activity.software?.nome ?? '',
+            scope_label: activity.scope_label ?? '',
+            acao_controle_snapshot: activity.acao_controle_snapshot ?? '',
+            status: activity.status ?? 'planejado',
+            data_prevista: activity.data_prevista ? activity.data_prevista.substring(0, 10) : '',
+            modulo: activity.modulo ?? '',
+            categoria: activity.categoria ?? '',
+            rotina: activity.rotina ?? '',
+            esforco: activity.esforco ?? '',
+            observacoes_execucao: activity.observacoes_execucao ?? '',
+        };
+        this.executionFormAction = `/calendario_controles/${activity.id}`;
+        this.executionDeleteAction = `/calendario_controles/${activity.id}`;
+        this.showExecutionModal = true;
     }
 }">
     @if ($errors->any())
@@ -40,12 +226,19 @@
         </div>
     @endif
 
+    @if (session('warning'))
+        <div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,215,64,.35); background:rgba(255,215,64,.08); color:#fff3bf; font-size:13px;">
+            {{ session('warning') }}
+        </div>
+    @endif
+
     @if (!$tableAvailable)
         <div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,215,64,.35); background:rgba(255,215,64,.08); color:#fff3bf; font-size:13px;">
             A tabela do calendario de controles ainda nao existe no banco atual. Rode a migration para habilitar a geracao.
         </div>
     @endif
 
+    @if(!$kanbanMode)
     <div class="stats-row">
         <div class="stat-card c2">
             <div class="stat-label">Captacao</div>
@@ -68,9 +261,10 @@
             <div class="stat-value" style="color:var(--red)">{{ $eventos->where('status', 'atrasado')->count() }}</div>
         </div>
     </div>
+    @endif
 
     <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
-        <form action="{{ route('calendario_controles.index') }}" method="GET" style="display:grid; grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr auto; gap:12px; align-items:end;">
+        <form action="{{ $kanbanMode ? route('calendario_controles.kanban') : route('calendario_controles.index') }}" method="GET" class="controls-filter-grid">
             <div class="form-group" style="margin-bottom:0">
                 <label>Software</label>
                 <select name="software_id" class="form-select">
@@ -114,7 +308,7 @@
             <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>
         </form>
 
-        @if($tableAvailable)
+        @if($tableAvailable && !$kanbanMode)
         <div style="margin-top:12px; display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
             <form action="{{ route('calendario_controles.generate') }}" method="POST" style="display:flex; gap:10px; align-items:end;">
                 @csrf
@@ -129,6 +323,7 @@
         @endif
     </div>
 
+    @if(!$kanbanMode)
     <div style="background:rgba(255,255,255,0.02); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
             <div>
@@ -251,6 +446,19 @@
                                         @else
                                             <span style="color:var(--text-3)">Incompleto</span>
                                         @endif
+                                        @php
+                                            $missing = [];
+                                            if (!$triagem->tipo_demanda) { $missing[] = 'tipo'; }
+                                            if (!$triagem->esforco) { $missing[] = 'esforco'; }
+                                            if ($triagem->score_impacto === null) { $missing[] = 'impacto'; }
+                                            if ($triagem->score_exposicao === null) { $missing[] = 'exposicao'; }
+                                            if ($triagem->score_confianca === null) { $missing[] = 'confianca'; }
+                                        @endphp
+                                        @if($missing !== [])
+                                            <div style="font-size:11px; color:var(--text-3); margin-top:6px;">
+                                                Falta: {{ implode(', ', $missing) }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td style="min-width:280px">
                                         <form action="{{ route('calendario_controles.update', $triagem) }}" method="POST">
@@ -318,6 +526,16 @@
         @endif
     </div>
 
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:20px; padding:16px; background:rgba(0,229,255,.035); border:1px solid rgba(0,229,255,.13); border-radius:8px; flex-wrap:wrap;">
+        <div>
+            <div style="font-size:14px; font-weight:700; color:var(--text-1);">Fila de execucao</div>
+            <div style="margin-top:4px; font-size:12px; color:var(--text-3);">{{ $eventos->count() }} item(ns) aprovados aguardando acompanhamento operacional.</div>
+        </div>
+        <a href="{{ route('calendario_controles.kanban', request()->query()) }}" class="btn-add" style="text-decoration:none;">Abrir Kanban</a>
+    </div>
+    @endif
+
+    @if($kanbanMode)
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
         <div>
             <div style="font-size:16px; font-weight:700; color:var(--text-1)">Planejamento e Execucao</div>
@@ -326,110 +544,140 @@
         <div style="font-size:12px; color:var(--text-3)">{{ $eventos->count() }} item(ns) na fila</div>
     </div>
 
-    <div class="table-card">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Software</th>
-                    <th>Escopo</th>
-                    <th>Tier</th>
-                    <th>Acao</th>
-                    <th>Periodo</th>
-                    <th>Prevista</th>
-                    <th>Esforco</th>
-                    <th>Prioridade</th>
-                    <th>Status</th>
-                    <th>Risco</th>
-                    <th>Responsavel</th>
-                    <th>Atualizacao</th>
-                    <th>Acoes</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($eventos as $evento)
-                <tr>
-                    <td style="font-weight:500;color:var(--text-1)">{{ $evento->software?->nome }}</td>
-                    <td style="min-width:210px">
-                        <div style="color:var(--text-1)">{{ $evento->scope_label }}</div>
-                        <div style="font-size:11px; color:var(--text-3); margin-top:4px">Modulo: {{ $evento->modulo ?: 'A definir' }}</div>
-                    </td>
-                    <td><span class="badge" :style="tierStyle('{{ $evento->tier }}')">{{ $evento->tier_label }}</span></td>
-                    <td style="min-width:220px">
-                        <div style="color:var(--text-1)">{{ $evento->acao_controle_snapshot }}</div>
-                        <div style="font-size:11px; color:var(--text-3); margin-top:4px">{{ $evento->frequencia_snapshot }} | SLA {{ $evento->sla_correcao_snapshot }}</div>
-                    </td>
-                    <td style="font-family:var(--mono); font-size:11px; color:var(--text-3)">{{ $evento->periodo_referencia }}</td>
-                    <td>{{ optional($evento->data_prevista)->format('d/m/Y') }}</td>
-                    <td>{{ $evento->esforco ?: 'M' }}</td>
-                    <td><span class="badge" :style="priorityStyle('{{ $evento->prioridade }}')">{{ $evento->prioridade }}</span></td>
-                    <td><span class="badge" :style="statusStyle('{{ $evento->status }}')">{{ $evento->status }}</span></td>
-                    <td>
-                        @if($evento->risco)
-                            <div style="color:var(--text-1)">{{ $evento->risco->titulo }}</div>
-                            <div style="font-size:11px; color:var(--text-3)">{{ $evento->risco->criticidade }}</div>
-                        @else
-                            <span style="color:var(--text-3)">-</span>
-                        @endif
-                    </td>
-                    <td>{{ $evento->responsavel_planejado }}</td>
-                    <td style="min-width:220px">
-                        <form action="{{ route('calendario_controles.update', $evento) }}" method="POST">
-                            @csrf
-                            @method('PATCH')
-                            <select name="status" class="form-select" style="margin-bottom:8px; height:36px; font-size:12px">
-                                @foreach($statusOptions as $status)
-                                    <option value="{{ $status }}" {{ $evento->status === $status ? 'selected' : '' }}>{{ $status }}</option>
-                                @endforeach
-                            </select>
-                            <div style="margin-bottom:8px">
-                                <label style="font-size:10px; color:{{ $evento->status === 'atrasado' ? 'var(--red)' : 'var(--text-3)' }}; font-weight:600; display:block; margin-bottom:4px">
-                                    {{ $evento->status === 'atrasado' ? 'Reagendar data' : 'Data prevista' }}
-                                </label>
-                                <input
-                                    type="date"
-                                    name="data_prevista"
-                                    class="form-input"
-                                    value="{{ optional($evento->data_prevista)->format('Y-m-d') }}"
-                                    style="height:34px; font-size:12px; width:100%; box-sizing:border-box"
-                                >
-                            </div>
-                            <input type="text" name="modulo" class="form-input" value="{{ $evento->modulo }}" placeholder="Modulo" style="height:34px; font-size:12px; width:100%; box-sizing:border-box; margin-bottom:8px;">
-                            <select name="categoria" class="form-select" style="margin-bottom:8px; height:36px; font-size:12px">
-                                <option value="">Categoria</option>
-                                @foreach($categoryOptions as $category)
-                                    <option value="{{ $category }}" {{ $evento->categoria === $category ? 'selected' : '' }}>{{ $category }}</option>
-                                @endforeach
-                            </select>
-                            <input type="text" name="rotina" class="form-input" value="{{ $evento->rotina }}" placeholder="Rotina" style="height:34px; font-size:12px; width:100%; box-sizing:border-box; margin-bottom:8px;">
-                            <select name="esforco" class="form-select" style="margin-bottom:8px; height:36px; font-size:12px">
-                                <option value="">Esforco</option>
-                                @foreach($effortOptions as $effort)
-                                    <option value="{{ $effort }}" {{ $evento->esforco === $effort ? 'selected' : '' }}>{{ $effort }}</option>
-                                @endforeach
-                            </select>
-                            <textarea name="observacoes_execucao" class="form-textarea" rows="2" placeholder="Observacoes de execucao">{{ $evento->observacoes_execucao }}</textarea>
-                            <button type="submit" class="btn-secondary" style="margin-top:8px; width:100%; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:8px 10px;">Salvar</button>
-                        </form>
-                    </td>
-                    <td>
-                        <form action="{{ route('calendario_controles.destroy', $evento) }}" method="POST" onsubmit="return confirm('Deseja excluir este item da fila?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn-del" style="font-size:18px;">X</button>
-                        </form>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="13">
-                        <div class="empty-state">
-                            <p>Nenhum item operacional aprovado ainda.</p>
-                        </div>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+    @php
+        $boardColumns = [
+            'planejado' => ['label' => 'Planejado', 'statuses' => ['planejado', 'pendente'], 'color' => 'var(--yellow)'],
+            'em_execucao' => ['label' => 'Em Execucao', 'statuses' => ['em_execucao'], 'color' => 'var(--cyan)'],
+            'atrasado' => ['label' => 'Atrasado', 'statuses' => ['atrasado'], 'color' => 'var(--red)'],
+            'concluido' => ['label' => 'Concluido', 'statuses' => ['concluido'], 'color' => 'var(--green)'],
+        ];
+    @endphp
+
+    <div class="execution-board" aria-label="Kanban de execucao">
+        @foreach($boardColumns as $columnKey => $column)
+            @php($columnEvents = $eventos->whereIn('status', $column['statuses']))
+            <section class="execution-column" aria-labelledby="execution-column-{{ $columnKey }}">
+                <header class="execution-column-header" style="border-top:2px solid {{ $column['color'] }};">
+                    <span id="execution-column-{{ $columnKey }}" class="execution-column-title">{{ $column['label'] }}</span>
+                    <span class="execution-column-count">{{ $columnEvents->count() }}</span>
+                </header>
+                <div class="execution-column-body">
+                    @forelse($columnEvents as $evento)
+                        <button
+                            type="button"
+                            class="execution-card"
+                            data-evento="{{ base64_encode($evento->toJson()) }}"
+                            @click="openExecution($el.dataset.evento)"
+                            title="Abrir gestao da atividade"
+                        >
+                            <span class="execution-card-top">
+                                <span class="execution-card-software">{{ $evento->software?->nome ?: 'Atividade geral' }}</span>
+                                <span class="badge" :style="tierStyle('{{ $evento->tier }}')">{{ $evento->tier_label }}</span>
+                            </span>
+                            <span class="execution-card-action">{{ $evento->acao_controle_snapshot }}</span>
+                            <span class="execution-card-scope">{{ $evento->scope_label }}</span>
+                            <span class="execution-card-meta">
+                                <span>{{ optional($evento->data_prevista)->format('d/m/Y') ?: 'Sem data' }}</span>
+                                <span>Esforco {{ $evento->esforco ?: 'M' }}</span>
+                            </span>
+                            <span class="execution-card-footer">
+                                <span>{{ $evento->responsavel_planejado ?: 'Sem responsavel' }}</span>
+                                <span style="color:{{ $column['color'] }}">{{ $evento->prioridade ?: 'Sem prioridade' }}</span>
+                            </span>
+                        </button>
+                    @empty
+                        <div class="execution-empty">Nenhum item nesta etapa.</div>
+                    @endforelse
+                </div>
+            </section>
+        @endforeach
     </div>
+
+    <div class="modal-overlay" x-show="showExecutionModal" style="display: none;" x-transition>
+        <div class="modal" @click.away="showExecutionModal = false" style="max-width:860px;">
+            <h3>Atualizar Execucao</h3>
+            <div class="execution-modal-summary">
+                <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px;">
+                    <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; margin-bottom:6px;">Software</div>
+                    <div style="color:var(--text-1); font-weight:600;" x-text="executionForm.software_nome || 'Sem software'"></div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:12px; text-transform:uppercase; margin-bottom:6px;">Escopo</div>
+                    <div style="color:var(--text-1);" x-text="executionForm.scope_label || 'Escopo geral'"></div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:12px; text-transform:uppercase; margin-bottom:6px;">Acao</div>
+                    <div style="color:var(--text-2);" x-text="executionForm.acao_controle_snapshot"></div>
+                </div>
+                <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px;">
+                    <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; margin-bottom:6px;">Fluxo atual</div>
+                    <div style="color:var(--text-2); line-height:1.5;">
+                        Depois da triagem, o item entra na fila operacional. Aqui voce decide se ele fica <strong style="color:var(--yellow)">planejado</strong>, vai para <strong style="color:var(--cyan)">execucao</strong>, fecha em <strong style="color:var(--green)">concluido</strong> ou volta como <strong style="color:var(--red)">atrasado</strong>.
+                    </div>
+                </div>
+            </div>
+
+            <form :action="executionFormAction" method="POST">
+                @csrf
+                @method('PATCH')
+
+                <div class="execution-form-grid">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" x-model="executionForm.status" class="form-select">
+                            @foreach($statusOptions as $status)
+                                <option value="{{ $status }}">{{ $status }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data prevista</label>
+                        <input type="date" name="data_prevista" x-model="executionForm.data_prevista" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Esforco</label>
+                        <select name="esforco" x-model="executionForm.esforco" class="form-select">
+                            <option value="">Esforco</option>
+                            @foreach($effortOptions as $effort)
+                                <option value="{{ $effort }}">{{ $effort }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="execution-form-grid">
+                    <div class="form-group">
+                        <label>Modulo</label>
+                        <input type="text" name="modulo" x-model="executionForm.modulo" class="form-input" placeholder="Modulo">
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select name="categoria" x-model="executionForm.categoria" class="form-select">
+                            <option value="">Categoria</option>
+                            @foreach($categoryOptions as $category)
+                                <option value="{{ $category }}">{{ $category }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Rotina</label>
+                        <input type="text" name="rotina" x-model="executionForm.rotina" class="form-input" placeholder="Rotina">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observacoes de execucao</label>
+                    <textarea name="observacoes_execucao" x-model="executionForm.observacoes_execucao" class="form-textarea" rows="4" placeholder="O que foi feito, bloqueios, resultados e proximos passos."></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" form="execution-delete-form" class="btn-del" style="margin-right:auto; font-size:12px;" onclick="return confirm('Deseja excluir este item da fila?')">Excluir</button>
+                    <button type="button" class="btn-cancel" @click="showExecutionModal = false">Cancelar</button>
+                    <button type="submit" class="btn-save">Salvar Atualizacao</button>
+                </div>
+            </form>
+            <form id="execution-delete-form" :action="executionDeleteAction" method="POST">
+                @csrf
+                @method('DELETE')
+            </form>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection

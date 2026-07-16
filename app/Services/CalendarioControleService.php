@@ -42,23 +42,21 @@ class CalendarioControleService
                     continue;
                 }
 
-                $policies = TierPolitica::query()
+                $risk = $this->resolveRelevantRisk($software);
+                $activities = $this->resolveApplicableActivities($software, $tier);
+                $baselinePolicy = TierPolitica::query()
                     ->where('tier', $tier)
                     ->where('ativo', true)
                     ->orderBy('id')
-                    ->get();
-
-                if ($policies->isEmpty()) {
-                    $messages[] = "Software {$software->nome} ignorado: nao ha acoes cadastradas para o Tier {$tier}.";
-                    $skipped++;
-                    continue;
-                }
-
-                $risk = $this->resolveRelevantRisk($software);
-                $baselinePolicy = $policies->first();
-                $activities = $this->resolveApplicableActivities($software, $tier);
+                    ->first();
 
                 if ($activities->isNotEmpty()) {
+                    if (! $baselinePolicy) {
+                        $messages[] = "Software {$software->nome} ignorado: ha atividades cadastradas, mas falta politica ativa para o Tier {$tier}.";
+                        $skipped++;
+                        continue;
+                    }
+
                     foreach ($activities as $activity) {
                         $neverTested = !ControleEvento::query()
                             ->where('software_id', $software->id)
@@ -77,6 +75,18 @@ class CalendarioControleService
                         ];
                     }
 
+                    continue;
+                }
+
+                $policies = TierPolitica::query()
+                    ->where('tier', $tier)
+                    ->where('ativo', true)
+                    ->orderBy('id')
+                    ->get();
+
+                if ($policies->isEmpty()) {
+                    $messages[] = "Software {$software->nome} ignorado: nao ha atividades cadastradas nem acoes para o Tier {$tier}.";
+                    $skipped++;
                     continue;
                 }
 
@@ -252,9 +262,11 @@ class CalendarioControleService
             ->update(['status' => 'triagem']);
     }
 
-    public function planTriaged(array $ids): int
+    public function planTriaged(array $ids): array
     {
         $planned = 0;
+        $overdue = 0;
+        $blocked = [];
 
         ControleEvento::query()
             ->whereIn('id', $ids)
@@ -263,21 +275,42 @@ class CalendarioControleService
             ->orderByDesc('score_exposicao')
             ->orderByDesc('score_confianca')
             ->get()
-            ->each(function (ControleEvento $evento) use (&$planned) {
-                if (! $this->isTriageReady($evento)) {
+            ->each(function (ControleEvento $evento) use (&$planned, &$overdue, &$blocked) {
+                $missingFields = $this->missingTriageFields($evento);
+
+                if ($missingFields !== []) {
+                    $blocked[] = [
+                        'id' => $evento->id,
+                        'software' => $evento->software?->nome,
+                        'acao' => $evento->acao_controle_snapshot,
+                        'missing_fields' => $missingFields,
+                    ];
+
                     return;
                 }
 
+                $nextStatus = $evento->data_prevista && $evento->data_prevista->isPast()
+                    ? 'atrasado'
+                    : 'planejado';
+
                 $evento->update([
-                    'status' => $evento->data_prevista && $evento->data_prevista->isPast()
-                        ? 'atrasado'
-                        : 'planejado',
+                    'status' => $nextStatus,
                 ]);
+
+                if ($nextStatus === 'atrasado') {
+                    $overdue++;
+                    return;
+                }
 
                 $planned++;
             });
 
-        return $planned;
+        return [
+            'planned' => $planned,
+            'overdue' => $overdue,
+            'blocked' => count($blocked),
+            'blocked_items' => $blocked,
+        ];
     }
 
     public function discardSuggestions(array $ids): int
@@ -449,11 +482,34 @@ class CalendarioControleService
 
     protected function isTriageReady(ControleEvento $evento): bool
     {
-        return $evento->tipo_demanda !== null
-            && $evento->esforco !== null
-            && $evento->score_impacto !== null
-            && $evento->score_exposicao !== null
-            && $evento->score_confianca !== null;
+        return $this->missingTriageFields($evento) === [];
+    }
+
+    protected function missingTriageFields(ControleEvento $evento): array
+    {
+        $missing = [];
+
+        if ($evento->tipo_demanda === null || $evento->tipo_demanda === '') {
+            $missing[] = 'tipo de demanda';
+        }
+
+        if ($evento->esforco === null || $evento->esforco === '') {
+            $missing[] = 'esforco';
+        }
+
+        if ($evento->score_impacto === null) {
+            $missing[] = 'impacto';
+        }
+
+        if ($evento->score_exposicao === null) {
+            $missing[] = 'exposicao';
+        }
+
+        if ($evento->score_confianca === null) {
+            $missing[] = 'confianca';
+        }
+
+        return $missing;
     }
 
     public function resolveDeadline(string $sla, Carbon $plannedDate): ?Carbon

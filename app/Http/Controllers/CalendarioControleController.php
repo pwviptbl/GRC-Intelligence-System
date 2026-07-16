@@ -41,6 +41,31 @@ class CalendarioControleController extends Controller
             'categoryOptions' => ControleEvento::CATEGORY_OPTIONS,
             'effortOptions' => ControleEvento::EFFORT_OPTIONS,
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
+            'kanbanMode' => false,
+        ]);
+    }
+
+    public function kanban(Request $request)
+    {
+        $tableAvailable = $this->tableAvailable();
+        $eventos = collect();
+
+        if ($tableAvailable) {
+            $this->service->updateOverdueStatuses();
+            $eventos = $this->filteredOperationalQuery($request)->get();
+        }
+
+        return view('calendario_controles.index', [
+            'eventos' => $eventos,
+            'sugestoes' => collect(),
+            'triagens' => collect(),
+            'softwares' => Software::query()->orderBy('nome')->get(),
+            'tableAvailable' => $tableAvailable,
+            'statusOptions' => $this->statusOptions(),
+            'categoryOptions' => ControleEvento::CATEGORY_OPTIONS,
+            'effortOptions' => ControleEvento::EFFORT_OPTIONS,
+            'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
+            'kanbanMode' => true,
         ]);
     }
 
@@ -91,9 +116,33 @@ class CalendarioControleController extends Controller
 
     public function planTriaged(Request $request)
     {
-        $planned = $this->service->planTriaged($this->validateSuggestionSelection($request));
+        $result = $this->service->planTriaged($this->validateSuggestionSelection($request));
+        $message = "{$result['planned']} demanda(s) enviada(s) para planejamento.";
 
-        return redirect()->back()->with('success', "{$planned} demanda(s) triada(s) enviada(s) para planejamento.");
+        if ($result['overdue'] > 0) {
+            $message .= " {$result['overdue']} item(ns) foi(ram) direto para atrasado porque a data prevista ja passou.";
+        }
+
+        $redirect = redirect()->back()->with('success', $message);
+
+        if ($result['blocked'] > 0) {
+            $blockedLabels = collect($result['blocked_items'])
+                ->take(3)
+                ->map(function (array $item) {
+                    $title = $item['software'] ?: $item['acao'];
+
+                    return "{$title}: falta " . implode(', ', $item['missing_fields']);
+                })
+                ->implode(' | ');
+
+            $suffix = $result['blocked'] > 3
+                ? ' | demais itens tambem ficaram bloqueados.'
+                : '';
+
+            $redirect->with('warning', "{$result['blocked']} demanda(s) nao seguiram para planejamento. {$blockedLabels}{$suffix}");
+        }
+
+        return $redirect;
     }
 
     public function discardSuggestions(Request $request)
