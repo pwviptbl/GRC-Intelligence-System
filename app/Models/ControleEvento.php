@@ -36,6 +36,8 @@ class ControleEvento extends Model
         'planejado',
         'pendente',
         'em_execucao',
+        'em_revisao',
+        'bloqueado',
         'concluido',
         'atrasado',
         'cancelado',
@@ -48,6 +50,8 @@ class ControleEvento extends Model
         'planejado',
         'pendente',
         'em_execucao',
+        'em_revisao',
+        'bloqueado',
         'concluido',
         'atrasado',
     ];
@@ -64,14 +68,19 @@ class ControleEvento extends Model
         'tier',
         'acao_controle_snapshot',
         'descricao',
+        'criterios_aceite',
         'frequencia_snapshot',
         'sla_correcao_snapshot',
         'bloqueio_automatico_snapshot',
         'responsavel_planejado',
+        'executor_id',
+        'revisor_id',
         'modulo',
         'categoria',
         'rotina',
         'esforco',
+        'esforco_estimado_horas',
+        'esforco_real_horas',
         'tipo_demanda',
         'score_impacto',
         'score_exposicao',
@@ -81,10 +90,13 @@ class ControleEvento extends Model
         'origem',
         'periodo_referencia',
         'data_prevista',
+        'semana_planejada',
         'data_limite',
         'prioridade',
         'status',
         'iniciado_em',
+        'bloqueado_em',
+        'motivo_bloqueio',
         'concluido_em',
         'observacoes_execucao',
     ];
@@ -96,9 +108,13 @@ class ControleEvento extends Model
         'score_confianca' => 'integer',
         'bloqueio_automatico_snapshot' => 'boolean',
         'data_prevista' => 'date',
+        'semana_planejada' => 'date',
         'data_limite' => 'date',
         'iniciado_em' => 'datetime',
+        'bloqueado_em' => 'datetime',
         'concluido_em' => 'datetime',
+        'esforco_estimado_horas' => 'decimal:1',
+        'esforco_real_horas' => 'decimal:1',
     ];
 
     protected $appends = [
@@ -132,6 +148,16 @@ class ControleEvento extends Model
     public function risco()
     {
         return $this->belongsTo(Risco::class);
+    }
+
+    public function executor()
+    {
+        return $this->belongsTo(User::class, 'executor_id');
+    }
+
+    public function revisor()
+    {
+        return $this->belongsTo(User::class, 'revisor_id');
     }
 
     public function etapas()

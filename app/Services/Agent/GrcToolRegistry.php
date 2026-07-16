@@ -13,6 +13,7 @@ use App\Models\Procedimento;
 use App\Models\Risco;
 use App\Models\Software;
 use App\Models\TierPolitica;
+use App\Models\User;
 use App\Services\GrcContextService;
 use Illuminate\Support\Facades\DB;
 
@@ -50,6 +51,15 @@ class GrcToolRegistry
                     'ativo' => ['type' => 'boolean'],
                     'search' => ['type' => 'string'],
                     'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'list_team_members',
+                'Lista usuarios disponiveis para atribuicao, com nivel e capacidade semanal.',
+                self::RISK_READ,
+                [
+                    'disponivel' => ['type' => 'boolean'],
+                    'nivel_operacional' => ['type' => 'string', 'enum' => ['junior', 'pleno', 'especialista']],
                 ]
             ),
             $this->tool(
@@ -313,6 +323,7 @@ class GrcToolRegistry
                 'context_snapshot' => $this->contextSnapshot(),
                 'dashboard_summary' => $this->dashboardSummary(),
                 'list_activities' => $this->listActivities($payload),
+                'list_team_members' => $this->listTeamMembers($payload),
                 'list_risks' => $this->listRisks($payload),
                 'list_policies' => $this->listPolicies($payload),
                 'list_tier_policies' => $this->listTierPolicies($payload),
@@ -391,7 +402,7 @@ class GrcToolRegistry
             ],
             'planos_acao' => [
                 'pendentes' => ControleEvento::whereIn('status', ['planejado', 'pendente', 'atrasado'])->count(),
-                'em_andamento' => ControleEvento::where('status', 'em_execucao')->count(),
+                'em_andamento' => ControleEvento::whereIn('status', ['em_execucao', 'em_revisao', 'bloqueado'])->count(),
                 'concluidos' => ControleEvento::where('status', 'concluido')->count(),
                 'total' => ControleEvento::whereNotIn('status', ['sugestao', 'triagem', 'dispensado', 'cancelado'])->count(),
             ],
@@ -565,7 +576,7 @@ class GrcToolRegistry
         ]);
 
         $query = ControleEvento::query()
-            ->with(['software:id,nome', 'risco:id,titulo,criticidade'])
+            ->with(['software:id,nome', 'risco:id,titulo,criticidade', 'executor:id,name', 'revisor:id,name'])
             ->orderBy('tier')
             ->orderByRaw("CASE prioridade WHEN 'Critica' THEN 1 WHEN 'Crítica' THEN 1 WHEN 'Alta' THEN 2 WHEN 'Media' THEN 3 WHEN 'Média' THEN 3 WHEN 'Baixa' THEN 4 ELSE 5 END")
             ->orderBy('data_prevista');
@@ -592,6 +603,34 @@ class GrcToolRegistry
             ->map(fn (ControleEvento $evento) => $this->controlEventPayload($evento))
             ->values()
             ->all();
+    }
+
+    protected function listTeamMembers(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'disponivel' => ['nullable', 'boolean'],
+            'nivel_operacional' => ['nullable', 'in:junior,pleno,especialista'],
+        ]);
+
+        $query = User::query()->where('active', true)->orderBy('name');
+
+        if (array_key_exists('disponivel', $data)) {
+            $query->where('disponivel_para_tarefas', $data['disponivel']);
+        }
+
+        if (! empty($data['nivel_operacional'])) {
+            $query->where('nivel_operacional', $data['nivel_operacional']);
+        }
+
+        return $query->get()->map(fn (User $user) => [
+            'id' => $user->id,
+            'nome' => $user->name,
+            'perfil_acesso' => $user->role,
+            'nivel_operacional' => $user->nivel_operacional,
+            'capacidade_semanal_horas' => $user->capacidade_semanal_horas,
+            'disponivel_para_tarefas' => $user->disponivel_para_tarefas,
+            'areas_atuacao' => $user->areas_atuacao,
+        ])->all();
     }
 
     protected function createRisk(array $payload, bool $dryRun): array
@@ -895,8 +934,14 @@ class GrcToolRegistry
         unset($data['control_event_id']);
         $this->requireChanges($data);
 
-        if (($data['status'] ?? null) === 'em_execucao' && ! $evento->iniciado_em) {
+        if (in_array(($data['status'] ?? null), ['em_execucao', 'em_revisao', 'bloqueado'], true) && ! $evento->iniciado_em) {
             $data['iniciado_em'] = now();
+        }
+        if (($data['status'] ?? null) === 'bloqueado') {
+            $data['bloqueado_em'] = $evento->bloqueado_em ?: now();
+        } elseif (array_key_exists('status', $data)) {
+            $data['bloqueado_em'] = null;
+            $data['motivo_bloqueio'] = null;
         }
         if (($data['status'] ?? null) === 'concluido') {
             $data['iniciado_em'] = $evento->iniciado_em ?: now();
@@ -1094,6 +1139,12 @@ class GrcToolRegistry
             'prioridade' => ['type' => 'string', 'enum' => ['Baixa', 'Media', 'Alta', 'Critica']],
             'status' => ['type' => 'string', 'enum' => ControleEvento::STATUS_OPTIONS],
             'responsavel_planejado' => ['type' => 'string'],
+            'executor_id' => ['type' => 'integer'],
+            'revisor_id' => ['type' => 'integer'],
+            'esforco_estimado_horas' => ['type' => 'number'],
+            'esforco_real_horas' => ['type' => 'number'],
+            'criterios_aceite' => ['type' => 'string'],
+            'motivo_bloqueio' => ['type' => 'string'],
             'observacoes_geracao' => ['type' => 'string'],
         ];
     }
@@ -1214,6 +1265,12 @@ class GrcToolRegistry
                 'score_exposicao' => ['nullable', 'integer', 'min:1', 'max:5'],
                 'score_confianca' => ['nullable', 'integer', 'min:1', 'max:5'],
                 'triagem_observacoes' => ['nullable', 'string', 'max:1500'],
+                'executor_id' => ['nullable', 'integer', 'exists:users,id'],
+                'revisor_id' => ['nullable', 'integer', 'different:executor_id', 'exists:users,id'],
+                'esforco_estimado_horas' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+                'esforco_real_horas' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+                'criterios_aceite' => ['nullable', 'string', 'max:5000'],
+                'motivo_bloqueio' => ['nullable', 'required_if:status,bloqueado', 'string', 'max:2000'],
             ];
         }
 
@@ -1236,6 +1293,10 @@ class GrcToolRegistry
             'prioridade' => ['nullable', 'in:Baixa,Media,Alta,Critica'],
             'status' => ['nullable', 'in:'.implode(',', ControleEvento::STATUS_OPTIONS)],
             'responsavel_planejado' => ['nullable', 'string', 'max:255'],
+            'executor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'revisor_id' => ['nullable', 'integer', 'different:executor_id', 'exists:users,id'],
+            'esforco_estimado_horas' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'criterios_aceite' => ['nullable', 'string', 'max:5000'],
             'observacoes_geracao' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -1532,10 +1593,16 @@ class GrcToolRegistry
             'tier' => $evento->tier,
             'acao' => $evento->acao_controle_snapshot,
             'responsavel' => $evento->responsavel_planejado,
+            'executor' => $evento->executor ? ['id' => $evento->executor->id, 'nome' => $evento->executor->name] : null,
+            'revisor' => $evento->revisor ? ['id' => $evento->revisor->id, 'nome' => $evento->revisor->name] : null,
             'modulo' => $evento->modulo,
             'categoria' => $evento->categoria,
             'rotina' => $evento->rotina,
             'esforco' => $evento->esforco,
+            'esforco_estimado_horas' => $evento->esforco_estimado_horas,
+            'esforco_real_horas' => $evento->esforco_real_horas,
+            'criterios_aceite' => $evento->criterios_aceite,
+            'motivo_bloqueio' => $evento->motivo_bloqueio,
             'tipo_demanda' => $evento->tipo_demanda,
             'score_impacto' => $evento->score_impacto,
             'score_exposicao' => $evento->score_exposicao,

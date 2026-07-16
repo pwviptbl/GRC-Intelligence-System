@@ -15,6 +15,7 @@
     .users-edit { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; padding:0; border:0; border-radius:6px; background:transparent; font-size:14px; cursor:pointer; }
     .users-edit:hover { background:var(--bg-hover); }
     .users-modal { width:min(500px, calc(100vw - 32px)) !important; max-width:none; max-height:calc(100vh - 32px); overflow-y:auto; }
+    .users-operational-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:10px; }
 
     @media (max-width:680px) {
         .users-header { align-items:stretch; flex-direction:column; }
@@ -29,6 +30,7 @@
         .users-modal { width:calc(100vw - 20px) !important; max-height:calc(100vh - 20px); padding:18px; }
         .users-modal .modal-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
         .users-modal .modal-actions button { justify-content:center; width:100%; }
+        .users-operational-grid { grid-template-columns:minmax(0,1fr); }
     }
 </style>
 
@@ -36,18 +38,18 @@
     showModal: false, 
     editMode: false,
     formAction: '{{ route('usuarios.store') }}',
-    form: { id: '', name: '', email: '', role: 'operacional', active: true, password: '' },
+    form: { id: '', name: '', email: '', role: 'operacional', nivel_operacional: '', capacidade_semanal_horas: 40, disponivel_para_tarefas: true, areas_atuacao: '', active: true, password: '' },
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', name: '', email: '', role: 'operacional', active: true, password: '' };
+        this.form = { id: '', name: '', email: '', role: 'operacional', nivel_operacional: '', capacidade_semanal_horas: 40, disponivel_para_tarefas: true, areas_atuacao: '', active: true, password: '' };
         this.formAction = '{{ route('usuarios.store') }}';
         this.showModal = true;
     },
 
     openEdit(u) {
         this.editMode = true;
-        this.form = { ...u, password: '' };
+        this.form = { ...u, password: '', disponivel_para_tarefas: !!u.disponivel_para_tarefas };
         this.formAction = `/usuarios/${u.id}`;
         this.showModal = true;
     }
@@ -63,6 +65,7 @@
                 <tr>
                     <th>Nome / E-mail</th>
                     <th>Perfil</th>
+                    <th>Planejamento</th>
                     <th>Status</th>
                     <th width="120">Ações</th>
                 </tr>
@@ -77,6 +80,14 @@
                         <span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-2)">
                             {{ strtoupper($user->role) }}
                         </span>
+                    </td>
+                    <td data-label="Planejamento">
+                        <div style="font-size:11px;color:var(--text-2)">
+                            {{ $user->nivel_operacional ? ucfirst($user->nivel_operacional) : 'Nível não definido' }} · {{ number_format((float) $user->capacidade_semanal_horas, 1, ',', '.') }}h/semana
+                        </div>
+                        <div style="font-size:10px;color:{{ $user->disponivel_para_tarefas ? 'var(--green)' : 'var(--text-3)' }}">
+                            {{ $user->disponivel_para_tarefas ? 'Disponível para tarefas' : 'Fora da distribuição' }}
+                        </div>
                     </td>
                     <td data-label="Status">
                         @if($user->active)
@@ -130,6 +141,32 @@
                 <div class="form-group" style="margin-top:10px">
                     <label>E-mail</label>
                     <input type="email" name="email" x-model="form.email" class="form-input" :disabled="editMode" required />
+                </div>
+
+                <div class="users-operational-grid">
+                    <div class="form-group">
+                        <label>Nível operacional</label>
+                        <select name="nivel_operacional" x-model="form.nivel_operacional" class="form-select">
+                            <option value="">Não definido</option>
+                            <option value="junior">Júnior</option>
+                            <option value="pleno">Pleno</option>
+                            <option value="especialista">Especialista</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Capacidade semanal (horas)</label>
+                        <input type="number" name="capacidade_semanal_horas" x-model="form.capacidade_semanal_horas" class="form-input" min="0" max="168" step="0.5" required>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:10px">
+                    <label>Áreas de atuação</label>
+                    <textarea name="areas_atuacao" x-model="form.areas_atuacao" class="form-input" rows="2" placeholder="Ex.: Pentest, análise de dependências, revisão de código"></textarea>
+                </div>
+
+                <div class="form-group" style="margin-top:12px;display:flex;align-items:center;gap:10px">
+                    <input type="checkbox" name="disponivel_para_tarefas" x-model="form.disponivel_para_tarefas" id="user_available" value="1">
+                    <label for="user_available" style="margin:0">Disponível para receber tarefas</label>
                 </div>
 
                 <div class="form-group" style="margin-top:10px">

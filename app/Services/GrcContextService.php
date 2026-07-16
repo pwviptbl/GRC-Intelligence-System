@@ -145,7 +145,7 @@ class GrcContextService
     protected function planosAbertos(): array
     {
         return ControleEvento::query()
-            ->whereIn('status', ['planejado', 'pendente', 'em_execucao', 'atrasado'])
+            ->whereIn('status', ['planejado', 'pendente', 'em_execucao', 'em_revisao', 'bloqueado', 'atrasado'])
             ->orderByDesc('updated_at')
             ->take(15)
             ->get(['acao_controle_snapshot', 'prioridade', 'status', 'responsavel_planejado'])

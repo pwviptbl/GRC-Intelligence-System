@@ -249,6 +249,9 @@
         <a href="{{ route('calendario_controles.index') }}" class="nav-btn" :class="{ 'active': view === 'calendario_controles.index' }">
           <span class="icon" style="margin-right: 10px;">🗓️</span> Calendário de Controles
         </a>
+        <a href="{{ route('planejamento_semanal.index') }}" class="nav-btn submenu" :class="{ 'active': view === 'planejamento_semanal.index' }">
+          <span class="icon" style="margin-right: 10px;">⌁</span> Planejamento Semanal
+        </a>
         <a href="{{ route('calendario_controles.kanban') }}" class="nav-btn submenu" :class="{ 'active': view === 'calendario_controles.kanban' }">
           <span class="icon" style="margin-right: 10px;">▦</span> Execução
         </a>

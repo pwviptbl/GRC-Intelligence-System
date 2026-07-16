@@ -23,7 +23,7 @@ class EstrategiaController extends Controller
         $softwares = Software::all(['nome', 'tecnologia'])->toArray();
         $riscos = Risco::where('status', '!=', 'fechado')->get(['titulo', 'criticidade', 'probabilidade'])->toArray();
         $incidentes = Incidente::latest()->take(5)->get(['titulo', 'severidade', 'status'])->toArray();
-        $planos = ControleEvento::whereIn('status', ['planejado', 'pendente', 'em_execucao', 'atrasado'])
+        $planos = ControleEvento::whereIn('status', ['planejado', 'pendente', 'em_execucao', 'em_revisao', 'bloqueado', 'atrasado'])
             ->get(['acao_controle_snapshot', 'prioridade', 'status'])
             ->toArray();
         $politicas = Politica::all(['titulo', 'status'])->toArray();

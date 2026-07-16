@@ -15,6 +15,10 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'nivel_operacional',
+        'capacidade_semanal_horas',
+        'disponivel_para_tarefas',
+        'areas_atuacao',
         'active',
     ];
 
@@ -29,7 +33,19 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'active' => 'boolean',
+            'disponivel_para_tarefas' => 'boolean',
+            'capacidade_semanal_horas' => 'decimal:1',
         ];
+    }
+
+    public function tarefasComoExecutor()
+    {
+        return $this->hasMany(ControleEvento::class, 'executor_id');
+    }
+
+    public function tarefasComoRevisor()
+    {
+        return $this->hasMany(ControleEvento::class, 'revisor_id');
     }
 
     // Helper para verificar se é admin

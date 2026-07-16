@@ -42,7 +42,7 @@ class DashboardController extends Controller
 
         $plano_acoes = [
             'pendentes' => ControleEvento::whereIn('status', ['planejado', 'pendente', 'atrasado'])->count(),
-            'em_andamento' => ControleEvento::where('status', 'em_execucao')->count(),
+            'em_andamento' => ControleEvento::whereIn('status', ['em_execucao', 'em_revisao', 'bloqueado'])->count(),
             'concluidas' => ControleEvento::where('status', 'concluido')->count(),
         ];
 

@@ -26,7 +26,10 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', Rules\Password::min(8)->letters()->numbers()->symbols()],
-            'role' => ['required', 'string'],
+            'role' => ['required', 'in:admin,governanca,operacional,auditor'],
+            'nivel_operacional' => ['nullable', 'in:junior,pleno,especialista'],
+            'capacidade_semanal_horas' => ['required', 'numeric', 'min:0', 'max:168'],
+            'areas_atuacao' => ['nullable', 'string', 'max:2000'],
         ]);
 
         User::create([
@@ -34,6 +37,10 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
+            'nivel_operacional' => $request->nivel_operacional,
+            'capacidade_semanal_horas' => $request->capacidade_semanal_horas,
+            'disponivel_para_tarefas' => $request->boolean('disponivel_para_tarefas'),
+            'areas_atuacao' => $request->areas_atuacao,
             'active' => true,
         ]);
 
@@ -44,13 +51,20 @@ class UserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'role' => ['required', 'string'],
+            'role' => ['required', 'in:admin,governanca,operacional,auditor'],
+            'nivel_operacional' => ['nullable', 'in:junior,pleno,especialista'],
+            'capacidade_semanal_horas' => ['required', 'numeric', 'min:0', 'max:168'],
+            'areas_atuacao' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $data = [
             'name' => $request->name,
             'role' => $request->role,
-            'active' => $request->has('active')
+            'nivel_operacional' => $request->nivel_operacional,
+            'capacidade_semanal_horas' => $request->capacidade_semanal_horas,
+            'disponivel_para_tarefas' => $request->boolean('disponivel_para_tarefas'),
+            'areas_atuacao' => $request->areas_atuacao,
+            'active' => $request->has('active'),
         ];
 
         if ($request->filled('password')) {

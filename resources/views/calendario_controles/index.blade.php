@@ -14,7 +14,7 @@
     }
     .execution-board {
         display: grid;
-        grid-template-columns: repeat(4, minmax(250px, 1fr));
+        grid-template-columns: repeat(6, minmax(250px, 1fr));
         gap: 12px;
         padding-bottom: 8px;
         overflow-x: auto;
@@ -138,13 +138,13 @@
 
     @media (max-width: 1180px) {
         .controls-filter-grid { grid-template-columns: repeat(3, 1fr); }
-        .execution-board { grid-template-columns: repeat(4, minmax(270px, 1fr)); }
+        .execution-board { grid-template-columns: repeat(6, minmax(270px, 1fr)); }
     }
     @media (max-width: 760px) {
         .controls-filter-grid { grid-template-columns: 1fr 1fr; }
         .controls-filter-grid > button { width: 100%; }
         .execution-board {
-            grid-template-columns: repeat(4, minmax(82vw, 82vw));
+            grid-template-columns: repeat(6, minmax(82vw, 82vw));
             scroll-snap-type: x mandatory;
         }
         .execution-column { scroll-snap-align: start; }
@@ -157,7 +157,7 @@
     }
     @media (max-width: 480px) {
         .controls-filter-grid { grid-template-columns: 1fr; }
-        .execution-board { grid-template-columns: repeat(4, minmax(88vw, 88vw)); }
+        .execution-board { grid-template-columns: repeat(6, minmax(88vw, 88vw)); }
     }
 </style>
 <div class="table-view" x-data="{
@@ -175,10 +175,13 @@
         scope_label: '',
         acao_controle_snapshot: '',
         descricao: '',
+        criterios_aceite: '',
         software_id: '',
         cliente_id: '',
         risco_id: '',
         responsavel_planejado: '',
+        executor_id: '',
+        revisor_id: '',
         prioridade: 'Média',
         status: 'planejado',
         data_prevista: '',
@@ -186,6 +189,9 @@
         categoria: '',
         rotina: '',
         esforco: '',
+        esforco_estimado_horas: '',
+        esforco_real_horas: '',
+        motivo_bloqueio: '',
         observacoes_execucao: '',
     },
     statusStyle(status) {
@@ -194,6 +200,8 @@
         if (status === 'planejado') return 'background:rgba(255,215,64,.12);color:var(--yellow);border-color:rgba(255,215,64,.25)';
         if (status === 'concluido') return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
         if (status === 'em_execucao') return 'background:rgba(0,229,255,.1);color:var(--cyan);border-color:rgba(0,229,255,.3)';
+        if (status === 'em_revisao') return 'background:rgba(126,87,255,.12);color:#b9a6ff;border-color:rgba(126,87,255,.25)';
+        if (status === 'bloqueado') return 'background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)';
         if (status === 'atrasado') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
         if (status === 'cancelado' || status === 'dispensado') return 'background:rgba(255,255,255,.05);color:var(--text-3);border-color:rgba(255,255,255,.08)';
         return 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)';
@@ -220,10 +228,13 @@
             scope_label: activity.scope_label ?? '',
             acao_controle_snapshot: activity.acao_controle_snapshot ?? '',
             descricao: activity.descricao ?? '',
+            criterios_aceite: activity.criterios_aceite ?? '',
             software_id: activity.software_id ?? '',
             cliente_id: activity.cliente_id ?? '',
             risco_id: activity.risco_id ?? '',
             responsavel_planejado: activity.responsavel_planejado ?? '',
+            executor_id: activity.executor_id ?? '',
+            revisor_id: activity.revisor_id ?? '',
             prioridade: activity.prioridade ?? 'Média',
             status: activity.status ?? 'planejado',
             data_prevista: activity.data_prevista ? activity.data_prevista.substring(0, 10) : '',
@@ -231,6 +242,9 @@
             categoria: activity.categoria ?? '',
             rotina: activity.rotina ?? '',
             esforco: activity.esforco ?? '',
+            esforco_estimado_horas: activity.esforco_estimado_horas ?? '',
+            esforco_real_horas: activity.esforco_real_horas ?? '',
+            motivo_bloqueio: activity.motivo_bloqueio ?? '',
             observacoes_execucao: activity.observacoes_execucao ?? '',
         };
         this.executionFormAction = `/calendario_controles/${activity.id}`;
@@ -653,6 +667,8 @@
         $boardColumns = [
             'planejado' => ['label' => 'Planejado', 'statuses' => ['planejado', 'pendente'], 'color' => 'var(--yellow)'],
             'em_execucao' => ['label' => 'Em Execucao', 'statuses' => ['em_execucao'], 'color' => 'var(--cyan)'],
+            'em_revisao' => ['label' => 'Em Revisao', 'statuses' => ['em_revisao'], 'color' => '#b9a6ff'],
+            'bloqueado' => ['label' => 'Bloqueado', 'statuses' => ['bloqueado'], 'color' => '#ff9632'],
             'atrasado' => ['label' => 'Atrasado', 'statuses' => ['atrasado'], 'color' => 'var(--red)'],
             'concluido' => ['label' => 'Concluido', 'statuses' => ['concluido'], 'color' => 'var(--green)'],
         ];
@@ -686,10 +702,10 @@
                             @endif
                             <span class="execution-card-meta">
                                 <span>{{ optional($evento->data_prevista)->format('d/m/Y') ?: 'Sem data' }}</span>
-                                <span>Esforco {{ $evento->esforco ?: 'M' }}</span>
+                                <span>{{ $evento->esforco_estimado_horas !== null ? $evento->esforco_estimado_horas . 'h estimadas' : 'Esforco ' . ($evento->esforco ?: 'M') }}</span>
                             </span>
                             <span class="execution-card-footer">
-                                <span>{{ $evento->responsavel_planejado ?: 'Sem responsavel' }}</span>
+                                <span>{{ $evento->executor?->name ?: ($evento->responsavel_planejado ?: 'Sem executor') }}</span>
                                 <span style="color:{{ $column['color'] }}">{{ $evento->prioridade ?: 'Sem prioridade' }}</span>
                             </span>
                         </button>
@@ -721,6 +737,7 @@
 
                 <div class="form-group"><label>Titulo</label><input name="acao_controle_snapshot" x-model="executionForm.acao_controle_snapshot" class="form-input"></div>
                 <div class="form-group"><label>Descricao</label><textarea name="descricao" x-model="executionForm.descricao" class="form-textarea" rows="2"></textarea></div>
+                <div class="form-group"><label>Critérios de aceite</label><textarea name="criterios_aceite" x-model="executionForm.criterios_aceite" class="form-textarea" rows="2" placeholder="Condições objetivas para considerar o trabalho aceito."></textarea></div>
 
                 <div class="execution-form-grid">
                     <div class="form-group"><label>Software</label><select name="software_id" x-model="executionForm.software_id" class="form-select"><option value="">Atividade geral</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
@@ -753,8 +770,20 @@
                 </div>
 
                 <div class="execution-form-grid">
-                    <div class="form-group"><label>Responsavel</label><input name="responsavel_planejado" x-model="executionForm.responsavel_planejado" class="form-input"></div>
+                    <div class="form-group"><label>Executor</label><select name="executor_id" x-model="executionForm.executor_id" class="form-select"><option value="">Sem executor</option>@foreach($usuariosOperacionais as $usuario)<option value="{{ $usuario->id }}">{{ $usuario->name }}{{ $usuario->nivel_operacional ? ' · ' . ucfirst($usuario->nivel_operacional) : '' }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Revisor</label><select name="revisor_id" x-model="executionForm.revisor_id" class="form-select"><option value="">Sem revisor</option>@foreach($usuariosOperacionais as $usuario)<option value="{{ $usuario->id }}">{{ $usuario->name }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Prioridade</label><select name="prioridade" x-model="executionForm.prioridade" class="form-select"><option>Baixa</option><option>Média</option><option>Alta</option><option>Crítica</option></select></div>
+                </div>
+
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Estimativa (horas)</label><input type="number" name="esforco_estimado_horas" x-model="executionForm.esforco_estimado_horas" class="form-input" min="0" step="0.5"></div>
+                    <div class="form-group"><label>Realizado (horas)</label><input type="number" name="esforco_real_horas" x-model="executionForm.esforco_real_horas" class="form-input" min="0" step="0.5"></div>
+                    <div class="form-group"><label>Responsável legado</label><input name="responsavel_planejado" x-model="executionForm.responsavel_planejado" class="form-input" placeholder="Referência textual anterior"></div>
+                </div>
+
+                <div class="form-group" x-show="executionForm.status === 'bloqueado'">
+                    <label>Motivo do bloqueio</label>
+                    <textarea name="motivo_bloqueio" x-model="executionForm.motivo_bloqueio" class="form-textarea" rows="3" :required="executionForm.status === 'bloqueado'"></textarea>
                 </div>
 
                 <div class="execution-form-grid">
@@ -803,16 +832,18 @@
                 @csrf
                 <div class="form-group"><label>Titulo</label><input name="titulo" class="form-input" required maxlength="255"></div>
                 <div class="form-group"><label>Descricao</label><textarea name="descricao" class="form-textarea" rows="3"></textarea></div>
+                <div class="form-group"><label>Critérios de aceite</label><textarea name="criterios_aceite" class="form-textarea" rows="2"></textarea></div>
                 <div class="execution-form-grid">
                     <div class="form-group"><label>Software</label><select name="software_id" class="form-select"><option value="">Atividade geral</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Cliente</label><select name="cliente_id" class="form-select"><option value="">Interno / geral</option>@foreach($clientes as $cliente)<option value="{{ $cliente->id }}">{{ $cliente->nome }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Risco</label><select name="risco_id" class="form-select"><option value="">Sem risco</option>@foreach($riscos as $risco)<option value="{{ $risco->id }}">{{ $risco->titulo }}</option>@endforeach</select></div>
                 </div>
                 <div class="execution-form-grid">
-                    <div class="form-group"><label>Responsavel</label><input name="responsavel_planejado" class="form-input"></div>
+                    <div class="form-group"><label>Executor</label><select name="executor_id" class="form-select"><option value="">Sem executor</option>@foreach($usuariosOperacionais as $usuario)<option value="{{ $usuario->id }}">{{ $usuario->name }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Revisor</label><select name="revisor_id" class="form-select"><option value="">Sem revisor</option>@foreach($usuariosOperacionais as $usuario)<option value="{{ $usuario->id }}">{{ $usuario->name }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Prioridade</label><select name="prioridade" class="form-select" required><option>Baixa</option><option selected>Média</option><option>Alta</option><option>Crítica</option></select></div>
-                    <div class="form-group"><label>Esforco</label><select name="esforco" class="form-select"><option value="">A definir</option>@foreach($effortOptions as $effort)<option value="{{ $effort }}">{{ $effort }}</option>@endforeach</select></div>
                 </div>
+                <div class="execution-form-grid"><div class="form-group"><label>Esforço</label><select name="esforco" class="form-select"><option value="">A definir</option>@foreach($effortOptions as $effort)<option value="{{ $effort }}">{{ $effort }}</option>@endforeach</select></div><div class="form-group"><label>Estimativa (horas)</label><input type="number" name="esforco_estimado_horas" class="form-input" min="0" step="0.5"></div><div class="form-group"><label>Responsável legado</label><input name="responsavel_planejado" class="form-input"></div></div>
                 <div class="form-group"><label>Data prevista</label><input type="date" name="data_prevista" class="form-input"></div>
                 <div class="modal-actions"><button type="button" class="btn-cancel" @click="showCreateModal = false">Cancelar</button><button class="btn-save">Criar Cartao</button></div>
             </form>

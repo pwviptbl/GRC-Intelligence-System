@@ -7,6 +7,7 @@ use App\Models\ControleEventoEtapa;
 use App\Models\PlanoAcaoItemEvidencia;
 use App\Models\Procedimento;
 use App\Models\Software;
+use App\Models\User;
 use App\Services\CalendarioControleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -73,6 +74,7 @@ class CalendarioControleController extends Controller
             'clientes' => \App\Models\Cliente::query()->orderBy('nome')->get(),
             'riscos' => \App\Models\Risco::query()->orderBy('titulo')->get(),
             'procedimentos' => Procedimento::query()->orderBy('titulo')->get(['id', 'titulo', 'tipo']),
+            'usuariosOperacionais' => User::query()->where('active', true)->where('disponivel_para_tarefas', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -85,8 +87,12 @@ class CalendarioControleController extends Controller
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
             'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'responsavel_planejado' => ['nullable', 'string', 'max:255'],
+            'executor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'revisor_id' => ['nullable', 'integer', 'different:executor_id', 'exists:users,id'],
             'prioridade' => ['required', 'in:Baixa,Média,Alta,Crítica'],
             'esforco' => ['nullable', 'in:' . implode(',', ControleEvento::EFFORT_OPTIONS)],
+            'esforco_estimado_horas' => ['nullable', 'numeric', 'min:0', 'max:9999'],
+            'criterios_aceite' => ['nullable', 'string', 'max:5000'],
             'data_prevista' => ['nullable', 'date'],
         ]);
 
@@ -97,8 +103,12 @@ class CalendarioControleController extends Controller
             'acao_controle_snapshot' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
             'responsavel_planejado' => $data['responsavel_planejado'] ?? null,
+            'executor_id' => $data['executor_id'] ?? null,
+            'revisor_id' => $data['revisor_id'] ?? null,
             'prioridade' => $data['prioridade'],
             'esforco' => $data['esforco'] ?? null,
+            'esforco_estimado_horas' => $data['esforco_estimado_horas'] ?? null,
+            'criterios_aceite' => $data['criterios_aceite'] ?? null,
             'data_prevista' => $data['data_prevista'] ?? null,
             'origem' => 'manual',
             'status' => 'planejado',
@@ -113,6 +123,8 @@ class CalendarioControleController extends Controller
             'software:id,nome',
             'cliente:id,nome',
             'risco:id,titulo',
+            'executor:id,name,nivel_operacional,capacidade_semanal_horas',
+            'revisor:id,name,nivel_operacional',
             'etapas.evidencias',
         ]));
     }
@@ -288,10 +300,13 @@ class CalendarioControleController extends Controller
             'status'              => 'required|in:' . implode(',', ControleEvento::STATUS_OPTIONS),
             'acao_controle_snapshot' => 'nullable|string|max:255',
             'descricao'           => 'nullable|string|max:5000',
+            'criterios_aceite'    => 'nullable|string|max:5000',
             'software_id'         => 'nullable|integer|exists:software,id',
             'cliente_id'          => 'nullable|integer|exists:clientes,id',
             'risco_id'            => 'nullable|integer|exists:riscos,id',
             'responsavel_planejado' => 'nullable|string|max:255',
+            'executor_id'          => 'nullable|integer|exists:users,id',
+            'revisor_id'           => 'nullable|integer|different:executor_id|exists:users,id',
             'prioridade'           => 'nullable|in:Baixa,Média,Alta,Crítica',
             'observacoes_execucao'=> 'nullable|string|max:1000',
             'data_prevista'       => 'nullable|date',
@@ -299,6 +314,9 @@ class CalendarioControleController extends Controller
             'categoria'           => 'nullable|in:' . implode(',', ControleEvento::CATEGORY_OPTIONS),
             'rotina'              => 'nullable|string|max:255',
             'esforco'             => 'nullable|in:' . implode(',', ControleEvento::EFFORT_OPTIONS),
+            'esforco_estimado_horas' => 'nullable|numeric|min:0|max:9999',
+            'esforco_real_horas'  => 'nullable|numeric|min:0|max:9999',
+            'motivo_bloqueio'     => 'nullable|required_if:status,bloqueado|string|max:2000',
             'tipo_demanda'        => 'nullable|in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
             'score_impacto'       => 'nullable|integer|min:1|max:5',
             'score_exposicao'     => 'nullable|integer|min:1|max:5',
@@ -325,8 +343,15 @@ class CalendarioControleController extends Controller
             }
         }
 
-        if ($data['status'] === 'em_execucao' && !$calendario_controle->iniciado_em) {
+        if (in_array($data['status'], ['em_execucao', 'em_revisao', 'bloqueado'], true) && !$calendario_controle->iniciado_em) {
             $data['iniciado_em'] = now();
+        }
+
+        if ($data['status'] === 'bloqueado') {
+            $data['bloqueado_em'] = $calendario_controle->bloqueado_em ?: now();
+        } else {
+            $data['bloqueado_em'] = null;
+            $data['motivo_bloqueio'] = null;
         }
 
         if ($data['status'] === 'concluido') {
@@ -373,7 +398,7 @@ class CalendarioControleController extends Controller
     protected function filteredOperationalQuery(Request $request)
     {
         $query = ControleEvento::query()
-            ->with(['software', 'cliente', 'risco', 'tierPolitica', 'etapas.evidencias'])
+            ->with(['software', 'cliente', 'risco', 'tierPolitica', 'executor', 'revisor', 'etapas.evidencias'])
             ->withCount([
                 'etapas',
                 'etapas as etapas_concluidas_count' => fn ($query) => $query->where('concluido', true),
