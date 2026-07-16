@@ -5,7 +5,32 @@
 @section('badge', 'Gemini 2.0 Flash Lite')
 
 @section('content')
-<div class="view active" x-data="{
+<style>
+    .chat-responsive { min-width:0; height:100%; padding:24px 28px 0; overflow:hidden; }
+    .chat-responsive .chat-messages { display:flex; flex-direction:column; gap:20px; min-width:0; padding-bottom:20px; }
+    .chat-responsive .msg { min-width:0; }
+    .chat-responsive .msg > div:last-child { min-width:0; max-width:100%; }
+    .chat-responsive .msg-bubble { max-width:100%; overflow-x:auto; overflow-wrap:anywhere; }
+    .chat-responsive .msg-bubble pre { max-width:100%; overflow-x:auto; }
+    .chat-responsive .msg-bubble table { width:100%; min-width:520px; border-collapse:collapse; margin:10px 0; font-size:12px; }
+    .chat-responsive .msg-bubble th { background:var(--bg-hover); color:var(--cyan); padding:8px; border:1px solid var(--border); }
+    .chat-responsive .msg-bubble td { padding:8px; border:1px solid var(--border); color:var(--text-2); }
+    .chat-responsive .chat-input-area { flex:0 0 auto; margin:0 -28px !important; padding:16px 28px 18px !important; border-top:1px solid var(--border); background:var(--bg-surface); }
+    .chat-responsive .chat-input { width:100%; min-width:0; max-height:140px; resize:vertical; }
+
+    @media (max-width:620px) {
+        .chat-responsive { padding:16px 16px 0; }
+        .chat-responsive .chat-messages { gap:14px; }
+        .chat-responsive .msg-avatar { flex:0 0 auto; }
+        .chat-responsive .chat-input-area { margin:0 -16px !important; padding:12px 16px 14px !important; }
+        .chat-responsive .chat-form { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:8px; }
+        .chat-responsive .send-btn { min-height:42px; padding:8px 12px; }
+        .chat-responsive .hints { flex-wrap:nowrap; max-width:100%; overflow-x:auto; padding-bottom:4px; }
+        .chat-responsive .hint-chip { flex:0 0 auto; }
+    }
+</style>
+
+<div class="view active chat-responsive" x-data="{
     userInput: '',
     loading: false,
     contextLoaded: @js($contextLoaded),
@@ -97,10 +122,4 @@
     </div>
 </div>
 
-<style>
-    .chat-messages { display: flex; flex-direction: column; gap: 20px; }
-    .msg-bubble table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
-    .msg-bubble th { background: var(--bg-hover); color: var(--cyan); padding: 8px; border: 1px solid var(--border); }
-    .msg-bubble td { padding: 8px; border: 1px solid var(--border); color: var(--text-2); }
-</style>
 @endsection

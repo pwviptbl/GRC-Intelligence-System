@@ -48,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('/backups/create', [BackupController::class, 'create'])->name('backups.create');
         Route::get('/backups/download/{file}', [BackupController::class, 'download'])->where('file', '.*')->name('backups.download');
+        Route::delete('/backups/{file}', [BackupController::class, 'destroy'])->where('file', '[^/]+')->name('backups.destroy');
         Route::post('/backups/restore', [BackupController::class, 'restore'])->name('backups.restore');
     });
 

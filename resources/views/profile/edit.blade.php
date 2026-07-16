@@ -4,11 +4,30 @@
 @section('description', 'Gerenciar informações da conta e segurança')
 
 @section('content')
-<div class="grid-view" style="display:grid; grid-template-columns: 1fr 1fr; gap:30px">
+<style>
+    .profile-view { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:24px; height:100%; padding:24px 28px; overflow-y:auto; }
+    .profile-card { min-width:0; padding:24px; border:1px solid var(--border); border-radius:8px; background:var(--bg-surface); }
+    .profile-card h3 { margin:0 0 20px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,.05); color:var(--text-1); font-size:16px; }
+    .profile-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:20px; }
+    .profile-success { color:var(--green); font-size:12px; overflow-wrap:anywhere; }
+
+    @media (max-width:850px) {
+        .profile-view { grid-template-columns:minmax(0,1fr); }
+    }
+
+    @media (max-width:560px) {
+        .profile-view { gap:16px; padding:16px; }
+        .profile-card { padding:16px; }
+        .profile-actions { align-items:stretch; flex-direction:column; }
+        .profile-actions .btn-save { justify-content:center; width:100%; }
+    }
+</style>
+
+<div class="grid-view profile-view">
     
     <!-- Seção Informações do Perfil -->
-    <div class="card" style="padding:24px">
-        <h3 style="color:var(--text-1); font-size:16px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.05); padding-bottom:10px">
+    <div class="card profile-card">
+        <h3>
             👤 Informações do Perfil
         </h3>
         
@@ -30,18 +49,18 @@
                 <p style="font-size:10px; color:var(--text-3); margin-top:5px">O e-mail não pode ser alterado por questões de segurança.</p>
             </div>
 
-            <div class="modal-actions" style="margin-top:20px; justify-content:flex-start">
+            <div class="modal-actions profile-actions">
                 <button type="submit" class="btn-save">Salvar Alterações</button>
                 @if (session('status') === 'profile-updated')
-                    <span style="font-size:12px; color:var(--green); margin-left:15px">✅ Salvo com sucesso!</span>
+                    <span class="profile-success">✅ Salvo com sucesso!</span>
                 @endif
             </div>
         </form>
     </div>
 
     <!-- Seção Segurança / Troca de Senha -->
-    <div class="card" style="padding:24px" x-data="{ newPassword: '' }">
-        <h3 style="color:var(--text-1); font-size:16px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.05); padding-bottom:10px">
+    <div class="card profile-card" x-data="{ newPassword: '' }">
+        <h3>
             🔐 Segurança (Alterar Senha)
         </h3>
         
@@ -84,10 +103,10 @@
                 <input type="password" name="password_confirmation" class="form-input" required />
             </div>
 
-            <div class="modal-actions" style="margin-top:20px; justify-content:flex-start">
+            <div class="modal-actions profile-actions">
                 <button type="submit" class="btn-save" style="background:var(--cyan); color:var(--bg-1)">Atualizar Senha</button>
                 @if (session('status') === 'password-updated')
-                    <span style="font-size:12px; color:var(--green); margin-left:15px">✅ Senha atualizada!</span>
+                    <span class="profile-success">✅ Senha atualizada!</span>
                 @endif
             </div>
         </form>

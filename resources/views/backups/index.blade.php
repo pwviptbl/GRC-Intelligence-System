@@ -78,6 +78,36 @@
         white-space: nowrap;
     }
 
+    .backups-file-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .backups-delete-form {
+        margin: 0;
+    }
+
+    .backups-delete {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 10px;
+        border: 1px solid rgba(255, 83, 112, .3);
+        border-radius: 8px;
+        background: rgba(255, 83, 112, .08);
+        color: var(--red);
+        font-family: var(--font);
+        font-size: 11px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .backups-delete:hover {
+        background: rgba(255, 83, 112, .15);
+    }
+
     @media (max-width: 900px) {
         .backups-actions {
             grid-template-columns: minmax(0, 1fr);
@@ -234,7 +264,14 @@
                         <td data-label="Tamanho">{{ $backup['size_human'] }}</td>
                         <td data-label="Gerado em">{{ \Carbon\Carbon::createFromTimestamp($backup['last_modified'], config('app.timezone'))->format('d/m/Y H:i:s') }}</td>
                         <td data-label="Ação" class="backups-action-cell">
-                            <a href="{{ route('backups.download', ['file' => $backup['name']]) }}" class="btn-save backups-download">⬇️ Download</a>
+                            <div class="backups-file-actions">
+                                <a href="{{ route('backups.download', ['file' => $backup['name']]) }}" class="btn-save backups-download">⬇️ Download</a>
+                                <form action="{{ route('backups.destroy', ['file' => $backup['name']]) }}" method="POST" class="backups-delete-form" onsubmit="return confirm('Excluir permanentemente este backup?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="backups-delete">🗑 Excluir</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

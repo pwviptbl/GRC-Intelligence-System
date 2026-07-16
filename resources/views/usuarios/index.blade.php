@@ -5,6 +5,33 @@
 @section('badge', $users->count() . ' Usuários')
 
 @section('content')
+<style>
+    .users-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+    .users-header h3 { margin:0; color:var(--text-1); font-size:16px; }
+    .users-identity { min-width:0; overflow-wrap:anywhere; }
+    .users-identity strong { display:block; color:var(--text-1); font-weight:600; }
+    .users-identity span { color:var(--text-3); font-size:11px; }
+    .users-actions { display:flex; align-items:center; gap:8px; }
+    .users-edit { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; padding:0; border:0; border-radius:6px; background:transparent; font-size:14px; cursor:pointer; }
+    .users-edit:hover { background:var(--bg-hover); }
+    .users-modal { width:min(500px, calc(100vw - 32px)) !important; max-width:none; max-height:calc(100vh - 32px); overflow-y:auto; }
+
+    @media (max-width:680px) {
+        .users-header { align-items:stretch; flex-direction:column; }
+        .users-header .btn-add { justify-content:center; width:100%; }
+        .users-table thead { display:none; }
+        .users-table, .users-table tbody, .users-table tr, .users-table td { display:block; width:100%; }
+        .users-table tbody { padding:0 16px 16px; }
+        .users-table tr { padding:12px 0; border-bottom:1px solid var(--border); }
+        .users-table tr:last-child { border-bottom:0; }
+        .users-table td { display:grid; grid-template-columns:78px minmax(0,1fr); align-items:center; gap:10px; padding:5px 0; border:0; overflow-wrap:anywhere; }
+        .users-table td::before { content:attr(data-label); color:var(--text-3); font-size:10px; font-weight:700; text-transform:uppercase; }
+        .users-modal { width:calc(100vw - 20px) !important; max-height:calc(100vh - 20px); padding:18px; }
+        .users-modal .modal-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .users-modal .modal-actions button { justify-content:center; width:100%; }
+    }
+</style>
+
 <div class="table-view" x-data="{ 
     showModal: false, 
     editMode: false,
@@ -25,13 +52,13 @@
         this.showModal = true;
     }
 }">
-    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="color:var(--text-1); font-size:16px">👥 Colaboradores do GRC</h3>
+    <div class="users-header">
+        <h3>👥 Colaboradores do GRC</h3>
         <button class="btn-add" @click="openCreate()">+ Novo Usuário</button>
     </div>
 
     <div class="table-card">
-        <table class="data-table">
+        <table class="data-table users-table">
             <thead>
                 <tr>
                     <th>Nome / E-mail</th>
@@ -43,25 +70,24 @@
             <tbody>
                 @foreach($users as $user)
                 <tr style="{{ !$user->active ? 'opacity: 0.5' : '' }}">
-                    <td>
-                        <div style="font-weight:600;color:var(--text-1)">{{ $user->name }}</div>
-                        <div style="font-size:11px;color:var(--text-3)">{{ $user->email }}</div>
+                    <td data-label="Usuário">
+                        <div class="users-identity"><strong>{{ $user->name }}</strong><span>{{ $user->email }}</span></div>
                     </td>
-                    <td>
+                    <td data-label="Perfil">
                         <span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-2)">
                             {{ strtoupper($user->role) }}
                         </span>
                     </td>
-                    <td>
+                    <td data-label="Status">
                         @if($user->active)
                             <span style="color:var(--green); font-size:11px">● Ativo</span>
                         @else
                             <span style="color:var(--red); font-size:11px">● Inativo</span>
                         @endif
                     </td>
-                    <td>
-                        <div style="display:flex;gap:12px;align-items:center">
-                            <button @click="openEdit({{ $user->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
+                    <td data-label="Ações">
+                        <div class="users-actions">
+                            <button @click="openEdit({{ $user->toJson() }})" class="users-edit" title="Editar">🖊️</button>
                             @if($user->active)
                             <form action="{{ route('usuarios.destroy', $user) }}" method="POST" style="margin:0" onsubmit="return confirm('Desativar este usuário?')">
                                 @csrf @method('DELETE')
@@ -78,7 +104,7 @@
 
     <!-- Modal Novo/Editar -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
-        <div class="modal" style="width: 500px;">
+        <div class="modal users-modal">
             <h3>👤 <span x-text="editMode ? 'Editar Usuário' : 'Novo Usuário'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf

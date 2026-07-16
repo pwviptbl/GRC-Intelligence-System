@@ -98,6 +98,31 @@ class BackupController extends Controller
         return Storage::disk('local')->download($relativePath, $safeName);
     }
 
+    public function destroy(string $file): RedirectResponse
+    {
+        $this->migrateLegacyBackups();
+
+        $safeName = basename($file);
+        if ($safeName !== $file || !str_ends_with(strtolower($safeName), '.zip')) {
+            abort(404);
+        }
+
+        $relativePath = self::BACKUP_DIR . '/' . $safeName;
+        $disk = Storage::disk('local');
+
+        if (!$disk->exists($relativePath)) {
+            abort(404);
+        }
+
+        if (!$disk->delete($relativePath)) {
+            return redirect()->route('backups.index')
+                ->with('error', 'Não foi possível excluir o backup: ' . $safeName);
+        }
+
+        return redirect()->route('backups.index')
+            ->with('success', 'Backup excluído com sucesso: ' . $safeName);
+    }
+
     public function restore(Request $request): RedirectResponse
     {
         $this->migrateLegacyBackups();
