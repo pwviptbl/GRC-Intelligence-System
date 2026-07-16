@@ -68,7 +68,15 @@ class McpController extends Controller
     {
         $expected = (string) config('mcp.token');
         if ($expected === '') {
-            return null;
+            if ((bool) config('mcp.allow_unauthenticated', false)) {
+                return null;
+            }
+
+            return $this->jsonRpcError(
+                -32002,
+                'MCP server authentication is not configured.',
+                503
+            );
         }
 
         $provided = $request->bearerToken() ?: (string) $request->header('X-MCP-Token', '');
@@ -77,7 +85,8 @@ class McpController extends Controller
             return null;
         }
 
-        return $this->jsonRpcError(-32001, 'Unauthorized.', 401);
+        return $this->jsonRpcError(-32001, 'Unauthorized.', 401)
+            ->withHeaders(['WWW-Authenticate' => 'Bearer realm="grc-mcp"']);
     }
 
     protected function jsonRpcError(int $code, string $message, int $status): JsonResponse

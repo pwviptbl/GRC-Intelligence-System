@@ -127,63 +127,40 @@ O projeto tambem expõe um endpoint HTTP em `/mcp`, adequado para clientes remot
 
 ```env
 MCP_SERVER_TOKEN=troque-este-token
+MCP_ALLOW_UNAUTHENTICATED=false
 MCP_ALLOWED_ORIGINS=https://chatgpt.com
 ```
 
 Regras operacionais do MCP:
 
+- O endpoint HTTP exige `Authorization: Bearer <token>` por padrao.
+- Token vazio retorna HTTP 503. O modo aberto exige `MCP_ALLOW_UNAUTHENTICATED=true` explicitamente e deve ser usado somente em desenvolvimento local.
 - Ferramentas de leitura executam normalmente.
 - Ferramentas de escrita retornam `dry_run` por padrao.
 - Para gravar de fato, o cliente deve chamar a tool com `confirm=true`.
 - Requisicoes HTTP nao inicializadas devem enviar `MCP-Protocol-Version: 2025-11-25`.
 - O MCP permite listar, criar e atualizar politicas, regras de tier, procedimentos e etapas, riscos, incidentes e eventos do calendario.
 
-## 💻 Agente MCP do Host Linux
-
-O executor do computador fica fora do Laravel e fora do Docker em `host-agent/`. Assim, os comandos rodam como o usuario Linux que iniciou o servico e podem acessar projetos como e-Cidade e outros sistemas do host.
+Valide a configuracao e o contrato antes de conectar um agente:
 
 ```bash
-cd host-agent
-python3 -m pip install -r requirements.txt
-python3 server.py
+php artisan grc:mcp:validate
 ```
 
-Por padrao, o servidor usa Streamable HTTP somente em loopback:
-
-```text
-http://127.0.0.1:8765/mcp
-```
-
-Configuracao opcional em variaveis de ambiente:
-
-```env
-HOST_MCP_HOST=127.0.0.1
-HOST_MCP_PORT=8765
-HOST_MCP_TOKEN=
-HOST_AGENT_DEFAULT_CWD=/home/dbseller/Modelos
-```
-
-Ferramentas do host:
-
-- `run_command`
-- `start_command`, `poll_command`, `stop_command`
-- `read_file`
-- `write_file`
-- `list_directory`
-- `stat_path`
-- `find_files`
-- `search_text`
-
-Nao existe sandbox ou allowlist interna de comandos e caminhos. O limite efetivo e a permissao do usuario Linux que executa o processo. Para manter o servico residente:
+Conexao local do Codex por `stdio` (nao requer token HTTP):
 
 ```bash
-mkdir -p ~/.config/systemd/user
-cp host-agent/systemd/grc-host-agent.service ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now grc-host-agent
+codex mcp add grc -- php /caminho/do/projeto/artisan grc:mcp
 ```
 
-O ChatGPT web nao acessa `localhost` diretamente. Cadastre no ChatGPT a URL HTTPS remota fornecida pelo Secure MCP Tunnel ou por outro tunel reverso apontado para `127.0.0.1:8765/mcp`. O MCP de dados do GRC continua separado no endpoint Laravel `/mcp`.
+Conexao HTTP do Codex e de clientes compativeis com Bearer token:
+
+```bash
+export GRC_MCP_TOKEN='o-mesmo-valor-de-MCP_SERVER_TOKEN'
+codex mcp add grc-http --url http://127.0.0.1:8088/mcp --bearer-token-env-var GRC_MCP_TOKEN
+```
+
+Clientes remotos devem usar HTTPS e enviar `MCP-Protocol-Version: 2025-11-25` depois do `initialize`.
 
 ---
 Desenvolvido por Marcio - Engenheiro de Software & Analista de Segurança.

@@ -5,7 +5,7 @@ Esta pasta contém scripts úteis para testes, administração local e depuraç�
 ## Lista de Scripts
 
 ### 0. Diagnóstico e Subida do Stack (`grc_stack_status.sh`)
-Script operacional para validar e subir o stack local do GRC, garantir tokens MCP, reiniciar o Host Agent, testar os endpoints MCP HTTP e, quando o `ngrok` estiver autenticado, abrir os túneis públicos e imprimir as URLs finais com credenciais e instruções de conexão.
+Script operacional para validar e subir o stack local do GRC, garantir o token MCP, testar o endpoint MCP HTTP e imprimir as instrucoes de conexao para o Codex.
 **Uso:**
 ```bash
 ./scripts/grc_stack_status.sh
