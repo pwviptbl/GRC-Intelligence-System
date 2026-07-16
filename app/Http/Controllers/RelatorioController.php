@@ -6,7 +6,7 @@ use App\Models\Cliente;
 use App\Models\Software;
 use App\Models\Risco;
 use App\Models\Incidente;
-use App\Models\PlanoAcao;
+use App\Models\ControleEvento;
 use App\Models\Politica;
 use Illuminate\Http\Request;
 
@@ -23,7 +23,8 @@ class RelatorioController extends Controller
     {
         $queryRiscos = Risco::with(['software', 'cliente']);
         $queryIncidentes = Incidente::with(['software', 'cliente', 'risco']);
-        $queryPlanos = PlanoAcao::with(['items.evidencias', 'software', 'cliente', 'risco']);
+        $queryPlanos = ControleEvento::with(['etapas.evidencias', 'software', 'cliente', 'risco'])
+            ->whereNotIn('status', ['sugestao', 'triagem', 'dispensado', 'cancelado']);
         
         // Filtro por Data
         if ($request->inicio) {

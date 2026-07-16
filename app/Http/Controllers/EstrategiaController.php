@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Software;
 use App\Models\Risco;
 use App\Models\Incidente;
-use App\Models\PlanoAcao;
+use App\Models\ControleEvento;
 use App\Models\Politica;
 use App\Services\GeminiService;
 use Illuminate\Http\Request;
@@ -23,14 +23,16 @@ class EstrategiaController extends Controller
         $softwares = Software::all(['nome', 'tecnologia'])->toArray();
         $riscos = Risco::where('status', '!=', 'fechado')->get(['titulo', 'criticidade', 'probabilidade'])->toArray();
         $incidentes = Incidente::latest()->take(5)->get(['titulo', 'severidade', 'status'])->toArray();
-        $planos = PlanoAcao::where('status', '!=', 'concluida')->get(['titulo', 'prioridade'])->toArray();
+        $planos = ControleEvento::whereIn('status', ['planejado', 'pendente', 'em_execucao', 'atrasado'])
+            ->get(['acao_controle_snapshot', 'prioridade', 'status'])
+            ->toArray();
         $politicas = Politica::all(['titulo', 'status'])->toArray();
 
         $contexto = "Contexto atual da empresa:\n";
         $contexto .= "- Softwares: " . json_encode($softwares) . "\n";
         $contexto .= "- Riscos Ativos: " . json_encode($riscos) . "\n";
         $contexto .= "- Últimos Incidentes: " . json_encode($incidentes) . "\n";
-        $contexto .= "- Planos de Ação Pendentes: " . json_encode($planos) . "\n";
+        $contexto .= "- Cartoes Pendentes no Kanban: " . json_encode($planos) . "\n";
         $contexto .= "- Políticas: " . json_encode($politicas) . "\n";
 
         // Detalhes extras fornecidos pelo usuário

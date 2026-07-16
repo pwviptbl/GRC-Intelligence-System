@@ -56,11 +56,14 @@ class ControleEvento extends Model
 
     protected $fillable = [
         'software_id',
+        'cliente_id',
+        'plano_acao_legado_id',
         'tier_politica_id',
         'atividade_id',
         'risco_id',
         'tier',
         'acao_controle_snapshot',
+        'descricao',
         'frequencia_snapshot',
         'sla_correcao_snapshot',
         'bloqueio_automatico_snapshot',
@@ -103,11 +106,17 @@ class ControleEvento extends Model
         'bloqueio_automatico_label',
         'scope_label',
         'decision_score',
+        'progress_label',
     ];
 
     public function software()
     {
         return $this->belongsTo(Software::class);
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class);
     }
 
     public function tierPolitica()
@@ -125,9 +134,23 @@ class ControleEvento extends Model
         return $this->belongsTo(Risco::class);
     }
 
+    public function etapas()
+    {
+        return $this->hasMany(ControleEventoEtapa::class, 'controle_evento_id')->orderBy('ordem')->orderBy('id');
+    }
+
     public function getTierLabelAttribute(): string
     {
-        return 'T' . $this->tier;
+        return $this->tier ? 'T' . $this->tier : 'Geral';
+    }
+
+    public function getProgressLabelAttribute(): string
+    {
+        $total = $this->etapas_count ?? $this->etapas()->count();
+        $completed = $this->etapas_concluidas_count
+            ?? $this->etapas()->where('concluido', true)->count();
+
+        return "{$completed}/{$total}";
     }
 
     public function getBloqueioAutomaticoLabelAttribute(): string

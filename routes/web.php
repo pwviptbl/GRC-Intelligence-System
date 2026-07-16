@@ -11,7 +11,6 @@ use App\Http\Controllers\IncidenteController;
 use App\Http\Controllers\InstanciaClienteController;
 use App\Http\Controllers\LgpdController;
 use App\Http\Controllers\McpController;
-use App\Http\Controllers\PlanoAcaoController;
 use App\Http\Controllers\PoliticaController;
 use App\Http\Controllers\ProcedimentoController;
 use App\Http\Controllers\ProfileController;
@@ -97,9 +96,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->name('incidentes.add_evidence');
         Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->name('incidentes.remove_evidence');
 
-        Route::resource('plano_acoes', PlanoAcaoController::class);
+        Route::get('/plano_acoes', fn () => redirect()->route('calendario_controles.kanban'))->name('plano_acoes.index');
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
         Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
+        Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->name('calendario_controles.store_manual');
+        Route::get('/execucao_controles/{calendario_controle}', [CalendarioControleController::class, 'showExecution'])->name('calendario_controles.show_execution');
+        Route::post('/execucao_controles/{calendario_controle}/etapas', [CalendarioControleController::class, 'addStep'])->name('calendario_controles.add_step');
+        Route::post('/execucao_controles/{calendario_controle}/importar-procedimento', [CalendarioControleController::class, 'importProcedure'])->name('calendario_controles.import_procedure');
+        Route::patch('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'updateStep'])->name('calendario_controles.update_step');
+        Route::delete('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'removeStep'])->name('calendario_controles.remove_step');
+        Route::delete('/execucao_controles/evidencias/{evidencia}', [CalendarioControleController::class, 'removeStepEvidence'])->name('calendario_controles.remove_step_evidence');
         Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
         Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
         Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');
@@ -107,13 +113,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->name('calendario_controles.discard_suggestions');
         Route::patch('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
         Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->name('calendario_controles.destroy');
-        Route::get('/plano_acoes/export/all', [PlanoAcaoController::class, 'printAll'])->name('plano_acoes.export.all');
-        Route::get('/plano_acoes/export/{plano_aco}', [PlanoAcaoController::class, 'print'])->name('plano_acoes.export');
-        Route::patch('/plano_acoes/item/{item}', [PlanoAcaoController::class, 'updateItem'])->name('plano_acoes.update_item');
-        Route::post('/plano_acoes/{plano_aco}/item', [PlanoAcaoController::class, 'addItem'])->name('plano_acoes.add_item');
-        Route::post('/plano_acoes/{plano_aco}/import-procedimento', [PlanoAcaoController::class, 'importItemsFromProcedimento'])->name('plano_acoes.import_procedimento');
-        Route::delete('/plano_acoes/item/{item}', [PlanoAcaoController::class, 'removeItem'])->name('plano_acoes.remove_item');
-        Route::delete('/plano_acoes/evidencia/{evidencia}', [PlanoAcaoController::class, 'removeEvidence'])->name('plano_acoes.remove_evidence');
 
         Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
         Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');

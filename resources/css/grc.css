@@ -639,8 +639,10 @@
     }
 
     .form-input,
-    .form-select {
+    .form-select,
+    .form-textarea {
       width: 100%;
+      max-width: 100%;
       padding: 10px 14px;
       background: var(--bg-base);
       border: 1px solid var(--border);
@@ -649,11 +651,37 @@
       font-family: var(--font);
       font-size: 13px;
       outline: none;
+      box-sizing: border-box;
     }
 
     .form-input:focus,
-    .form-select:focus {
+    .form-select:focus,
+    .form-textarea:focus {
       border-color: var(--cyan-dim);
+      box-shadow: 0 0 0 2px rgba(0, 229, 255, .08);
+    }
+
+    textarea.form-input,
+    .form-textarea {
+      display: block;
+      min-height: 84px;
+      line-height: 1.5;
+      resize: vertical;
+      overflow-wrap: anywhere;
+    }
+
+    .form-input::placeholder,
+    .form-textarea::placeholder {
+      color: var(--text-3);
+      opacity: 1;
+    }
+
+    @media (max-width: 760px) {
+      textarea.form-input,
+      .form-textarea {
+        min-height: 96px;
+        font-size: 16px;
+      }
     }
 
     .form-select option {

@@ -8,7 +8,6 @@ use App\Models\ControleEvento;
 use App\Models\Incidente;
 use App\Models\InstanciaCliente;
 use App\Models\LgpdItem;
-use App\Models\PlanoAcao;
 use App\Models\Politica;
 use App\Models\Procedimento;
 use App\Models\Risco;
@@ -262,7 +261,7 @@ class GrcToolRegistry
             ),
             $this->tool(
                 'create_action_plan',
-                'Cria um plano de acao operacional.',
+                'Cria um cartao operacional diretamente no Kanban.',
                 self::RISK_WRITE,
                 [
                     'titulo' => ['type' => 'string'],
@@ -391,10 +390,10 @@ class GrcToolRegistry
                 'total' => Incidente::count(),
             ],
             'planos_acao' => [
-                'pendentes' => PlanoAcao::where('status', 'pendente')->count(),
-                'em_andamento' => PlanoAcao::where('status', 'em_andamento')->count(),
-                'concluidos' => PlanoAcao::where('status', 'concluida')->count(),
-                'total' => PlanoAcao::count(),
+                'pendentes' => ControleEvento::whereIn('status', ['planejado', 'pendente', 'atrasado'])->count(),
+                'em_andamento' => ControleEvento::where('status', 'em_execucao')->count(),
+                'concluidos' => ControleEvento::where('status', 'concluido')->count(),
+                'total' => ControleEvento::whereNotIn('status', ['sugestao', 'triagem', 'dispensado', 'cancelado'])->count(),
             ],
             'lgpd' => [
                 'total' => LgpdItem::count(),
@@ -945,14 +944,26 @@ class GrcToolRegistry
             return ['would_create' => $data];
         }
 
-        $plano = PlanoAcao::create($data)->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']);
+        $statusMap = ['pendente' => 'planejado', 'em_andamento' => 'em_execucao', 'concluida' => 'concluido'];
+        $priorityMap = ['baixa' => 'Baixa', 'media' => 'Média', 'alta' => 'Alta', 'critica' => 'Crítica'];
+        $plano = ControleEvento::create([
+            'software_id' => $data['software_id'] ?? null,
+            'cliente_id' => $data['cliente_id'] ?? null,
+            'risco_id' => $data['risco_id'] ?? null,
+            'acao_controle_snapshot' => $data['titulo'],
+            'descricao' => $data['descricao'],
+            'responsavel_planejado' => $data['responsavel'],
+            'prioridade' => $priorityMap[$data['prioridade']] ?? 'Média',
+            'status' => $statusMap[$data['status']] ?? 'planejado',
+            'origem' => $data['origem'],
+        ])->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']);
 
         return [
             'id' => $plano->id,
-            'titulo' => $plano->titulo,
+            'titulo' => $plano->acao_controle_snapshot,
             'prioridade' => $plano->prioridade,
             'status' => $plano->status,
-            'responsavel' => $plano->responsavel,
+            'responsavel' => $plano->responsavel_planejado,
             'software' => $plano->software?->nome,
             'cliente' => $plano->cliente?->nome,
             'risco' => $plano->risco?->titulo,

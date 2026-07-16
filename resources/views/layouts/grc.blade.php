@@ -246,9 +246,6 @@
         <a href="{{ route('incidentes.index') }}" class="nav-btn" :class="{ 'active': view.includes('incidentes') }">
           <span class="icon" style="margin-right: 10px;">🚨</span> Incidentes
         </a>
-        <a href="{{ route('plano_acoes.index') }}" class="nav-btn" :class="{ 'active': view.includes('plano_acoes') }">
-          <span class="icon" style="margin-right: 10px;">✅</span> Plano de Ação
-        </a>
         <a href="{{ route('calendario_controles.index') }}" class="nav-btn" :class="{ 'active': view === 'calendario_controles.index' }">
           <span class="icon" style="margin-right: 10px;">🗓️</span> Calendário de Controles
         </a>

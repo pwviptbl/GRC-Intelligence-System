@@ -121,12 +121,19 @@
         font-size: 11px;
         text-align: center;
     }
+    .execution-progress { margin-top:8px; color:var(--cyan); font-size:10px; }
+    .steps-list { display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
+    .step-item { padding:10px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.07); border-radius:7px; }
+    .step-head { display:flex; align-items:flex-start; gap:9px; }
+    .step-body { min-width:0; flex:1; }
+    .step-evidences { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .step-evidence { max-width:180px; overflow:hidden; color:var(--cyan); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
     .execution-modal-summary,
     .execution-form-grid {
         display: grid;
         gap: 16px;
     }
-    .execution-modal-summary { grid-template-columns: 1.2fr 1fr; margin-bottom: 18px; }
+    .execution-modal-summary { grid-template-columns: 1fr; margin-bottom: 18px; }
     .execution-form-grid { grid-template-columns: repeat(3, 1fr); }
 
     @media (max-width: 1180px) {
@@ -155,6 +162,11 @@
 </style>
 <div class="table-view" x-data="{
     showExecutionModal: false,
+    showCreateModal: false,
+    showStepsModal: false,
+    selectedEvent: { etapas: [] },
+    newStepTitle: '',
+    selectedProcedureId: '',
     executionFormAction: '',
     executionDeleteAction: '',
     executionForm: {
@@ -162,6 +174,12 @@
         software_nome: '',
         scope_label: '',
         acao_controle_snapshot: '',
+        descricao: '',
+        software_id: '',
+        cliente_id: '',
+        risco_id: '',
+        responsavel_planejado: '',
+        prioridade: 'Média',
         status: 'planejado',
         data_prevista: '',
         modulo: '',
@@ -201,6 +219,12 @@
             software_nome: activity.software?.nome ?? '',
             scope_label: activity.scope_label ?? '',
             acao_controle_snapshot: activity.acao_controle_snapshot ?? '',
+            descricao: activity.descricao ?? '',
+            software_id: activity.software_id ?? '',
+            cliente_id: activity.cliente_id ?? '',
+            risco_id: activity.risco_id ?? '',
+            responsavel_planejado: activity.responsavel_planejado ?? '',
+            prioridade: activity.prioridade ?? 'Média',
             status: activity.status ?? 'planejado',
             data_prevista: activity.data_prevista ? activity.data_prevista.substring(0, 10) : '',
             modulo: activity.modulo ?? '',
@@ -212,6 +236,84 @@
         this.executionFormAction = `/calendario_controles/${activity.id}`;
         this.executionDeleteAction = `/calendario_controles/${activity.id}`;
         this.showExecutionModal = true;
+    },
+    async openSteps(id) {
+        const response = await fetch(`/execucao_controles/${id}`);
+        this.selectedEvent = await response.json();
+        this.selectedProcedureId = '';
+        this.newStepTitle = '';
+        this.showExecutionModal = false;
+        this.showStepsModal = true;
+    },
+    async addStep() {
+        if (!this.newStepTitle.trim()) return;
+        const response = await fetch(`/execucao_controles/${this.selectedEvent.id}/etapas`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            body: JSON.stringify({titulo: this.newStepTitle})
+        });
+        this.selectedEvent.etapas.push(await response.json());
+        this.newStepTitle = '';
+    },
+    async importProcedure() {
+        if (!this.selectedProcedureId) return;
+        const response = await fetch(`/execucao_controles/${this.selectedEvent.id}/importar-procedimento`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            body: JSON.stringify({procedimento_id: this.selectedProcedureId})
+        });
+        const data = await response.json();
+        if (!response.ok) return alert(data.error || 'Nao foi possivel importar o procedimento.');
+        this.selectedEvent.etapas = data.etapas;
+    },
+    async saveStep(step) {
+        const formData = new FormData();
+        formData.append('_method', 'PATCH');
+        formData.append('concluido', step.concluido ? '1' : '0');
+        formData.append('observacoes', step.observacoes || '');
+        const file = document.getElementById(`step-file-${step.id}`)?.files[0];
+        if (file) formData.append('evidencia', file);
+        const response = await fetch(`/execucao_controles/etapas/${step.id}`, {
+            method: 'POST',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            body: formData
+        });
+        const updated = await response.json();
+        this.selectedEvent.etapas = this.selectedEvent.etapas.map(item => item.id === step.id ? updated : item);
+    },
+    async removeStep(step) {
+        if (!confirm('Remover esta etapa?')) return;
+        await fetch(`/execucao_controles/etapas/${step.id}`, {
+            method: 'DELETE',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'}
+        });
+        this.selectedEvent.etapas = this.selectedEvent.etapas.filter(item => item.id !== step.id);
+    },
+    async removeEvidence(evidence, step) {
+        if (!confirm('Remover esta evidencia?')) return;
+        await fetch(`/execucao_controles/evidencias/${evidence.id}`, {
+            method: 'DELETE',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'}
+        });
+        step.evidencias = step.evidencias.filter(item => item.id !== evidence.id);
+    },
+    async moveStep(index, direction) {
+        const target = index + direction;
+        if (target < 0 || target >= this.selectedEvent.etapas.length) return;
+        const [step] = this.selectedEvent.etapas.splice(index, 1);
+        this.selectedEvent.etapas.splice(target, 0, step);
+        for (let position = 0; position < this.selectedEvent.etapas.length; position++) {
+            const item = this.selectedEvent.etapas[position];
+            const formData = new FormData();
+            formData.append('_method', 'PATCH');
+            formData.append('ordem', String(position + 1));
+            await fetch(`/execucao_controles/etapas/${item.id}`, {
+                method: 'POST',
+                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+                body: formData
+            });
+            item.ordem = position + 1;
+        }
     }
 }">
     @if ($errors->any())
@@ -541,7 +643,10 @@
             <div style="font-size:16px; font-weight:700; color:var(--text-1)">Planejamento e Execucao</div>
             <div style="font-size:12px; color:var(--text-3)">Aqui fica o que ja passou pela triagem e entrou no ciclo real de trabalho.</div>
         </div>
-        <div style="font-size:12px; color:var(--text-3)">{{ $eventos->count() }} item(ns) na fila</div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="font-size:12px; color:var(--text-3)">{{ $eventos->count() }} item(ns) na fila</div>
+            <button type="button" class="btn-add" @click="showCreateModal = true">Novo Cartao</button>
+        </div>
     </div>
 
     @php
@@ -576,6 +681,9 @@
                             </span>
                             <span class="execution-card-action">{{ $evento->acao_controle_snapshot }}</span>
                             <span class="execution-card-scope">{{ $evento->scope_label }}</span>
+                            @if($evento->etapas_count > 0)
+                                <span class="execution-progress">Etapas {{ $evento->progress_label }}</span>
+                            @endif
                             <span class="execution-card-meta">
                                 <span>{{ optional($evento->data_prevista)->format('d/m/Y') ?: 'Sem data' }}</span>
                                 <span>Esforco {{ $evento->esforco ?: 'M' }}</span>
@@ -605,17 +713,20 @@
                     <div style="font-size:11px; color:var(--text-3); margin-top:12px; text-transform:uppercase; margin-bottom:6px;">Acao</div>
                     <div style="color:var(--text-2);" x-text="executionForm.acao_controle_snapshot"></div>
                 </div>
-                <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px;">
-                    <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; margin-bottom:6px;">Fluxo atual</div>
-                    <div style="color:var(--text-2); line-height:1.5;">
-                        Depois da triagem, o item entra na fila operacional. Aqui voce decide se ele fica <strong style="color:var(--yellow)">planejado</strong>, vai para <strong style="color:var(--cyan)">execucao</strong>, fecha em <strong style="color:var(--green)">concluido</strong> ou volta como <strong style="color:var(--red)">atrasado</strong>.
-                    </div>
-                </div>
             </div>
 
             <form :action="executionFormAction" method="POST">
                 @csrf
                 @method('PATCH')
+
+                <div class="form-group"><label>Titulo</label><input name="acao_controle_snapshot" x-model="executionForm.acao_controle_snapshot" class="form-input"></div>
+                <div class="form-group"><label>Descricao</label><textarea name="descricao" x-model="executionForm.descricao" class="form-textarea" rows="2"></textarea></div>
+
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Software</label><select name="software_id" x-model="executionForm.software_id" class="form-select"><option value="">Atividade geral</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Cliente</label><select name="cliente_id" x-model="executionForm.cliente_id" class="form-select"><option value="">Interno / geral</option>@foreach($clientes as $cliente)<option value="{{ $cliente->id }}">{{ $cliente->nome }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Risco</label><select name="risco_id" x-model="executionForm.risco_id" class="form-select"><option value="">Sem risco</option>@foreach($riscos as $risco)<option value="{{ $risco->id }}">{{ $risco->titulo }}</option>@endforeach</select></div>
+                </div>
 
                 <div class="execution-form-grid">
                     <div class="form-group">
@@ -639,6 +750,11 @@
                             @endforeach
                         </select>
                     </div>
+                </div>
+
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Responsavel</label><input name="responsavel_planejado" x-model="executionForm.responsavel_planejado" class="form-input"></div>
+                    <div class="form-group"><label>Prioridade</label><select name="prioridade" x-model="executionForm.prioridade" class="form-select"><option>Baixa</option><option>Média</option><option>Alta</option><option>Crítica</option></select></div>
                 </div>
 
                 <div class="execution-form-grid">
@@ -668,6 +784,7 @@
 
                 <div class="modal-actions">
                     <button type="submit" form="execution-delete-form" class="btn-del" style="margin-right:auto; font-size:12px;" onclick="return confirm('Deseja excluir este item da fila?')">Excluir</button>
+                    <button type="button" class="btn-cancel" @click="openSteps(executionForm.id)">Etapas</button>
                     <button type="button" class="btn-cancel" @click="showExecutionModal = false">Cancelar</button>
                     <button type="submit" class="btn-save">Salvar Atualizacao</button>
                 </div>
@@ -676,6 +793,67 @@
                 @csrf
                 @method('DELETE')
             </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" x-show="showCreateModal" style="display:none" x-transition>
+        <div class="modal" @click.away="showCreateModal = false" style="width:min(760px,94vw);max-width:760px">
+            <h3>Novo Cartao</h3>
+            <form action="{{ route('calendario_controles.store_manual') }}" method="POST">
+                @csrf
+                <div class="form-group"><label>Titulo</label><input name="titulo" class="form-input" required maxlength="255"></div>
+                <div class="form-group"><label>Descricao</label><textarea name="descricao" class="form-textarea" rows="3"></textarea></div>
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Software</label><select name="software_id" class="form-select"><option value="">Atividade geral</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Cliente</label><select name="cliente_id" class="form-select"><option value="">Interno / geral</option>@foreach($clientes as $cliente)<option value="{{ $cliente->id }}">{{ $cliente->nome }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Risco</label><select name="risco_id" class="form-select"><option value="">Sem risco</option>@foreach($riscos as $risco)<option value="{{ $risco->id }}">{{ $risco->titulo }}</option>@endforeach</select></div>
+                </div>
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Responsavel</label><input name="responsavel_planejado" class="form-input"></div>
+                    <div class="form-group"><label>Prioridade</label><select name="prioridade" class="form-select" required><option>Baixa</option><option selected>Média</option><option>Alta</option><option>Crítica</option></select></div>
+                    <div class="form-group"><label>Esforco</label><select name="esforco" class="form-select"><option value="">A definir</option>@foreach($effortOptions as $effort)<option value="{{ $effort }}">{{ $effort }}</option>@endforeach</select></div>
+                </div>
+                <div class="form-group"><label>Data prevista</label><input type="date" name="data_prevista" class="form-input"></div>
+                <div class="modal-actions"><button type="button" class="btn-cancel" @click="showCreateModal = false">Cancelar</button><button class="btn-save">Criar Cartao</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" x-show="showStepsModal" style="display:none" x-transition>
+        <div class="modal" @click.away="showStepsModal = false" style="width:min(820px,94vw);max-width:820px">
+            <h3>Etapas do Cartao</h3>
+            <div style="color:var(--text-1);font-weight:600;margin-bottom:14px" x-text="selectedEvent.acao_controle_snapshot"></div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px">
+                <input x-model="newStepTitle" @keydown.enter.prevent="addStep()" class="form-input" placeholder="Nova etapa">
+                <button type="button" class="btn-add" @click="addStep()">Adicionar</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:14px">
+                <select x-model="selectedProcedureId" class="form-select"><option value="">Importar procedimento...</option>@foreach($procedimentos as $procedimento)<option value="{{ $procedimento->id }}">{{ $procedimento->titulo }}</option>@endforeach</select>
+                <button type="button" class="btn-cancel" @click="importProcedure()">Importar</button>
+            </div>
+            <div class="steps-list">
+                <template x-for="(step, stepIndex) in selectedEvent.etapas" :key="step.id">
+                    <div class="step-item">
+                        <div class="step-head">
+                            <input type="checkbox" x-model="step.concluido" @change="saveStep(step)">
+                            <div class="step-body">
+                                <div style="color:var(--text-1);font-size:12px;font-weight:600" x-text="step.titulo"></div>
+                                <textarea x-model="step.observacoes" class="form-textarea" rows="2" style="margin-top:8px" placeholder="Observacoes da etapa"></textarea>
+                                <input type="file" :id="`step-file-${step.id}`" class="form-input" style="margin-top:8px;font-size:11px">
+                                <div class="step-evidences"><template x-for="evidence in step.evidencias" :key="evidence.id"><span style="display:flex;gap:4px"><a class="step-evidence" :href="'/storage/' + evidence.arquivo_caminho" target="_blank" x-text="evidence.arquivo_nome"></a><button type="button" class="btn-del" @click="removeEvidence(evidence, step)">×</button></span></template></div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:4px">
+                                <button type="button" class="btn-del" @click="moveStep(stepIndex, -1)" title="Mover para cima">↑</button>
+                                <button type="button" class="btn-del" @click="moveStep(stepIndex, 1)" title="Mover para baixo">↓</button>
+                                <button type="button" class="btn-del" @click="removeStep(step)" title="Remover">×</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-cancel" style="margin-top:8px" @click="saveStep(step)">Salvar etapa</button>
+                    </div>
+                </template>
+                <div x-show="!selectedEvent.etapas || selectedEvent.etapas.length === 0" class="execution-empty">Nenhuma etapa cadastrada.</div>
+            </div>
+            <div class="modal-actions"><button type="button" class="btn-cancel" @click="showStepsModal = false">Fechar</button></div>
         </div>
     </div>
     @endif

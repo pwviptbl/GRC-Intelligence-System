@@ -340,6 +340,55 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             ->assertDontSee('Triagem de Demanda');
     }
 
+    public function test_manual_card_can_be_created_without_software(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $this->post(route('calendario_controles.store_manual'), [
+            'titulo' => 'Revisar processo interno de acesso',
+            'descricao' => 'Atividade geral sem software vinculado.',
+            'prioridade' => 'Alta',
+            'esforco' => 'M',
+        ])->assertRedirect(route('calendario_controles.kanban'));
+
+        $this->assertDatabaseHas('controle_eventos', [
+            'software_id' => null,
+            'acao_controle_snapshot' => 'Revisar processo interno de acesso',
+            'origem' => 'manual',
+            'status' => 'planejado',
+        ]);
+    }
+
+    public function test_steps_can_be_added_and_completed_inside_kanban_card(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $evento = ControleEvento::create([
+            'acao_controle_snapshot' => 'Executar revisao interna',
+            'origem' => 'manual',
+            'prioridade' => 'Média',
+            'status' => 'planejado',
+        ]);
+
+        $response = $this->postJson(route('calendario_controles.add_step', $evento), [
+            'titulo' => 'Coletar evidencias',
+        ])->assertCreated();
+
+        $stepId = $response->json('id');
+
+        $this->patchJson(route('calendario_controles.update_step', $stepId), [
+            'concluido' => true,
+            'observacoes' => 'Evidencias coletadas.',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('plano_acao_itens', [
+            'id' => $stepId,
+            'controle_evento_id' => $evento->id,
+            'concluido' => true,
+            'observacoes' => 'Evidencias coletadas.',
+        ]);
+    }
+
     public function test_agent_created_control_event_defaults_to_suggestion(): void
     {
         $software = $this->createSoftware();

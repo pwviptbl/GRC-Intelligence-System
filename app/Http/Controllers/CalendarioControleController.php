@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\ControleEvento;
+use App\Models\ControleEventoEtapa;
+use App\Models\PlanoAcaoItemEvidencia;
+use App\Models\Procedimento;
 use App\Models\Software;
 use App\Services\CalendarioControleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class CalendarioControleController extends Controller
 {
@@ -66,6 +70,132 @@ class CalendarioControleController extends Controller
             'effortOptions' => ControleEvento::EFFORT_OPTIONS,
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
             'kanbanMode' => true,
+            'clientes' => \App\Models\Cliente::query()->orderBy('nome')->get(),
+            'riscos' => \App\Models\Risco::query()->orderBy('titulo')->get(),
+            'procedimentos' => Procedimento::query()->orderBy('titulo')->get(['id', 'titulo', 'tipo']),
+        ]);
+    }
+
+    public function storeManual(Request $request)
+    {
+        $data = $request->validate([
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string', 'max:5000'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
+            'responsavel_planejado' => ['nullable', 'string', 'max:255'],
+            'prioridade' => ['required', 'in:Baixa,Média,Alta,Crítica'],
+            'esforco' => ['nullable', 'in:' . implode(',', ControleEvento::EFFORT_OPTIONS)],
+            'data_prevista' => ['nullable', 'date'],
+        ]);
+
+        ControleEvento::create([
+            'software_id' => $data['software_id'] ?? null,
+            'cliente_id' => $data['cliente_id'] ?? null,
+            'risco_id' => $data['risco_id'] ?? null,
+            'acao_controle_snapshot' => $data['titulo'],
+            'descricao' => $data['descricao'] ?? null,
+            'responsavel_planejado' => $data['responsavel_planejado'] ?? null,
+            'prioridade' => $data['prioridade'],
+            'esforco' => $data['esforco'] ?? null,
+            'data_prevista' => $data['data_prevista'] ?? null,
+            'origem' => 'manual',
+            'status' => 'planejado',
+        ]);
+
+        return redirect()->route('calendario_controles.kanban')->with('success', 'Cartao criado no Kanban.');
+    }
+
+    public function showExecution(ControleEvento $calendario_controle)
+    {
+        return response()->json($calendario_controle->load([
+            'software:id,nome',
+            'cliente:id,nome',
+            'risco:id,titulo',
+            'etapas.evidencias',
+        ]));
+    }
+
+    public function addStep(Request $request, ControleEvento $calendario_controle)
+    {
+        $data = $request->validate(['titulo' => ['required', 'string', 'max:255']]);
+        $step = $calendario_controle->etapas()->create([
+            'titulo' => $data['titulo'],
+            'ordem' => ((int) $calendario_controle->etapas()->max('ordem')) + 1,
+            'concluido' => false,
+        ]);
+
+        return response()->json($step->load('evidencias'), 201);
+    }
+
+    public function updateStep(Request $request, ControleEventoEtapa $etapa)
+    {
+        $data = $request->validate([
+            'concluido' => ['nullable', 'boolean'],
+            'observacoes' => ['nullable', 'string', 'max:5000'],
+            'ordem' => ['nullable', 'integer', 'min:1'],
+            'evidencia' => ['nullable', 'file', 'max:10240'],
+        ]);
+
+        if ($request->has('concluido')) {
+            $data['concluido_em'] = $request->boolean('concluido') ? now() : null;
+        }
+        unset($data['evidencia']);
+        $etapa->update($data);
+
+        if ($request->hasFile('evidencia')) {
+            $file = $request->file('evidencia');
+            $etapa->evidencias()->create([
+                'arquivo_nome' => $file->getClientOriginalName(),
+                'arquivo_caminho' => $file->store('evidencias_planos', 'public'),
+            ]);
+        }
+
+        return response()->json($etapa->load('evidencias'));
+    }
+
+    public function removeStep(ControleEventoEtapa $etapa)
+    {
+        Storage::disk('public')->delete($etapa->evidencias()->pluck('arquivo_caminho')->all());
+        $etapa->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function removeStepEvidence(PlanoAcaoItemEvidencia $evidencia)
+    {
+        Storage::disk('public')->delete($evidencia->arquivo_caminho);
+        $evidencia->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function importProcedure(Request $request, ControleEvento $calendario_controle)
+    {
+        $data = $request->validate([
+            'procedimento_id' => ['required', 'integer', 'exists:procedimentos,id'],
+        ]);
+        $procedure = Procedimento::with(['etapas' => fn ($query) => $query->orderBy('ordem')->orderBy('id')])
+            ->findOrFail($data['procedimento_id']);
+
+        if ($procedure->etapas->isEmpty()) {
+            return response()->json(['error' => 'O procedimento nao possui etapas.'], 422);
+        }
+
+        $lastOrder = (int) $calendario_controle->etapas()->max('ordem');
+        foreach ($procedure->etapas as $index => $step) {
+            $calendario_controle->etapas()->create([
+                'titulo' => $step->nome_etapa,
+                'ordem' => $lastOrder + $index + 1,
+                'concluido' => false,
+                'observacoes' => trim("Procedimento base: {$procedure->titulo}\nResponsavel sugerido: " . ($step->responsavel ?: 'N/D') . "\nSLA sugerido: " . ($step->sla ?: 'N/D') . "\n\n{$step->descricao}"),
+            ]);
+        }
+
+        return response()->json([
+            'etapas' => $calendario_controle->etapas()->with('evidencias')->get(),
+            'message' => 'Etapas importadas com sucesso.',
         ]);
     }
 
@@ -156,6 +286,13 @@ class CalendarioControleController extends Controller
     {
         $data = $request->validate([
             'status'              => 'required|in:' . implode(',', ControleEvento::STATUS_OPTIONS),
+            'acao_controle_snapshot' => 'nullable|string|max:255',
+            'descricao'           => 'nullable|string|max:5000',
+            'software_id'         => 'nullable|integer|exists:software,id',
+            'cliente_id'          => 'nullable|integer|exists:clientes,id',
+            'risco_id'            => 'nullable|integer|exists:riscos,id',
+            'responsavel_planejado' => 'nullable|string|max:255',
+            'prioridade'           => 'nullable|in:Baixa,Média,Alta,Crítica',
             'observacoes_execucao'=> 'nullable|string|max:1000',
             'data_prevista'       => 'nullable|date',
             'modulo'              => 'nullable|string|max:255',
@@ -212,6 +349,17 @@ class CalendarioControleController extends Controller
 
     public function destroy(ControleEvento $calendario_controle)
     {
+        $paths = $calendario_controle->etapas()
+            ->with('evidencias:id,plano_acao_item_id,arquivo_caminho')
+            ->get()
+            ->flatMap(fn (ControleEventoEtapa $etapa) => $etapa->evidencias->pluck('arquivo_caminho'))
+            ->filter()
+            ->all();
+
+        if ($paths !== []) {
+            Storage::disk('public')->delete($paths);
+        }
+
         $calendario_controle->delete();
 
         return redirect()->back()->with('success', 'Evento do calendario removido com sucesso!');
@@ -225,7 +373,11 @@ class CalendarioControleController extends Controller
     protected function filteredOperationalQuery(Request $request)
     {
         $query = ControleEvento::query()
-            ->with(['software', 'risco', 'tierPolitica'])
+            ->with(['software', 'cliente', 'risco', 'tierPolitica', 'etapas.evidencias'])
+            ->withCount([
+                'etapas',
+                'etapas as etapas_concluidas_count' => fn ($query) => $query->where('concluido', true),
+            ])
             // Tier 1 (Crítico) sempre primeiro
             ->orderBy('tier')
             // Dentro do mesmo tier: prioridade mais alta primeiro

@@ -74,12 +74,12 @@
         </div>
     </div>
 
-    <!-- Row 3: Plano de Ação e LGPD -->
+    <!-- Row 3: Execucao e LGPD -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="table-card" style="padding:20px">
-            <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">✅ Plano de Ação</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:12px">Execucao no Kanban</div>
             <div style="display:flex;gap:12px">
-                <div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--red)">{{ $plano_acoes['pendentes'] }}</div><div style="font-size:10px;color:var(--text-3)">Pendentes</div></div>
+                <div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--red)">{{ $plano_acoes['pendentes'] }}</div><div style="font-size:10px;color:var(--text-3)">Planejados</div></div>
                 <div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--yellow)">{{ $plano_acoes['em_andamento'] }}</div><div style="font-size:10px;color:var(--text-3)">Em Andamento</div></div>
                 <div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--green)">{{ $plano_acoes['concluidas'] }}</div><div style="font-size:10px;color:var(--text-3)">Concluídas</div></div>
             </div>

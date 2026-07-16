@@ -151,14 +151,14 @@
         @foreach($planos as $plano)
             <div style="margin-bottom: 25px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                    <span style="font-weight: bold; font-size: 13px; color: #0891b2;">PLANO: {{ $plano->titulo }}</span>
+                    <span style="font-weight: bold; font-size: 13px; color: #0891b2;">CARTAO: {{ $plano->acao_controle_snapshot }}</span>
                     <span class="badge badge-concluido">{{ $plano->status }}</span>
                 </div>
                 <p style="font-size: 11px; color: #666; margin-top: 0;">{{ $plano->descricao }}</p>
 
                 <div style="margin-top: 15px;">
                     <strong style="font-size: 10px; text-transform: uppercase; color: #475569;">Etapas e Evidências Coletadas:</strong>
-                    @foreach($plano->items as $item)
+                    @foreach($plano->etapas as $item)
                         <div class="item-row">
                             <div class="item-title">
                                 {{ $item->concluido ? ' [X] ' : ' [ ] ' }} {{ $item->titulo }}

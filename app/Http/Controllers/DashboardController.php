@@ -8,7 +8,7 @@ use App\Models\InstanciaCliente;
 use App\Models\Politica;
 use App\Models\Risco;
 use App\Models\Incidente;
-use App\Models\PlanoAcao;
+use App\Models\ControleEvento;
 use App\Models\LgpdItem;
 use App\Services\GeminiService;
 use Illuminate\Http\Request;
@@ -41,9 +41,9 @@ class DashboardController extends Controller
         ];
 
         $plano_acoes = [
-            'pendentes' => PlanoAcao::where('status', 'pendente')->count(),
-            'em_andamento' => PlanoAcao::where('status', 'em_andamento')->count(),
-            'concluidas' => PlanoAcao::where('status', 'concluida')->count(),
+            'pendentes' => ControleEvento::whereIn('status', ['planejado', 'pendente', 'atrasado'])->count(),
+            'em_andamento' => ControleEvento::where('status', 'em_execucao')->count(),
+            'concluidas' => ControleEvento::where('status', 'concluido')->count(),
         ];
 
         $lgpd_total = LgpdItem::count() ?: 1;
@@ -96,8 +96,8 @@ class DashboardController extends Controller
                 'total' => \App\Models\TreinamentoRegistro::count() ?: 1,
             ],
             'planos' => [
-                'concluidos' => \App\Models\PlanoAcao::where('status', 'concluida')->count(),
-                'total' => \App\Models\PlanoAcao::count() ?: 1,
+                'concluidos' => ControleEvento::where('status', 'concluido')->count(),
+                'total' => ControleEvento::whereNotIn('status', ['sugestao', 'triagem', 'dispensado', 'cancelado'])->count() ?: 1,
             ]
         ];
 

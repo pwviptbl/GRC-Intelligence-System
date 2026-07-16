@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ControleEvento;
 use App\Models\Incidente;
-use App\Models\PlanoAcao;
 use App\Models\Politica;
 use App\Models\Procedimento;
 use App\Models\Risco;
@@ -145,11 +144,11 @@ class GrcContextService
 
     protected function planosAbertos(): array
     {
-        return PlanoAcao::query()
-            ->where('status', '!=', 'concluida')
+        return ControleEvento::query()
+            ->whereIn('status', ['planejado', 'pendente', 'em_execucao', 'atrasado'])
             ->orderByDesc('updated_at')
             ->take(15)
-            ->get(['titulo', 'prioridade', 'status', 'responsavel'])
+            ->get(['acao_controle_snapshot', 'prioridade', 'status', 'responsavel_planejado'])
             ->toArray();
     }
 
