@@ -33,7 +33,7 @@ class TierPolitica extends Model
 
     public function getTierLabelAttribute(): string
     {
-        return 'T' . $this->tier;
+        return 'T'.$this->tier;
     }
 
     public function getBloqueioAutomaticoLabelAttribute(): string
@@ -44,5 +44,10 @@ class TierPolitica extends Model
     public function getAtivoLabelAttribute(): string
     {
         return $this->ativo ? 'Ativa' : 'Desabilitada';
+    }
+
+    public function atividades()
+    {
+        return $this->hasMany(Atividade::class, 'tier_politica_id');
     }
 }

@@ -78,7 +78,7 @@
                 <td class="tier-{{ $evento->tier }}">Tier {{ $evento->tier }}</td>
                 <td>
                     {{ $evento->acao_controle_snapshot }}<br>
-                    <span style="font-size:11px; color:#666;">{{ $evento->frequencia_snapshot }} | SLA {{ $evento->sla_correcao_snapshot }}</span>
+                    <span style="font-size:11px; color:#666;">{{ $evento->frequencia_snapshot }}</span>
                 </td>
                 <td>{{ $evento->periodo_referencia }}</td>
                 <td>{{ optional($evento->data_prevista)->format('d/m/Y') }}</td>

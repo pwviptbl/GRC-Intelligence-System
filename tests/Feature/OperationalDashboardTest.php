@@ -50,7 +50,11 @@ class OperationalDashboardTest extends TestCase
     public function test_kanban_filters_by_executor_and_missing_estimate(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $executor = User::factory()->create(['disponivel_para_tarefas' => true]);
+        $executor = User::factory()->create([
+            'name' => 'Executor Kanban',
+            'capacidade_semanal_pontos' => 10,
+            'disponivel_para_tarefas' => true,
+        ]);
 
         ControleEvento::create([
             'acao_controle_snapshot' => 'Tarefa do executor',
@@ -64,6 +68,13 @@ class OperationalDashboardTest extends TestCase
             'status' => 'planejado',
             'prioridade' => 'Média',
         ]);
+
+        $this->actingAs($admin)->get(route('calendario_controles.kanban'))
+            ->assertOk()
+            ->assertSee('Carga visível por pessoa')
+            ->assertSee('Executor Kanban')
+            ->assertSee('2/8 pts')
+            ->assertSee('Fila sem executor: 1 item(ns), 0 pts e 1 para dividir');
 
         $this->actingAs($admin)->get(route('calendario_controles.kanban', ['executor_id' => $executor->id]))
             ->assertOk()

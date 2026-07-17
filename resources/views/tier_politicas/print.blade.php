@@ -63,7 +63,6 @@
                 <th>Tier</th>
                 <th>Ação</th>
                 <th>Frequência</th>
-                <th>SLA</th>
                 <th>Bloqueio</th>
                 <th>Status</th>
                 <th>Responsável</th>
@@ -76,7 +75,6 @@
                 <td class="tier tier-{{ $policy->tier }}">Tier {{ $policy->tier }}</td>
                 <td>{{ $policy->acao_controle }}</td>
                 <td>{{ $policy->frequencia }}</td>
-                <td>{{ $policy->sla_correcao }}</td>
                 <td>{{ $policy->bloqueio_automatico_label }}</td>
                 <td>{{ $policy->ativo_label }}</td>
                 <td>{{ $policy->responsavel }}</td>

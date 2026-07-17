@@ -122,6 +122,99 @@
         text-align: center;
     }
     .execution-progress { margin-top:8px; color:var(--cyan); font-size:10px; }
+    .kanban-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    .kanban-panel {
+        min-width: 0;
+        padding: 14px;
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 8px;
+        background: rgba(255,255,255,.025);
+    }
+    .kanban-panel-title {
+        margin-bottom: 10px;
+        color: var(--text-1);
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .kanban-quick-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .kanban-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 6px 10px;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 8px;
+        background: rgba(255,255,255,.03);
+        color: var(--text-2);
+        font-size: 11px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .kanban-chip.active,
+    .kanban-chip:hover {
+        border-color: rgba(0,229,255,.35);
+        color: var(--cyan);
+    }
+    .kanban-capacity-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+    }
+    .kanban-capacity-card {
+        min-width: 0;
+        padding: 10px;
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 8px;
+        background: rgba(255,255,255,.025);
+    }
+    .kanban-capacity-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .kanban-capacity-name {
+        min-width: 0;
+        color: var(--text-1);
+        font-size: 11px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+    .kanban-capacity-meta {
+        margin-top: 3px;
+        color: var(--text-3);
+        font-size: 9px;
+        text-transform: capitalize;
+    }
+    .kanban-capacity-score {
+        color: var(--cyan);
+        font: 600 10px var(--mono);
+        white-space: nowrap;
+    }
+    .kanban-capacity-score.overflow { color: var(--red); }
+    .kanban-capacity-bar {
+        height: 5px;
+        margin-top: 9px;
+        border-radius: 3px;
+        background: rgba(255,255,255,.06);
+        overflow: hidden;
+    }
+    .kanban-capacity-bar > span {
+        display: block;
+        height: 100%;
+        background: var(--cyan);
+    }
+    .kanban-capacity-bar > span.overflow { background: var(--red); }
     .steps-list { display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
     .card-record-list { display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; }
     .card-record { padding:10px; border:1px solid rgba(255,255,255,.07); border-radius:7px; background:rgba(255,255,255,.025); }
@@ -169,6 +262,7 @@
     @media (max-width: 1180px) {
         .controls-filter-grid { grid-template-columns: repeat(3, 1fr); }
         .execution-board { grid-template-columns: repeat(6, minmax(270px, 1fr)); }
+        .kanban-toolbar { grid-template-columns: 1fr; }
     }
     @media (max-width: 760px) {
         .controls-filter-grid { grid-template-columns: 1fr 1fr; }
@@ -643,7 +737,7 @@
                                     <td><span class="badge" :style="tierStyle('{{ $sugestao->tier }}')">{{ $sugestao->tier_label }}</span></td>
                                     <td style="min-width:240px">
                                         <div style="color:var(--text-1)">{{ $sugestao->acao_controle_snapshot }}</div>
-                                        <div style="font-size:11px; color:var(--text-3); margin-top:4px">{{ $sugestao->frequencia_snapshot }} | SLA {{ $sugestao->sla_correcao_snapshot }}</div>
+                                        <div style="font-size:11px; color:var(--text-3); margin-top:4px">{{ $sugestao->frequencia_snapshot }}</div>
                                     </td>
                                     <td>{{ optional($sugestao->data_prevista)->format('d/m/Y') }}</td>
                                     <td>{{ $sugestao->esforco ?: 'M' }}</td>
@@ -823,6 +917,49 @@
             <div style="font-size:12px; color:var(--text-3)">{{ $eventos->count() }} item(ns) na fila</div>
             @if($canManageQueue)<button type="button" class="btn-add" @click="showCreateModal = true">Novo Cartao</button>@endif
         </div>
+    </div>
+
+    <div class="kanban-toolbar">
+        <section class="kanban-panel">
+            <div class="kanban-panel-title">Recortes rápidos</div>
+            <div class="kanban-quick-filters">
+                <a class="kanban-chip {{ request('executor_id') === 'me' ? 'active' : '' }}" href="{{ route('calendario_controles.kanban', array_merge(request()->except('page'), ['executor_id' => 'me'])) }}">Minhas tarefas</a>
+                <a class="kanban-chip {{ request('executor_id') === 'none' ? 'active' : '' }}" href="{{ route('calendario_controles.kanban', array_merge(request()->except('page'), ['executor_id' => 'none'])) }}">Sem executor</a>
+                <a class="kanban-chip {{ request('pendencia') === 'estimativa' ? 'active' : '' }}" href="{{ route('calendario_controles.kanban', array_merge(request()->except('page'), ['pendencia' => 'estimativa'])) }}">Precisa dividir</a>
+                <a class="kanban-chip {{ request('tipo_demanda') === 'Governanca' ? 'active' : '' }}" href="{{ route('calendario_controles.kanban', array_merge(request()->except('page'), ['tipo_demanda' => 'Governanca'])) }}">Governanca</a>
+                <a class="kanban-chip {{ request('tipo_demanda') === 'Planejamento' ? 'active' : '' }}" href="{{ route('calendario_controles.kanban', array_merge(request()->except('page'), ['tipo_demanda' => 'Planejamento'])) }}">Planejamento</a>
+                <a class="kanban-chip {{ request('tipo_demanda') === 'Investigacao' ? 'active' : '' }}" href="{{ route('calendario_controles.kanban', array_merge(request()->except('page'), ['tipo_demanda' => 'Investigacao'])) }}">Investigacao</a>
+                <a class="kanban-chip" href="{{ route('calendario_controles.kanban') }}">Limpar filtros</a>
+            </div>
+            <div style="margin-top:10px; color:var(--text-3); font-size:10px;">
+                Fila sem executor: {{ $kanbanUnassignedSummary['tasks_count'] ?? 0 }} item(ns), {{ $kanbanUnassignedSummary['planned'] ?? 0 }} pts{{ ($kanbanUnassignedSummary['needs_split'] ?? 0) > 0 ? ' e ' . $kanbanUnassignedSummary['needs_split'] . ' para dividir' : '' }}.
+            </div>
+        </section>
+
+        <section class="kanban-panel">
+            <div class="kanban-panel-title">Carga visível por pessoa</div>
+            <div class="kanban-capacity-grid">
+                @forelse($kanbanCapacitySummary as $entry)
+                    @php
+                        $percent = $entry['planning_limit'] > 0
+                            ? min(100, ($entry['planned'] / $entry['planning_limit']) * 100)
+                            : ($entry['planned'] > 0 ? 100 : 0);
+                    @endphp
+                    <a class="kanban-capacity-card" href="{{ route('calendario_controles.kanban', array_merge(request()->except('page'), ['executor_id' => $entry['member']->id])) }}" style="text-decoration:none">
+                        <span class="kanban-capacity-head">
+                            <span>
+                                <span class="kanban-capacity-name">{{ $entry['member']->name }}</span>
+                                <span class="kanban-capacity-meta">{{ $entry['member']->nivel_operacional ?: 'Nivel nao definido' }} · {{ $entry['tasks_count'] }} item(ns)</span>
+                            </span>
+                            <span class="kanban-capacity-score {{ $entry['remaining'] < 0 ? 'overflow' : '' }}">{{ $entry['planned'] }}/{{ $entry['planning_limit'] }} pts</span>
+                        </span>
+                        <span class="kanban-capacity-bar"><span class="{{ $entry['remaining'] < 0 ? 'overflow' : '' }}" style="width:{{ $percent }}%"></span></span>
+                    </a>
+                @empty
+                    <div class="execution-empty" style="padding:10px">Cadastre usuários disponíveis para tarefas.</div>
+                @endforelse
+            </div>
+        </section>
     </div>
 
     @php

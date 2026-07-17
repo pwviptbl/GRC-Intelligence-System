@@ -10,6 +10,7 @@ class Atividade extends Model
 
     protected $fillable = [
         'software_id',
+        'tier_politica_id',
         'atividade',
         'modulo',
         'categoria',
@@ -27,6 +28,7 @@ class Atividade extends Model
 
     protected $casts = [
         'software_id' => 'integer',
+        'tier_politica_id' => 'integer',
         'tier_minimo' => 'integer',
         'recorrencia_meses' => 'integer',
         'ativo' => 'boolean',
@@ -41,6 +43,11 @@ class Atividade extends Model
     public function software()
     {
         return $this->belongsTo(Software::class);
+    }
+
+    public function tierPolitica()
+    {
+        return $this->belongsTo(TierPolitica::class, 'tier_politica_id');
     }
 
     public function getScopeLabelAttribute(): string
@@ -61,6 +68,6 @@ class Atividade extends Model
 
     public function getTierMinimoLabelAttribute(): string
     {
-        return 'Tier ' . $this->tier_minimo . ' ou mais critico';
+        return 'Tier '.$this->tier_minimo.' ou mais critico';
     }
 }

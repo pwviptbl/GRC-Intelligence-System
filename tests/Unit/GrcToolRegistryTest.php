@@ -21,6 +21,9 @@ class GrcToolRegistryTest extends TestCase
         $this->assertContains('update_tier_policy', $toolNames);
         $this->assertContains('create_procedure', $toolNames);
         $this->assertContains('update_control_event', $toolNames);
+        $this->assertContains('list_software', $toolNames);
+        $this->assertContains('create_activities_batch', $toolNames);
+        $this->assertContains('assign_activities_to_tier_policy', $toolNames);
     }
 
     public function test_write_tools_require_confirmation(): void
@@ -29,6 +32,7 @@ class GrcToolRegistryTest extends TestCase
 
         $this->assertFalse($registry->requiresConfirmation('dashboard_summary'));
         $this->assertTrue($registry->requiresConfirmation('create_risk'));
+        $this->assertTrue($registry->requiresConfirmation('create_activities_batch'));
     }
 
     public function test_create_risk_dry_run_validates_and_calculates_criticality(): void

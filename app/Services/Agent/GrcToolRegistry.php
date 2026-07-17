@@ -14,6 +14,7 @@ use App\Models\Risco;
 use App\Models\Software;
 use App\Models\TierPolitica;
 use App\Models\User;
+use App\Services\ActivityRecurrenceService;
 use App\Services\GrcContextService;
 use Illuminate\Support\Facades\DB;
 
@@ -41,12 +42,22 @@ class GrcToolRegistry
                 self::RISK_READ
             ),
             $this->tool(
+                'list_software',
+                'Lista softwares disponiveis para vinculo de atividades, incluindo classificacao e tier sugerido.',
+                self::RISK_READ,
+                [
+                    'ativo' => ['type' => 'boolean'],
+                    'search' => ['type' => 'string'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
                 'list_activities',
-                'Lista atividades catalogadas com filtros opcionais.',
+                'Lista atividades catalogadas com filtros e cobertura de recorrencia.',
                 self::RISK_READ,
                 [
                     'software_id' => ['type' => 'integer'],
-                    'categoria' => ['type' => 'string', 'enum' => ControleEvento::CATEGORY_OPTIONS],
+                    'categoria' => ['type' => 'string'],
                     'tipo_demanda' => ['type' => 'string', 'enum' => ControleEvento::DEMAND_TYPE_OPTIONS],
                     'ativo' => ['type' => 'boolean'],
                     'search' => ['type' => 'string'],
@@ -127,7 +138,7 @@ class GrcToolRegistry
                     'tier' => ['type' => 'integer', 'enum' => [1, 2, 3]],
                     'software_id' => ['type' => 'integer'],
                     'modulo' => ['type' => 'string'],
-                    'categoria' => ['type' => 'string', 'enum' => ControleEvento::CATEGORY_OPTIONS],
+                    'categoria' => ['type' => 'string'],
                     'tipo_demanda' => ['type' => 'string', 'enum' => ControleEvento::DEMAND_TYPE_OPTIONS],
                     'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
                 ]
@@ -140,11 +151,48 @@ class GrcToolRegistry
                 ['atividade', 'esforco', 'tier_minimo']
             ),
             $this->tool(
+                'create_activities_batch',
+                'Cria ou atualiza ate 100 atividades de forma idempotente. Use defaults para campos repetidos do modulo e activities para os dados de cada atividade.',
+                self::RISK_WRITE,
+                [
+                    'software_id' => ['type' => 'integer'],
+                    'modulo' => ['type' => 'string'],
+                    'defaults' => [
+                        'type' => 'object',
+                        'properties' => $this->activityInputSchema(),
+                        'additionalProperties' => false,
+                    ],
+                    'activities' => [
+                        'type' => 'array',
+                        'minItems' => 1,
+                        'maxItems' => 100,
+                        'items' => [
+                            'type' => 'object',
+                            'properties' => $this->activityInputSchema(),
+                            'required' => ['atividade'],
+                            'additionalProperties' => false,
+                        ],
+                    ],
+                    'on_duplicate' => ['type' => 'string', 'enum' => ['skip', 'update', 'error']],
+                ],
+                ['activities']
+            ),
+            $this->tool(
                 'update_activity',
                 'Atualiza os campos informados de uma atividade.',
                 self::RISK_WRITE,
                 array_merge(['activity_id' => ['type' => 'integer']], $this->activityInputSchema()),
                 ['activity_id']
+            ),
+            $this->tool(
+                'assign_activities_to_tier_policy',
+                'Vincula ate 100 atividades existentes a uma regra de Tier e alinha automaticamente o Tier minimo.',
+                self::RISK_WRITE,
+                [
+                    'tier_policy_id' => ['type' => 'integer'],
+                    'activity_ids' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 100, 'items' => ['type' => 'integer']],
+                ],
+                ['tier_policy_id', 'activity_ids']
             ),
             $this->tool(
                 'create_risk',
@@ -201,7 +249,7 @@ class GrcToolRegistry
                 'Cria uma regra de controle por tier.',
                 self::RISK_WRITE,
                 $this->tierPolicyInputSchema(),
-                ['tier', 'acao_controle', 'frequencia', 'sla_correcao', 'bloqueio_automatico', 'responsavel']
+                ['tier', 'acao_controle', 'frequencia', 'bloqueio_automatico', 'responsavel']
             ),
             $this->tool(
                 'update_tier_policy',
@@ -322,6 +370,7 @@ class GrcToolRegistry
             $result = match ($name) {
                 'context_snapshot' => $this->contextSnapshot(),
                 'dashboard_summary' => $this->dashboardSummary(),
+                'list_software' => $this->listSoftware($payload),
                 'list_activities' => $this->listActivities($payload),
                 'list_team_members' => $this->listTeamMembers($payload),
                 'list_risks' => $this->listRisks($payload),
@@ -331,7 +380,9 @@ class GrcToolRegistry
                 'list_incidents' => $this->listIncidents($payload),
                 'list_control_calendar' => $this->listControlCalendar($payload),
                 'create_activity' => $this->createActivity($payload, $dryRun),
+                'create_activities_batch' => $this->createActivitiesBatch($payload, $dryRun),
                 'update_activity' => $this->updateActivity($payload, $dryRun),
+                'assign_activities_to_tier_policy' => $this->assignActivitiesToTierPolicy($payload, $dryRun),
                 'create_risk' => $this->createRisk($payload, $dryRun),
                 'update_risk' => $this->updateRisk($payload, $dryRun),
                 'update_risk_status' => $this->updateRiskStatus($payload, $dryRun),
@@ -475,7 +526,7 @@ class GrcToolRegistry
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $query = TierPolitica::query()->orderBy('tier')->orderBy('id');
+        $query = TierPolitica::query()->withCount('atividades')->orderBy('tier')->orderBy('id');
         foreach (['tier', 'ativo'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] !== null) {
                 $query->where($field, $data[$field]);
@@ -534,14 +585,14 @@ class GrcToolRegistry
     {
         $data = $this->validate($payload, [
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
-            'categoria' => ['nullable', 'in:'.implode(',', ControleEvento::CATEGORY_OPTIONS)],
+            'categoria' => ['nullable', 'string', 'max:255'],
             'tipo_demanda' => ['nullable', 'in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
             'ativo' => ['nullable', 'boolean'],
             'search' => ['nullable', 'string', 'max:255'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $query = Atividade::query()->with('software:id,nome')->orderBy('atividade');
+        $query = Atividade::query()->with(['software:id,nome', 'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo'])->orderBy('atividade');
 
         foreach (['software_id', 'categoria', 'tipo_demanda', 'ativo'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] !== null && $data[$field] !== '') {
@@ -558,9 +609,43 @@ class GrcToolRegistry
             });
         }
 
-        return $query->limit((int) ($data['limit'] ?? 20))->get()
-            ->map(fn (Atividade $atividade) => $this->activityPayload($atividade))
+        $activities = $query->limit((int) ($data['limit'] ?? 20))->get();
+        $coverage = app(ActivityRecurrenceService::class)->summaries($activities);
+
+        return $activities
+            ->map(fn (Atividade $atividade) => array_merge(
+                $this->activityPayload($atividade),
+                ['recorrencia' => $coverage[$atividade->id]]
+            ))
             ->all();
+    }
+
+    protected function listSoftware(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'ativo' => ['nullable', 'boolean'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = Software::query()->orderBy('nome');
+
+        if (array_key_exists('ativo', $data)) {
+            $query->where('ativo', $data['ativo']);
+        }
+
+        if (! empty($data['search'])) {
+            $query->where('nome', 'like', '%'.$data['search'].'%');
+        }
+
+        return $query->limit((int) ($data['limit'] ?? 20))->get()->map(fn (Software $software) => [
+            'id' => $software->id,
+            'nome' => $software->nome,
+            'tecnologia' => $software->tecnologia,
+            'ativo' => $software->ativo,
+            'classificacao' => $software->classificacao_label,
+            'tier_sugerido' => $software->tier_sugerido,
+        ])->all();
     }
 
     protected function listControlCalendar(array $payload): array
@@ -570,7 +655,7 @@ class GrcToolRegistry
             'tier' => ['nullable', 'integer', 'in:1,2,3'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'modulo' => ['nullable', 'string', 'max:255'],
-            'categoria' => ['nullable', 'in:'.implode(',', ControleEvento::CATEGORY_OPTIONS)],
+            'categoria' => ['nullable', 'string', 'max:255'],
             'tipo_demanda' => ['nullable', 'in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -667,6 +752,7 @@ class GrcToolRegistry
     protected function createActivity(array $payload, bool $dryRun): array
     {
         $data = $this->validate($payload, $this->activityValidationRules(true));
+        $data = $this->normalizeActivityTierPolicy($data);
         $data = array_merge([
             'ativo' => true,
         ], $data);
@@ -675,7 +761,116 @@ class GrcToolRegistry
             return ['would_create' => $data];
         }
 
-        return $this->activityPayload(Atividade::create($data)->load('software:id,nome'));
+        $activity = Atividade::create($data);
+
+        return $this->activityPayload($activity->load(['software:id,nome', 'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo']));
+    }
+
+    protected function createActivitiesBatch(array $payload, bool $dryRun): array
+    {
+        $header = $this->validate($payload, [
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'modulo' => ['nullable', 'string', 'max:255'],
+            'defaults' => ['nullable', 'object'],
+            'activities' => ['required', 'array', 'min:1', 'max:100'],
+            'on_duplicate' => ['nullable', 'in:skip,update,error'],
+        ]);
+
+        $defaults = $this->validate($header['defaults'] ?? [], $this->activityValidationRules());
+        $common = array_filter([
+            'software_id' => $header['software_id'] ?? null,
+            'modulo' => $header['modulo'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
+        $policy = $header['on_duplicate'] ?? 'skip';
+        $validated = [];
+        $seen = [];
+
+        foreach ($header['activities'] as $index => $activity) {
+            if (! is_array($activity)) {
+                throw new ToolValidationException(["activities.$index" => ['A atividade deve ser um objeto.']]);
+            }
+
+            $data = $this->validate(array_merge($defaults, $common, $activity), $this->activityValidationRules(true));
+            $data = $this->normalizeActivityTierPolicy($data);
+            $data = array_merge(['ativo' => true, 'recorrencia_meses' => 12], $data);
+            $key = $this->activityIdentityKey($data);
+
+            if (isset($seen[$key])) {
+                throw new ToolValidationException(["activities.$index" => ['Atividade repetida no mesmo lote.']]);
+            }
+
+            $seen[$key] = true;
+            $validated[] = ['index' => $index, 'data' => $data];
+        }
+
+        $execute = function () use ($validated, $policy, $dryRun): array {
+            $items = [];
+            $summary = ['requested' => count($validated), 'created' => 0, 'updated' => 0, 'skipped' => 0];
+
+            foreach ($validated as $entry) {
+                $data = $entry['data'];
+                $existing = $this->findActivityByIdentity($data);
+
+                if ($existing && $policy === 'error') {
+                    throw new ToolValidationException([
+                        "activities.{$entry['index']}" => ["Atividade ja cadastrada com ID {$existing->id}."],
+                    ]);
+                }
+
+                if ($existing && $policy === 'skip') {
+                    $summary['skipped']++;
+                    $items[] = ['index' => $entry['index'], 'action' => 'skipped', 'id' => $existing->id];
+
+                    continue;
+                }
+
+                if ($existing) {
+                    $changes = array_diff_assoc($data, $existing->only(array_keys($data)));
+                    if ($changes === []) {
+                        $summary['skipped']++;
+                        $items[] = ['index' => $entry['index'], 'action' => 'unchanged', 'id' => $existing->id];
+
+                        continue;
+                    }
+                    if (! $dryRun && $changes !== []) {
+                        $existing->update($changes);
+                    }
+                    $summary['updated']++;
+                    $items[] = ['index' => $entry['index'], 'action' => $dryRun ? 'would_update' : 'updated', 'id' => $existing->id, 'changes' => $changes];
+
+                    continue;
+                }
+
+                $activity = $dryRun ? null : Atividade::create($data);
+                $summary['created']++;
+                $items[] = ['index' => $entry['index'], 'action' => $dryRun ? 'would_create' : 'created', 'id' => $activity?->id, 'data' => $data];
+            }
+
+            return ['summary' => $summary, 'items' => $items];
+        };
+
+        return $dryRun ? $execute() : DB::transaction($execute);
+    }
+
+    protected function findActivityByIdentity(array $data): ?Atividade
+    {
+        $query = Atividade::query()->where('atividade', $data['atividade']);
+
+        foreach (['software_id', 'modulo', 'categoria', 'rotina'] as $field) {
+            isset($data[$field]) && $data[$field] !== ''
+                ? $query->where($field, $data[$field])
+                : $query->whereNull($field);
+        }
+
+        return $query->first();
+    }
+
+    protected function activityIdentityKey(array $data): string
+    {
+        return json_encode(array_map(
+            fn ($field) => $data[$field] ?? null,
+            ['atividade', 'software_id', 'modulo', 'categoria', 'rotina']
+        ));
     }
 
     protected function updateActivity(array $payload, bool $dryRun): array
@@ -686,6 +881,7 @@ class GrcToolRegistry
         $atividade = Atividade::query()->findOrFail($data['activity_id']);
         unset($data['activity_id']);
         $this->requireChanges($data);
+        $data = $this->normalizeActivityTierPolicy($data);
 
         if ($dryRun) {
             return ['would_update' => ['id' => $atividade->id, 'changes' => $data]];
@@ -693,7 +889,52 @@ class GrcToolRegistry
 
         $atividade->update($data);
 
-        return $this->activityPayload($atividade->refresh()->load('software:id,nome'));
+        return $this->activityPayload($atividade->refresh()->load(['software:id,nome', 'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo']));
+    }
+
+    protected function assignActivitiesToTierPolicy(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'tier_policy_id' => ['required', 'integer', 'exists:tier_politicas,id'],
+            'activity_ids' => ['required', 'array', 'min:1', 'max:100'],
+        ]);
+        $ids = array_values(array_unique(array_map(function ($id) {
+            if (filter_var($id, FILTER_VALIDATE_INT) === false) {
+                throw new ToolValidationException(['activity_ids' => ['Todos os IDs devem ser inteiros.']]);
+            }
+
+            return (int) $id;
+        }, $data['activity_ids'])));
+        $activities = Atividade::query()->whereKey($ids)->get()->keyBy('id');
+        $missing = array_values(array_diff($ids, $activities->keys()->all()));
+        if ($missing !== []) {
+            throw new ToolValidationException(['activity_ids' => ['Atividades nao encontradas: '.implode(', ', $missing).'.']]);
+        }
+        $policy = TierPolitica::query()->findOrFail($data['tier_policy_id']);
+        $changes = $activities->filter(fn (Atividade $activity) => $activity->tier_politica_id !== $policy->id || $activity->tier_minimo !== $policy->tier);
+
+        if (! $dryRun) {
+            DB::transaction(fn () => $changes->each(fn (Atividade $activity) => $activity->update([
+                'tier_politica_id' => $policy->id,
+                'tier_minimo' => $policy->tier,
+            ])));
+        }
+
+        return [
+            'tier_policy' => $this->tierPolicyPayload($policy->loadCount('atividades')),
+            'requested' => count($ids),
+            $dryRun ? 'would_update' : 'updated' => $changes->pluck('id')->values()->all(),
+            'unchanged' => $activities->keys()->diff($changes->pluck('id'))->values()->all(),
+        ];
+    }
+
+    protected function normalizeActivityTierPolicy(array $data): array
+    {
+        if (! empty($data['tier_politica_id'])) {
+            $data['tier_minimo'] = TierPolitica::query()->findOrFail($data['tier_politica_id'])->tier;
+        }
+
+        return $data;
     }
 
     protected function updateRisk(array $payload, bool $dryRun): array
@@ -899,7 +1140,7 @@ class GrcToolRegistry
             'tier' => $tier->tier,
             'acao_controle_snapshot' => $tier->acao_controle,
             'frequencia_snapshot' => $tier->frequencia,
-            'sla_correcao_snapshot' => $tier->sla_correcao,
+            'sla_correcao_snapshot' => null,
             'bloqueio_automatico_snapshot' => $tier->bloqueio_automatico,
             'responsavel_planejado' => $data['responsavel_planejado'] ?? $tier->responsavel,
             'modulo' => $data['modulo'] ?? null,
@@ -1030,6 +1271,7 @@ class GrcToolRegistry
             'procedimento_ref' => ['type' => 'string'],
             'plano_acao' => ['type' => 'string'],
             'software_id' => ['type' => 'integer'],
+            'tier_politica_id' => ['type' => 'integer'],
             'cliente_id' => ['type' => 'integer'],
         ];
     }
@@ -1051,7 +1293,6 @@ class GrcToolRegistry
             'tier' => ['type' => 'integer', 'enum' => [1, 2, 3]],
             'acao_controle' => ['type' => 'string'],
             'frequencia' => ['type' => 'string'],
-            'sla_correcao' => ['type' => 'string'],
             'bloqueio_automatico' => ['type' => 'boolean'],
             'ativo' => ['type' => 'boolean'],
             'responsavel' => ['type' => 'string'],
@@ -1105,14 +1346,12 @@ class GrcToolRegistry
             'software_id' => ['type' => 'integer'],
             'atividade' => ['type' => 'string'],
             'modulo' => ['type' => 'string'],
-            'categoria' => ['type' => 'string', 'enum' => ControleEvento::CATEGORY_OPTIONS],
+            'categoria' => ['type' => 'string'],
             'rotina' => ['type' => 'string'],
             'esforco' => ['type' => 'string', 'enum' => ControleEvento::EFFORT_OPTIONS],
             'tier_minimo' => ['type' => 'integer', 'enum' => [1, 2, 3]],
             'tipo_demanda' => ['type' => 'string', 'enum' => ControleEvento::DEMAND_TYPE_OPTIONS],
-            'frequencia_sugerida' => ['type' => 'string'],
-            'sla_sugerido' => ['type' => 'string'],
-            'responsavel_padrao' => ['type' => 'string'],
+            'recorrencia_meses' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 120],
             'observacoes' => ['type' => 'string'],
             'ativo' => ['type' => 'boolean'],
         ];
@@ -1125,7 +1364,7 @@ class GrcToolRegistry
             'tier_policy_id' => ['type' => 'integer'],
             'risco_id' => ['type' => 'integer'],
             'modulo' => ['type' => 'string'],
-            'categoria' => ['type' => 'string', 'enum' => ControleEvento::CATEGORY_OPTIONS],
+            'categoria' => ['type' => 'string'],
             'rotina' => ['type' => 'string'],
             'esforco' => ['type' => 'string', 'enum' => ControleEvento::EFFORT_OPTIONS],
             'tipo_demanda' => ['type' => 'string', 'enum' => ControleEvento::DEMAND_TYPE_OPTIONS],
@@ -1206,7 +1445,6 @@ class GrcToolRegistry
             'tier' => [$creating ? 'required' : 'nullable', 'integer', 'in:1,2,3'],
             'acao_controle' => [$creating ? 'required' : 'nullable', 'string', 'max:1000'],
             'frequencia' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
-            'sla_correcao' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
             'bloqueio_automatico' => [$creating ? 'required' : 'nullable', 'boolean'],
             'ativo' => ['nullable', 'boolean'],
             'responsavel' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
@@ -1224,6 +1462,7 @@ class GrcToolRegistry
             'data_deteccao' => [$creating ? 'required' : 'nullable', 'date'],
             'detectado_por' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'tier_politica_id' => ['nullable', 'integer', 'exists:tier_politicas,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
             'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'licoes_aprendidas' => ['nullable', 'string'],
@@ -1236,15 +1475,12 @@ class GrcToolRegistry
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'atividade' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
             'modulo' => ['nullable', 'string', 'max:255'],
-            'categoria' => ['nullable', 'in:'.implode(',', ControleEvento::CATEGORY_OPTIONS)],
+            'categoria' => ['nullable', 'string', 'max:255'],
             'rotina' => ['nullable', 'string', 'max:255'],
             'esforco' => [$creating ? 'required' : 'nullable', 'in:'.implode(',', ControleEvento::EFFORT_OPTIONS)],
             'tier_minimo' => [$creating ? 'required' : 'nullable', 'integer', 'in:1,2,3'],
             'tipo_demanda' => ['nullable', 'in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
-            'frequencia_sugerida' => ['nullable', 'string', 'max:255'],
             'recorrencia_meses' => ['nullable', 'integer', 'min:1', 'max:120'],
-            'sla_sugerido' => ['nullable', 'string', 'max:255'],
-            'responsavel_padrao' => ['nullable', 'string', 'max:255'],
             'observacoes' => ['nullable', 'string', 'max:1000'],
             'ativo' => ['nullable', 'boolean'],
         ];
@@ -1259,7 +1495,7 @@ class GrcToolRegistry
                 'data_limite' => ['nullable', 'date'],
                 'observacoes_execucao' => ['nullable', 'string', 'max:1000'],
                 'modulo' => ['nullable', 'string', 'max:255'],
-                'categoria' => ['nullable', 'in:'.implode(',', ControleEvento::CATEGORY_OPTIONS)],
+                'categoria' => ['nullable', 'string', 'max:255'],
                 'rotina' => ['nullable', 'string', 'max:255'],
                 'esforco' => ['nullable', 'in:'.implode(',', ControleEvento::EFFORT_OPTIONS)],
                 'tipo_demanda' => ['nullable', 'in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
@@ -1282,7 +1518,7 @@ class GrcToolRegistry
             'tier_policy_id' => ['required', 'integer', 'exists:tier_politicas,id'],
             'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'modulo' => ['nullable', 'string', 'max:255'],
-            'categoria' => ['nullable', 'in:'.implode(',', ControleEvento::CATEGORY_OPTIONS)],
+            'categoria' => ['nullable', 'string', 'max:255'],
             'rotina' => ['nullable', 'string', 'max:255'],
             'esforco' => ['nullable', 'in:'.implode(',', ControleEvento::EFFORT_OPTIONS)],
             'tipo_demanda' => ['nullable', 'in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
@@ -1432,6 +1668,14 @@ class GrcToolRegistry
                     continue;
                 }
 
+                if ($rule === 'object') {
+                    if (! is_array($value) || ($value !== [] && array_is_list($value))) {
+                        $errors[$field][] = 'Deve ser um objeto.';
+                    }
+
+                    continue;
+                }
+
                 if ($rule === 'date') {
                     if (strtotime((string) $value) === false) {
                         $errors[$field][] = 'Deve ser uma data valida.';
@@ -1445,6 +1689,9 @@ class GrcToolRegistry
                     if (is_string($value) && strlen($value) > $max) {
                         $errors[$field][] = "Deve ter no maximo {$max} caracteres.";
                     }
+                    if (is_array($value) && count($value) > $max) {
+                        $errors[$field][] = "Deve ter no maximo {$max} itens.";
+                    }
 
                     continue;
                 }
@@ -1453,6 +1700,9 @@ class GrcToolRegistry
                     $min = (int) substr($rule, 4);
                     if (is_numeric($value) && (int) $value < $min) {
                         $errors[$field][] = "Deve ser no minimo {$min}.";
+                    }
+                    if (is_array($value) && count($value) < $min) {
+                        $errors[$field][] = "Deve ter no minimo {$min} itens.";
                     }
 
                     continue;
@@ -1521,11 +1771,11 @@ class GrcToolRegistry
             'tier' => $tier->tier,
             'acao_controle' => $tier->acao_controle,
             'frequencia' => $tier->frequencia,
-            'sla_correcao' => $tier->sla_correcao,
             'bloqueio_automatico' => $tier->bloqueio_automatico,
             'ativo' => $tier->ativo,
             'responsavel' => $tier->responsavel,
             'observacoes' => $tier->observacoes,
+            'atividades_vinculadas' => $tier->atividades_count ?? $tier->atividades()->count(),
         ];
     }
 
@@ -1573,6 +1823,10 @@ class GrcToolRegistry
             'atividade' => $atividade->atividade,
             'software' => $atividade->software?->nome,
             'software_id' => $atividade->software_id,
+            'tier_politica_id' => $atividade->tier_politica_id,
+            'regra_tier' => $atividade->tierPolitica?->acao_controle,
+            'frequencia_regra' => $atividade->tierPolitica?->frequencia,
+            'responsavel_regra' => $atividade->tierPolitica?->responsavel,
             'modulo' => $atividade->modulo,
             'categoria' => $atividade->categoria,
             'rotina' => $atividade->rotina,
@@ -1580,10 +1834,7 @@ class GrcToolRegistry
             'esforco' => $atividade->esforco,
             'tier_minimo' => $atividade->tier_minimo,
             'tipo_demanda' => $atividade->tipo_demanda,
-            'frequencia_sugerida' => $atividade->frequencia_sugerida,
             'recorrencia_meses' => $atividade->recorrencia_meses,
-            'sla_sugerido' => $atividade->sla_sugerido,
-            'responsavel_padrao' => $atividade->responsavel_padrao,
             'ativo' => $atividade->ativo,
             'observacoes' => $atividade->observacoes,
         ];

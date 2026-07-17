@@ -50,6 +50,8 @@ class CalendarioControleController extends Controller
             'kanbanMode' => false,
             'usuariosOperacionais' => User::query()->where('active', true)->where('disponivel_para_tarefas', true)->orderBy('name')->get(),
             'usuariosFiltro' => User::query()->where('active', true)->orderBy('name')->get(),
+            'kanbanCapacitySummary' => collect(),
+            'kanbanUnassignedSummary' => null,
         ]);
     }
 
@@ -57,6 +59,11 @@ class CalendarioControleController extends Controller
     {
         $tableAvailable = $this->tableAvailable();
         $eventos = collect();
+        $usuariosOperacionais = User::query()
+            ->where('active', true)
+            ->where('disponivel_para_tarefas', true)
+            ->orderBy('name')
+            ->get();
 
         if ($tableAvailable) {
             $this->service->updateOverdueStatuses();
@@ -77,8 +84,10 @@ class CalendarioControleController extends Controller
             'clientes' => \App\Models\Cliente::query()->orderBy('nome')->get(),
             'riscos' => \App\Models\Risco::query()->orderBy('titulo')->get(),
             'procedimentos' => Procedimento::query()->orderBy('titulo')->get(['id', 'titulo', 'tipo']),
-            'usuariosOperacionais' => User::query()->where('active', true)->where('disponivel_para_tarefas', true)->orderBy('name')->get(),
+            'usuariosOperacionais' => $usuariosOperacionais,
             'usuariosFiltro' => User::query()->where('active', true)->orderBy('name')->get(),
+            'kanbanCapacitySummary' => $this->buildKanbanCapacitySummary($usuariosOperacionais, $eventos),
+            'kanbanUnassignedSummary' => $this->buildKanbanUnassignedSummary($eventos),
         ]);
     }
 
@@ -511,6 +520,42 @@ class CalendarioControleController extends Controller
     protected function managesCards(): bool
     {
         return in_array(auth()->user()?->role, ['admin', 'governanca'], true);
+    }
+
+    protected function buildKanbanCapacitySummary($members, $events)
+    {
+        $assignments = $events
+            ->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])
+            ->groupBy('executor_id');
+
+        return $members->map(function (User $member) use ($assignments) {
+            $tasks = $assignments->get($member->id, collect());
+            $capacity = (int) $member->capacidade_semanal_pontos;
+            $planningLimit = (int) floor($capacity * 0.8);
+            $planned = (int) $tasks->sum(fn (ControleEvento $event) => $event->effort_points);
+
+            return [
+                'member' => $member,
+                'tasks_count' => $tasks->count(),
+                'capacity' => $capacity,
+                'planning_limit' => $planningLimit,
+                'planned' => $planned,
+                'remaining' => $planningLimit - $planned,
+            ];
+        });
+    }
+
+    protected function buildKanbanUnassignedSummary($events): array
+    {
+        $tasks = $events
+            ->whereNull('executor_id')
+            ->whereNotIn('status', ['concluido', 'cancelado', 'dispensado']);
+
+        return [
+            'tasks_count' => $tasks->count(),
+            'planned' => (int) $tasks->sum(fn (ControleEvento $event) => $event->effort_points),
+            'needs_split' => $tasks->filter(fn (ControleEvento $event) => $event->effort_points === 0)->count(),
+        ];
     }
 
     protected function filteredOperationalQuery(Request $request)

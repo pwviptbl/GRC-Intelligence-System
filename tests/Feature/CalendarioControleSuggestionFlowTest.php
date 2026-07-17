@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Atividade;
 use App\Models\ControleEvento;
 use App\Models\Risco;
 use App\Models\Software;
-use App\Models\Atividade;
 use App\Models\TierPolitica;
 use App\Models\User;
 use App\Services\Agent\GrcToolRegistry;
@@ -81,6 +81,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
         $atividade = Atividade::create([
             'software_id' => null,
+            'tier_politica_id' => $tierPolicy->id,
             'atividade' => 'Pentest interno',
             'modulo' => null,
             'categoria' => null,
@@ -102,9 +103,9 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'tier_politica_id' => $tierPolicy->id,
             'atividade_id' => $atividade->id,
             'acao_controle_snapshot' => 'Pentest interno',
-            'frequencia_snapshot' => 'Semestral',
-            'sla_correcao_snapshot' => '15 dias',
-            'responsavel_planejado' => 'Time GRC',
+            'frequencia_snapshot' => 'Mensal',
+            'sla_correcao_snapshot' => null,
+            'responsavel_planejado' => 'Time Base',
             'origem' => 'atividade+tier',
             'status' => 'sugestao',
         ]);
@@ -114,6 +115,126 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'tier_politica_id' => $tierPolicy->id,
             'atividade_id' => null,
             'acao_controle_snapshot' => 'Controle generico de tier',
+        ]);
+    }
+
+    public function test_activity_uses_its_specific_tier_rule_frequency(): void
+    {
+        $this->actingAs($this->adminUser());
+        $software = $this->createSoftware();
+        TierPolitica::create([
+            'tier' => 1,
+            'acao_controle' => 'Pentest',
+            'frequencia' => 'Anual',
+            'bloqueio_automatico' => false,
+            'ativo' => true,
+            'responsavel' => 'Time GRC',
+        ]);
+        $sastPolicy = TierPolitica::create([
+            'tier' => 1,
+            'acao_controle' => 'SAST com scripts proprios',
+            'frequencia' => 'A cada commit',
+            'bloqueio_automatico' => false,
+            'ativo' => true,
+            'responsavel' => 'Desenvolvimento',
+        ]);
+        $activity = Atividade::create([
+            'software_id' => $software->id,
+            'tier_politica_id' => $sastPolicy->id,
+            'atividade' => 'Validar execucao do SAST',
+            'esforco' => 'PP',
+            'tier_minimo' => 1,
+            'recorrencia_meses' => 1,
+            'ativo' => true,
+        ]);
+
+        $this->post(route('calendario_controles.generate'))->assertRedirect();
+
+        $this->assertDatabaseHas('controle_eventos', [
+            'atividade_id' => $activity->id,
+            'tier_politica_id' => $sastPolicy->id,
+            'frequencia_snapshot' => 'A cada commit',
+            'responsavel_planejado' => 'Desenvolvimento',
+            'sla_correcao_snapshot' => null,
+        ]);
+    }
+
+    public function test_unlinked_activity_keeps_its_own_frequency_snapshot(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        TierPolitica::create([
+            'tier' => 1,
+            'acao_controle' => 'Pentest',
+            'frequencia' => 'Anual',
+            'bloqueio_automatico' => false,
+            'ativo' => true,
+            'responsavel' => 'Time GRC',
+        ]);
+        $activity = Atividade::create([
+            'software_id' => $software->id,
+            'atividade' => 'Revisao de acessos privilegiados',
+            'esforco' => 'P',
+            'tier_minimo' => 1,
+            'frequencia_sugerida' => 'Mensal',
+            'recorrencia_meses' => 1,
+            'ativo' => true,
+        ]);
+
+        $this->post(route('calendario_controles.generate'))->assertRedirect();
+
+        $this->assertDatabaseHas('controle_eventos', [
+            'atividade_id' => $activity->id,
+            'acao_controle_snapshot' => 'Revisao de acessos privilegiados',
+            'frequencia_snapshot' => 'Mensal',
+        ]);
+    }
+
+    public function test_linked_activity_does_not_hide_other_active_tier_policies(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        $dastPolicy = TierPolitica::create([
+            'tier' => 1,
+            'acao_controle' => 'Scan Dinamico',
+            'frequencia' => 'Mensal',
+            'bloqueio_automatico' => false,
+            'ativo' => true,
+            'responsavel' => 'Time AppSec',
+        ]);
+        $pentestPolicy = TierPolitica::create([
+            'tier' => 1,
+            'acao_controle' => 'Pentest',
+            'frequencia' => 'Semestral',
+            'bloqueio_automatico' => false,
+            'ativo' => true,
+            'responsavel' => 'Time GRC',
+        ]);
+        $activity = Atividade::create([
+            'software_id' => $software->id,
+            'tier_politica_id' => $dastPolicy->id,
+            'atividade' => 'Analise autenticada',
+            'esforco' => 'G',
+            'tier_minimo' => 1,
+            'frequencia_sugerida' => 'Mensal',
+            'recorrencia_meses' => 1,
+            'ativo' => true,
+        ]);
+
+        $this->post(route('calendario_controles.generate'))->assertRedirect();
+
+        $this->assertDatabaseHas('controle_eventos', [
+            'atividade_id' => $activity->id,
+            'tier_politica_id' => $dastPolicy->id,
+            'acao_controle_snapshot' => 'Analise autenticada',
+        ]);
+
+        $this->assertDatabaseHas('controle_eventos', [
+            'atividade_id' => null,
+            'tier_politica_id' => $pentestPolicy->id,
+            'acao_controle_snapshot' => 'Pentest',
         ]);
     }
 
@@ -150,7 +271,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'bloqueio_automatico_snapshot' => false,
             'responsavel_planejado' => 'Time GRC',
             'origem' => 'atividade+tier',
-            'periodo_referencia' => 'mensal:' . now()->addDay()->format('Y-m'),
+            'periodo_referencia' => 'mensal:'.now()->addDay()->format('Y-m'),
             'data_prevista' => now()->addDay()->toDateString(),
             'data_limite' => now()->addDays(6)->toDateString(),
             'prioridade' => 'Alta',
@@ -160,7 +281,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         $this->post(route('calendario_controles.generate'))
             ->assertRedirect(route('calendario_controles.index'));
 
-        $this->assertDatabaseCount('controle_eventos', 2);
+        $this->assertSame(2, ControleEvento::query()->whereNotNull('atividade_id')->count());
         $this->assertDatabaseHas('controle_eventos', [
             'atividade_id' => $newActivity->id,
         ]);
@@ -188,12 +309,12 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
 
         $this->post(route('calendario_controles.generate'))->assertRedirect();
-        $this->assertDatabaseCount('controle_eventos', 1);
+        $this->assertSame(1, ControleEvento::query()->where('atividade_id', $activity->id)->count());
 
         $completed->update(['concluido_em' => now()->subMonths(13)]);
         $this->post(route('calendario_controles.generate'))->assertRedirect();
 
-        $this->assertDatabaseCount('controle_eventos', 2);
+        $this->assertSame(2, ControleEvento::query()->where('atividade_id', $activity->id)->count());
         $this->assertDatabaseHas('controle_eventos', [
             'atividade_id' => $activity->id,
             'status' => 'sugestao',
@@ -227,7 +348,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'score_confianca' => 4,
             'triagem_observacoes' => 'Ja avaliado antes.',
             'origem' => 'tier',
-            'periodo_referencia' => 'mensal:' . now()->addDay()->format('Y-m'),
+            'periodo_referencia' => 'mensal:'.now()->addDay()->format('Y-m'),
             'data_prevista' => now()->addDay()->toDateString(),
             'data_limite' => now()->addDays(8)->toDateString(),
             'prioridade' => 'Alta',

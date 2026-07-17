@@ -8,7 +8,7 @@
 <style>
     .activities-filter-grid {
         display: grid;
-        grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
+        grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr auto;
         gap: 12px;
         align-items: end;
         margin-bottom: 14px;
@@ -22,7 +22,8 @@
     .activity-form-grid.scope { grid-template-columns: repeat(4, 1fr); }
     .activity-form-grid.details { grid-template-columns: repeat(3, 1fr); }
     .activity-form-grid.owner { grid-template-columns: 1fr 1fr; }
-    .activity-modal { width: min(980px, 94vw); max-width: 980px; }
+    .activities-modal-overlay { left:220px; padding:24px; overflow-y:auto; }
+    .activity-modal { width:min(980px, calc(100vw - 268px)); max-width:980px; max-height:calc(100vh - 48px); overflow-y:auto; box-sizing:border-box; }
     .activities-desktop-table { overflow-x: auto; }
     .activities-desktop-table .data-table { min-width: 1320px; }
     .activities-desktop-table th:last-child,
@@ -42,6 +43,10 @@
         .activities-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .activities-filter-grid > button { width: 100%; }
         .activity-form-grid.scope { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 900px) {
+        .activities-modal-overlay { left:0; }
+        .activity-modal { width:min(980px, calc(100vw - 48px)); }
     }
     @media (max-width: 760px) {
         .activities-desktop-table { display: none; }
@@ -77,7 +82,7 @@
         .activity-form-grid.scope,
         .activity-form-grid.details,
         .activity-form-grid.owner { grid-template-columns: 1fr; gap: 0; }
-        .modal-overlay { align-items: flex-start; padding: 12px; overflow-y: auto; }
+        .activities-modal-overlay { align-items:flex-start; padding:12px; overflow-y:auto; }
         .modal-overlay .modal { width: 100%; max-width: 100%; padding: 18px; }
     }
     @media (max-width: 520px) {
@@ -96,6 +101,7 @@
     form: {
         id: '',
         software_id: '',
+        tier_politica_id: '',
         atividade: '',
         modulo: '',
         categoria: '',
@@ -103,10 +109,7 @@
         esforco: 'M',
         tier_minimo: '3',
         tipo_demanda: '',
-        frequencia_sugerida: '',
         recorrencia_meses: 12,
-        sla_sugerido: '',
-        responsavel_padrao: '',
         observacoes: '',
         ativo: '1'
     },
@@ -116,6 +119,7 @@
         this.form = {
             id: '',
             software_id: '',
+            tier_politica_id: '',
             atividade: '',
             modulo: '',
             categoria: '',
@@ -123,10 +127,7 @@
             esforco: 'M',
             tier_minimo: '3',
             tipo_demanda: '',
-            frequencia_sugerida: '',
             recorrencia_meses: 12,
-            sla_sugerido: '',
-            responsavel_padrao: '',
             observacoes: '',
             ativo: '1'
         };
@@ -143,12 +144,10 @@
         this.form = {
             ...activity,
             software_id: activity.software_id ?? '',
+            tier_politica_id: activity.tier_politica_id ?? '',
             categoria: activity.categoria ?? '',
             tipo_demanda: activity.tipo_demanda ?? '',
-            frequencia_sugerida: activity.frequencia_sugerida ?? '',
             recorrencia_meses: activity.recorrencia_meses ?? 12,
-            sla_sugerido: activity.sla_sugerido ?? '',
-            responsavel_padrao: activity.responsavel_padrao ?? '',
             observacoes: activity.observacoes ?? '',
             ativo: activity.ativo ? '1' : '0'
         };
@@ -226,6 +225,16 @@
                     <option value="0" {{ request('ativo') === '0' ? 'selected' : '' }}>Desabilitadas</option>
                 </select>
             </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Regra do Tier</label>
+                <select name="tier_politica_id" class="form-select">
+                    <option value="">Todas</option>
+                    <option value="none" @selected(request('tier_politica_id') === 'none')>Sem regra vinculada</option>
+                    @foreach($tierPolicyFilterOptions as $policy)
+                        <option value="{{ $policy->id }}" @selected((string) request('tier_politica_id') === (string) $policy->id)>T{{ $policy->tier }} · {{ $policy->acao_controle }}{{ $policy->ativo ? '' : ' (inativa)' }}</option>
+                    @endforeach
+                </select>
+            </div>
             <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>
         </form>
         <div style="font-size:12px; color:var(--text-3)">Atividade e esforco sao obrigatorios. `software` e escopo detalhado ficam opcionais para suportar atividades globais e catalogo progressivo.</div>
@@ -250,6 +259,7 @@
                     <th>Tipo</th>
                     <th>Cadencia</th>
                     <th>Responsavel Padrao</th>
+                    <th>Cobertura</th>
                     <th>Status</th>
                     @if($canManageActivities)
                         <th>Acoes</th>
@@ -268,8 +278,18 @@
                         <td>{{ $atividade->esforco }}</td>
                         <td>{{ $atividade->tier_minimo_label }}</td>
                         <td>{{ $atividade->tipo_demanda ?: '—' }}</td>
-                        <td>A cada {{ $atividade->recorrencia_meses }} meses @if($atividade->sla_sugerido)<br><span style="font-size:11px;color:var(--text-3)">SLA {{ $atividade->sla_sugerido }}</span>@endif</td>
-                        <td>{{ $atividade->responsavel_padrao ?: '—' }}</td>
+                        <td><span style="color:var(--text-1)">{{ $atividade->tierPolitica?->frequencia ?: 'Sem regra vinculada' }}</span><br><span style="font-size:10px;color:var(--text-3)">Repetir tarefa após {{ $atividade->recorrencia_meses }} meses</span></td>
+                        <td>{{ $atividade->tierPolitica?->responsavel ?: 'Definido no planejamento' }}</td>
+                        @php
+                            $coverage = $activityCoverage[$atividade->id];
+                        @endphp
+                        <td style="min-width:190px">
+                            <div style="color:var(--text-1);font-size:11px;font-weight:600">{{ $coverage['status_label'] }}</div>
+                            <div style="margin-top:4px;color:var(--text-3);font-size:10px">
+                                @if($coverage['ultima_execucao'])Última: {{ \Carbon\Carbon::parse($coverage['ultima_execucao'])->format('d/m/Y') }}@else Sem execução concluída @endif
+                            </div>
+                            @if($coverage['proxima_elegibilidade'])<div style="margin-top:3px;color:var(--text-3);font-size:10px">Próxima: {{ \Carbon\Carbon::parse($coverage['proxima_elegibilidade'])->format('d/m/Y') }}</div>@endif
+                        </td>
                         <td>
                             <span class="badge" style="{{ $atividade->ativo ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,255,255,.05);color:var(--text-3);border-color:rgba(255,255,255,.08)' }}">
                                 {{ $atividade->ativo ? 'Ativa' : 'Desabilitada' }}
@@ -299,7 +319,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ $canManageActivities ? 10 : 9 }}">
+                        <td colspan="{{ $canManageActivities ? 11 : 10 }}">
                             <div class="empty-state">
                                 <div class="empty-icon">🧩</div>
                                 <p>Nenhuma atividade cadastrada ainda.</p>
@@ -327,11 +347,13 @@
                     <span>Esforco {{ $atividade->esforco }}</span>
                     <span>{{ $atividade->tipo_demanda ?: 'Sem tipo' }}</span>
                 </div>
-                @if($atividade->frequencia_sugerida || $atividade->responsavel_padrao)
+                @php
+                    $coverage = $activityCoverage[$atividade->id];
+                @endphp
+                <div class="activity-mobile-application">{{ $coverage['status_label'] }} · @if($coverage['proxima_elegibilidade']) próxima {{ \Carbon\Carbon::parse($coverage['proxima_elegibilidade'])->format('d/m/Y') }} @else sem próxima data @endif</div>
+                @if($atividade->tierPolitica)
                     <div class="activity-mobile-application">
-                        {{ $atividade->frequencia_sugerida ?: 'Sem cadencia' }}
-                        @if($atividade->sla_sugerido) · SLA {{ $atividade->sla_sugerido }} @endif
-                        @if($atividade->responsavel_padrao) · {{ $atividade->responsavel_padrao }} @endif
+                        {{ $atividade->tierPolitica->acao_controle }} · {{ $atividade->tierPolitica->frequencia }}
                     </div>
                 @endif
                 @if($canManageActivities)
@@ -364,7 +386,7 @@
         @endforelse
     </div>
 
-    <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
+    <div class="modal-overlay activities-modal-overlay" x-show="showModal" style="display: none;" x-transition>
         <div class="modal activity-modal" @click.away="showModal = false">
             <h3>🧩 <span x-text="editMode ? 'Editar Atividade' : 'Nova Atividade'"></span></h3>
             <form :action="formAction" method="POST">
@@ -412,12 +434,8 @@
                     </div>
                     <div class="form-group">
                         <label>Categoria</label>
-                        <select name="categoria" x-model="form.categoria" class="form-select">
-                            <option value="">Opcional</option>
-                            @foreach($categoryOptions as $category)
-                                <option value="{{ $category }}">{{ $category }}</option>
-                            @endforeach
-                        </select>
+                        <input type="text" name="categoria" x-model="form.categoria" class="form-input" list="activity-categories" placeholder="Livre e opcional" />
+                        <datalist id="activity-categories">@foreach($categoryOptions as $category)<option value="{{ $category }}">@endforeach</datalist>
                     </div>
                     <div class="form-group">
                         <label>Rotina</label>
@@ -426,6 +444,15 @@
                 </div>
 
                 <div class="activity-form-grid details">
+                    <div class="form-group">
+                        <label>Regra do Tier</label>
+                        <select name="tier_politica_id" x-model="form.tier_politica_id" class="form-select">
+                            <option value="">Usar regra geral do Tier</option>
+                            @foreach($tierPolicies as $policy)
+                                <option value="{{ $policy->id }}">T{{ $policy->tier }} · {{ $policy->acao_controle }} · {{ $policy->frequencia }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Tipo de Demanda</label>
                         <select name="tipo_demanda" x-model="form.tipo_demanda" class="form-select">
@@ -436,24 +463,12 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Frequencia Sugerida</label>
-                        <input type="text" name="frequencia_sugerida" x-model="form.frequencia_sugerida" class="form-input" placeholder="Ex: Mensal" />
-                    </div>
-                    <div class="form-group">
-                        <label>Repetir após (meses)</label>
+                        <label>Repetir esta tarefa após (meses)</label>
                         <input type="number" name="recorrencia_meses" x-model="form.recorrencia_meses" class="form-input" min="1" max="120" required />
-                    </div>
-                    <div class="form-group">
-                        <label>SLA Sugerido</label>
-                        <input type="text" name="sla_sugerido" x-model="form.sla_sugerido" class="form-input" placeholder="Ex: 7 dias" />
                     </div>
                 </div>
 
                 <div class="activity-form-grid owner">
-                    <div class="form-group">
-                        <label>Responsavel Padrao</label>
-                        <input type="text" name="responsavel_padrao" x-model="form.responsavel_padrao" class="form-input" placeholder="Opcional" />
-                    </div>
                     <div class="form-group">
                         <label>Status</label>
                         <select name="ativo" x-model="form.ativo" class="form-select" required>

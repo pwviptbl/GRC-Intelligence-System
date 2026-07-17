@@ -68,7 +68,6 @@ class GrcContextService
                 'tier',
                 'acao_controle',
                 'frequencia',
-                'sla_correcao',
                 'bloqueio_automatico',
                 'responsavel',
             ])

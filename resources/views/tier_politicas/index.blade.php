@@ -12,6 +12,10 @@
     .tiers-mobile-list { display:none; }
     .tier-modal { width:min(700px, 94vw); max-width:700px; }
     .tier-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .tier-observation { color:var(--text-2); font-size:13px; line-height:1.65; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .tiers-desktop-table { overflow-x:auto; }
+    .tiers-desktop-table .data-table { min-width:1080px; table-layout:auto; }
+    .tiers-desktop-table .tier-action-cell { min-width:320px; max-width:520px; white-space:normal; line-height:1.45; }
 
     @media (max-width: 900px) {
         .tiers-filter-grid { grid-template-columns:1fr 1fr; }
@@ -44,9 +48,13 @@
         .tiers-header-actions .btn-add { grid-column:1 / -1; }
     }
 </style>
-@php($canManageTiers = in_array(auth()->user()->role, ['admin', 'governanca']))
+@php
+    $canManageTiers = in_array(auth()->user()->role, ['admin', 'governanca'], true);
+@endphp
 <div class="table-view" x-data="{
     showModal: false,
+    showObservation: false,
+    observationPolicy: null,
     editMode: false,
     formAction: '{{ route('tier_politicas.store') }}',
     form: {
@@ -54,7 +62,6 @@
         tier: '',
         acao_controle: '',
         frequencia: '',
-        sla_correcao: '',
         bloqueio_automatico: '0',
         ativo: '1',
         responsavel: '',
@@ -84,7 +91,6 @@
             tier: '',
             acao_controle: '',
             frequencia: '',
-            sla_correcao: '',
             bloqueio_automatico: '0',
             ativo: '1',
             responsavel: '',
@@ -123,6 +129,15 @@
         };
         this.formAction = '{{ route('tier_politicas.store') }}';
         this.showModal = true;
+    },
+
+    openObservation(policy) {
+        if (typeof policy === 'string') {
+            policy = JSON.parse(atob(policy));
+        }
+
+        this.observationPolicy = policy;
+        this.showObservation = true;
     }
 }">
     @if ($errors->any())
@@ -198,7 +213,7 @@
         <div style="font-size:12px; font-weight:700; color:var(--text-2); margin-bottom:10px">Estrutura operacional por acao</div>
         <div class="tiers-guide-grid">
             <div><strong style="color:var(--text-1)">Acao</strong><br>Cada linha representa um controle dentro do tier.</div>
-            <div><strong style="color:var(--text-1)">Frequencia e SLA</strong><br>Cadencia e prazo maximo de correcao.</div>
+            <div><strong style="color:var(--text-1)">Frequencia</strong><br>Quando o controle deve ocorrer, como a cada commit, mensal ou anual.</div>
             <div><strong style="color:var(--text-1)">Bloqueio e Responsavel</strong><br>Rigor da esteira e dono da execucao.</div>
         </div>
     </div>
@@ -225,11 +240,11 @@
                     <th>Tier</th>
                     <th>Acao</th>
                     <th>Frequencia</th>
-                    <th>SLA</th>
                     <th>Bloqueio</th>
                     <th>Status</th>
                     <th>Responsavel</th>
-                    <th>Observacoes</th>
+                    <th>Atividades</th>
+                    <th>Detalhes</th>
                     @if($canManageTiers)
                     <th>Acoes</th>
                     @endif
@@ -239,13 +254,15 @@
                 @forelse($tierPoliticas as $policy)
                 <tr :style="policyRowStyle(@js($policy))">
                     <td><span class="badge" :style="tierStyle('{{ $policy->tier }}')">{{ $policy->tier_label }}</span></td>
-                    <td style="min-width:180px; color:var(--text-1)">{{ $policy->acao_controle }}</td>
+                    <td class="tier-action-cell" style="color:var(--text-1)">{{ $policy->acao_controle }}</td>
                     <td>{{ $policy->frequencia }}</td>
-                    <td>{{ $policy->sla_correcao }}</td>
                     <td>{{ $policy->bloqueio_automatico_label }}</td>
                     <td><span class="badge" :style="statusStyle(@js($policy))">{{ $policy->ativo_label }}</span></td>
                     <td>{{ $policy->responsavel }}</td>
-                    <td style="color:var(--text-3)">{{ $policy->observacoes ?: '—' }}</td>
+                    <td><a href="{{ route('atividades.index', ['tier_politica_id' => $policy->id]) }}" style="color:{{ $policy->atividades_count ? 'var(--cyan)' : 'var(--text-3)' }};text-decoration:none;white-space:nowrap">{{ $policy->atividades_count }} vinculadas</a></td>
+                    <td>
+                        <button type="button" data-policy="{{ base64_encode($policy->toJson()) }}" @click="openObservation($el.dataset.policy)" class="btn-del" title="Ver observacoes" aria-label="Ver observacoes" style="color:var(--cyan)">ⓘ</button>
+                    </td>
                     @if($canManageTiers)
                     <td>
                         <div style="display:flex; gap:10px; align-items:center">
@@ -294,15 +311,15 @@
                 <div class="tier-mobile-action">{{ $policy->acao_controle }}</div>
                 <div class="tier-mobile-meta">
                     <span>{{ $policy->frequencia }}</span>
-                    <span>SLA {{ $policy->sla_correcao }}</span>
                     <span>{{ $policy->bloqueio_automatico_label }}</span>
                 </div>
                 <div class="tier-mobile-owner">
                     {{ $policy->responsavel ?: 'Sem responsavel' }}
-                    @if($policy->observacoes) · {{ $policy->observacoes }} @endif
                 </div>
-                @if($canManageTiers)
-                    <div class="tier-mobile-actions">
+                <div class="tier-mobile-owner"><a href="{{ route('atividades.index', ['tier_politica_id' => $policy->id]) }}" style="color:var(--cyan);text-decoration:none">{{ $policy->atividades_count }} atividades vinculadas</a></div>
+                <div class="tier-mobile-actions">
+                    <button type="button" data-policy="{{ base64_encode($policy->toJson()) }}" @click="openObservation($el.dataset.policy)" class="btn-del" title="Ver observacoes" aria-label="Ver observacoes" style="color:var(--cyan)">ⓘ</button>
+                    @if($canManageTiers)
                         <button type="button" data-policy="{{ base64_encode($policy->toJson()) }}" @click="openDuplicate($el.dataset.policy)" class="btn-del" title="Duplicar" aria-label="Duplicar" style="color:var(--cyan)">⧉</button>
                         <button type="button" data-policy="{{ base64_encode($policy->toJson()) }}" @click="openEdit($el.dataset.policy)" class="btn-del" title="Editar" aria-label="Editar" style="color:var(--yellow)">✎</button>
                         <form action="{{ route('tier_politicas.destroy', $policy) }}" method="POST" onsubmit="return confirm('Deseja remover esta politica de tier?')">
@@ -310,8 +327,8 @@
                             @method('DELETE')
                             <button type="submit" class="btn-del" title="Excluir" aria-label="Excluir">×</button>
                         </form>
-                    </div>
-                @endif
+                    @endif
+                </div>
             </article>
         @empty
             <div class="empty-state" style="padding:30px 12px;"><p>Nenhuma acao de tier cadastrada ainda.</p></div>
@@ -343,11 +360,7 @@
                 <div class="tier-form-grid">
                     <div class="form-group">
                         <label>Frequencia</label>
-                        <input type="text" name="frequencia" x-model="form.frequencia" class="form-input" placeholder="Ex: Mensal" required />
-                    </div>
-                    <div class="form-group">
-                        <label>SLA de Correcao</label>
-                        <input type="text" name="sla_correcao" x-model="form.sla_correcao" class="form-input" placeholder="Ex: 7 dias corridos" required />
+                        <input type="text" name="frequencia" x-model="form.frequencia" class="form-input" placeholder="Ex: A cada commit, mensal ou anual" required />
                     </div>
                 </div>
                 <div class="tier-form-grid">
@@ -381,6 +394,27 @@
                     <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Acao' : 'Salvar Acao'"></button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" x-show="showObservation" style="display:none" x-transition>
+        <div class="modal tier-modal" @click.away="showObservation = false">
+            <h3>Detalhes da Regra</h3>
+            <template x-if="observationPolicy">
+                <div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+                        <span class="badge" :style="tierStyle(observationPolicy.tier)" x-text="`T${observationPolicy.tier}`"></span>
+                        <strong style="color:var(--text-1);font-size:13px" x-text="observationPolicy.acao_controle"></strong>
+                    </div>
+                    <div class="form-group">
+                        <label>Observacoes</label>
+                        <div class="tier-observation" x-text="observationPolicy.observacoes || 'Nenhuma observacao cadastrada.'"></div>
+                    </div>
+                </div>
+            </template>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" @click="showObservation = false">Fechar</button>
+            </div>
         </div>
     </div>
 </div>

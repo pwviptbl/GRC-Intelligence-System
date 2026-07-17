@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Atividade;
 use App\Models\ControleEvento;
 use App\Models\Software;
+use App\Models\TierPolitica;
+use App\Services\ActivityRecurrenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -20,13 +22,19 @@ class AtividadeController extends Controller
             $atividades = $this->filteredQuery($request)->get();
         }
 
+        $activityCoverage = app(ActivityRecurrenceService::class)->summaries($atividades);
+
         return view('atividades.index', [
             'atividades' => $atividades,
             'softwares' => $softwares,
             'tableAvailable' => $tableAvailable,
-            'categoryOptions' => ControleEvento::CATEGORY_OPTIONS,
+            'categoryOptions' => Atividade::query()->whereNotNull('categoria')->distinct()->orderBy('categoria')->pluck('categoria')
+                ->merge(ControleEvento::CATEGORY_OPTIONS)->unique()->sort()->values(),
             'effortOptions' => ControleEvento::EFFORT_OPTIONS,
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
+            'tierPolicies' => TierPolitica::query()->where('ativo', true)->orderBy('tier')->orderBy('acao_controle')->get(),
+            'tierPolicyFilterOptions' => TierPolitica::query()->orderBy('tier')->orderBy('acao_controle')->get(),
+            'activityCoverage' => $activityCoverage,
         ]);
     }
 
@@ -78,22 +86,26 @@ class AtividadeController extends Controller
 
     protected function validatedData(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'software_id' => 'nullable|integer|exists:software,id',
+            'tier_politica_id' => 'nullable|integer|exists:tier_politicas,id',
             'atividade' => 'required|string|max:255',
             'modulo' => 'nullable|string|max:255',
-            'categoria' => 'nullable|in:' . implode(',', ControleEvento::CATEGORY_OPTIONS),
+            'categoria' => 'nullable|string|max:255',
             'rotina' => 'nullable|string|max:255',
-            'esforco' => 'required|in:' . implode(',', ControleEvento::EFFORT_OPTIONS),
+            'esforco' => 'required|in:'.implode(',', ControleEvento::EFFORT_OPTIONS),
             'tier_minimo' => 'required|integer|in:1,2,3',
-            'tipo_demanda' => 'nullable|in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
-            'frequencia_sugerida' => 'nullable|string|max:255',
+            'tipo_demanda' => 'nullable|in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
             'recorrencia_meses' => 'required|integer|min:1|max:120',
-            'sla_sugerido' => 'nullable|string|max:255',
-            'responsavel_padrao' => 'nullable|string|max:255',
             'observacoes' => 'nullable|string|max:1000',
             'ativo' => 'required|boolean',
         ]);
+
+        if (! empty($data['tier_politica_id'])) {
+            $data['tier_minimo'] = TierPolitica::query()->findOrFail($data['tier_politica_id'])->tier;
+        }
+
+        return $data;
     }
 
     protected function tableAvailable(): bool
@@ -104,7 +116,7 @@ class AtividadeController extends Controller
     protected function nextDuplicateName(string $name): string
     {
         $baseName = preg_replace('/ \((Copia(?: \d+)?)\)$/', '', $name) ?: $name;
-        $candidate = $baseName . ' (Copia)';
+        $candidate = $baseName.' (Copia)';
 
         if (! Atividade::query()->where('atividade', $candidate)->exists()) {
             return $candidate;
@@ -123,7 +135,7 @@ class AtividadeController extends Controller
     protected function filteredQuery(Request $request)
     {
         $query = Atividade::query()
-            ->with('software:id,nome')
+            ->with(['software:id,nome', 'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo'])
             ->orderByRaw('CASE WHEN software_id IS NULL THEN 0 ELSE 1 END DESC')
             ->orderBy('tier_minimo')
             ->orderBy('atividade');
@@ -140,12 +152,18 @@ class AtividadeController extends Controller
             $query->where('categoria', $request->categoria);
         }
 
+        if ($request->filled('tier_politica_id')) {
+            $request->tier_politica_id === 'none'
+                ? $query->whereNull('tier_politica_id')
+                : $query->where('tier_politica_id', $request->tier_politica_id);
+        }
+
         if ($request->filled('ativo')) {
             $query->where('ativo', $request->ativo === '1');
         }
 
         if ($request->filled('search')) {
-            $term = '%' . $request->search . '%';
+            $term = '%'.$request->search.'%';
             $query->where(function ($subQuery) use ($term) {
                 $subQuery->where('atividade', 'like', $term)
                     ->orWhere('modulo', 'like', $term)

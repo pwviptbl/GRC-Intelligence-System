@@ -15,7 +15,7 @@ class TierPoliticaController extends Controller
         $tierPoliticas = collect();
 
         if ($tableAvailable) {
-            $tierPoliticas = $this->filteredQuery($request)->get();
+            $tierPoliticas = $this->filteredQuery($request)->withCount('atividades')->get();
         }
 
         return view('tier_politicas.index', compact('tierPoliticas', 'tableAvailable'));
@@ -39,7 +39,7 @@ class TierPoliticaController extends Controller
 
     public function store(Request $request)
     {
-        if (!$this->tableAvailable()) {
+        if (! $this->tableAvailable()) {
             return redirect()->back()->withErrors('A tabela de tiers ainda nao existe. Rode a migration antes de cadastrar a politica.');
         }
 
@@ -50,7 +50,7 @@ class TierPoliticaController extends Controller
 
     public function update(Request $request, TierPolitica $tier_politica)
     {
-        if (!$this->tableAvailable()) {
+        if (! $this->tableAvailable()) {
             return redirect()->back()->withErrors('A tabela de tiers ainda nao existe. Rode a migration antes de atualizar a politica.');
         }
 
@@ -61,7 +61,7 @@ class TierPoliticaController extends Controller
 
     public function destroy(TierPolitica $tier_politica)
     {
-        if (!$this->tableAvailable()) {
+        if (! $this->tableAvailable()) {
             return redirect()->back()->withErrors('A tabela de tiers ainda nao existe. Rode a migration antes de remover a politica.');
         }
 
@@ -76,7 +76,6 @@ class TierPoliticaController extends Controller
             'tier' => 'required|integer|in:1,2,3',
             'acao_controle' => 'required|string|max:1000',
             'frequencia' => 'required|string|max:255',
-            'sla_correcao' => 'required|string|max:255',
             'bloqueio_automatico' => 'required|boolean',
             'ativo' => 'required|boolean',
             'responsavel' => 'required|string|max:255',
