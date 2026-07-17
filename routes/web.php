@@ -109,6 +109,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->name('planejamento_semanal.close');
         Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->name('planejamento_semanal.remove');
         Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->name('calendario_controles.store_manual');
+        Route::post('/execucao_controles/{calendario_controle}/notas', [CalendarioControleController::class, 'addNote'])->name('calendario_controles.add_note');
+        Route::post('/execucao_controles/{calendario_controle}/anexos', [CalendarioControleController::class, 'addAttachment'])->name('calendario_controles.add_attachment');
+        Route::get('/execucao_controles/anexos/{anexo}/download', [CalendarioControleController::class, 'downloadAttachment'])->name('calendario_controles.download_attachment');
+        Route::delete('/execucao_controles/anexos/{anexo}', [CalendarioControleController::class, 'removeAttachment'])->name('calendario_controles.remove_attachment');
         Route::get('/execucao_controles/{calendario_controle}', [CalendarioControleController::class, 'showExecution'])->name('calendario_controles.show_execution');
         Route::post('/execucao_controles/{calendario_controle}/etapas', [CalendarioControleController::class, 'addStep'])->name('calendario_controles.add_step');
         Route::post('/execucao_controles/{calendario_controle}/importar-procedimento', [CalendarioControleController::class, 'importProcedure'])->name('calendario_controles.import_procedure');

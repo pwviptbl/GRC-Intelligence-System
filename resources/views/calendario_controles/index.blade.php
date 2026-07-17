@@ -123,6 +123,11 @@
     }
     .execution-progress { margin-top:8px; color:var(--cyan); font-size:10px; }
     .steps-list { display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
+    .card-record-list { display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; }
+    .card-record { padding:10px; border:1px solid rgba(255,255,255,.07); border-radius:7px; background:rgba(255,255,255,.025); }
+    .card-record-meta { display:flex; justify-content:space-between; gap:8px; margin-bottom:5px; color:var(--text-3); font-size:9px; }
+    .card-record-content { color:var(--text-2); font-size:11px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .card-attachment-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:8px; }
     .step-item { padding:10px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.07); border-radius:7px; }
     .step-head { display:flex; align-items:flex-start; gap:9px; }
     .step-body { min-width:0; flex:1; }
@@ -187,14 +192,20 @@
         .execution-edit-modal .modal-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
         .execution-edit-modal .modal-actions .btn-del { margin-right:0 !important; }
         .execution-edit-modal .modal-actions button { width:100%; min-width:0; }
+        .card-attachment-row { grid-template-columns:minmax(0,1fr) auto; }
+        .card-attachment-row > div:first-child { grid-column:1/-1; }
     }
 </style>
 <div class="table-view" x-data="{
     showExecutionModal: false,
     showCreateModal: false,
     showStepsModal: false,
+    showRecordsModal: false,
     selectedEvent: { etapas: [] },
     newStepTitle: '',
+    newNote: '',
+    recordsError: '',
+    attachmentUploading: false,
     selectedProcedureId: '',
     executionFormAction: '',
     executionDeleteAction: '',
@@ -291,6 +302,69 @@
         this.newStepTitle = '';
         this.showExecutionModal = false;
         this.showStepsModal = true;
+    },
+    async openRecords(id) {
+        const response = await fetch(`/execucao_controles/${id}`);
+        this.selectedEvent = await response.json();
+        this.newNote = '';
+        this.recordsError = '';
+        this.showExecutionModal = false;
+        this.showRecordsModal = true;
+    },
+    async addNote() {
+        if (!this.newNote.trim()) return;
+        const response = await fetch(`/execucao_controles/${this.selectedEvent.id}/notas`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            body: JSON.stringify({conteudo: this.newNote})
+        });
+        const data = await response.json();
+        if (!response.ok) return alert(data.message || 'Não foi possível adicionar a nota.');
+        this.selectedEvent.notas.unshift(data);
+        this.newNote = '';
+    },
+    async addAttachment() {
+        const input = document.getElementById('card-attachment-file');
+        const file = input?.files[0];
+        this.recordsError = '';
+        if (!file) {
+            this.recordsError = 'Selecione um arquivo para anexar.';
+            return;
+        }
+        this.attachmentUploading = true;
+        const formData = new FormData();
+        formData.append('arquivo', file);
+        try {
+            const response = await fetch(`/execucao_controles/${this.selectedEvent.id}/anexos`, {
+                method: 'POST',
+                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'},
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                this.recordsError = data.errors?.arquivo?.[0] || data.message || 'Não foi possível anexar o arquivo.';
+                return;
+            }
+            this.selectedEvent.anexos.unshift(data);
+            input.value = '';
+        } catch (error) {
+            this.recordsError = 'Falha de comunicação ao enviar o anexo.';
+        } finally {
+            this.attachmentUploading = false;
+        }
+    },
+    async removeAttachment(attachment) {
+        if (!confirm('Remover este anexo?')) return;
+        await fetch(`/execucao_controles/anexos/${attachment.id}`, {
+            method: 'DELETE',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'}
+        });
+        this.selectedEvent.anexos = this.selectedEvent.anexos.filter(item => item.id !== attachment.id);
+    },
+    formatBytes(bytes) {
+        if (!bytes) return '0 KB';
+        if (bytes < 1048576) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+        return `${(bytes / 1048576).toFixed(1)} MB`;
     },
     async addStep() {
         if (!this.newStepTitle.trim()) return;
@@ -776,6 +850,9 @@
                             @if($evento->etapas_count > 0)
                                 <span class="execution-progress">Etapas {{ $evento->progress_label }}</span>
                             @endif
+                            @if($evento->notas_count || $evento->anexos_count)
+                                <span class="execution-progress">{{ $evento->notas_count }} nota(s) · {{ $evento->anexos_count }} anexo(s)</span>
+                            @endif
                             <span class="execution-card-meta">
                                 <span>{{ optional($evento->data_prevista)->format('d/m/Y') ?: 'Sem data' }}</span>
                                 <span>Esforço {{ $evento->esforco ?: 'A definir' }} · {{ $evento->effort_points ?: 'dividir' }}{{ $evento->effort_points ? ' pts' : '' }}</span>
@@ -890,6 +967,7 @@
                 <div class="modal-actions">
                     <button type="submit" form="execution-delete-form" class="btn-del" style="margin-right:auto; font-size:12px;" onclick="return confirm('Deseja excluir este item da fila?')">Excluir</button>
                     <button type="button" class="btn-cancel" @click="openSteps(executionForm.id)">Etapas</button>
+                    <button type="button" class="btn-cancel" @click="openRecords(executionForm.id)">Notas e anexos</button>
                     <button type="button" class="btn-cancel" @click="showExecutionModal = false">Cancelar</button>
                     <button type="submit" class="btn-save">Salvar Atualizacao</button>
                 </div>
@@ -898,6 +976,37 @@
                 @csrf
                 @method('DELETE')
             </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" x-show="showRecordsModal" style="display:none" x-transition>
+        <div class="modal execution-edit-modal" @click.away="showRecordsModal = false">
+            <h3>Notas e anexos do card</h3>
+            <div style="color:var(--text-1);font-weight:600;margin-bottom:14px" x-text="selectedEvent.acao_controle_snapshot"></div>
+            <div class="form-group">
+                <label>Nova nota</label>
+                <textarea x-model="newNote" class="form-textarea" rows="3" maxlength="5000" placeholder="Decisão, contexto, impedimento ou informação relevante."></textarea>
+                <button type="button" class="btn-add" style="margin-top:8px" @click="addNote()">Adicionar nota</button>
+            </div>
+            <div class="card-record-list" style="margin-bottom:18px">
+                <template x-for="note in (selectedEvent.notas || [])" :key="note.id">
+                    <div class="card-record"><div class="card-record-meta"><span x-text="note.autor?.name || 'Usuário removido'"></span><span x-text="new Date(note.created_at).toLocaleString('pt-BR')"></span></div><div class="card-record-content" x-text="note.conteudo"></div></div>
+                </template>
+                <div x-show="!selectedEvent.notas || selectedEvent.notas.length === 0" class="execution-empty">Nenhuma nota registrada.</div>
+            </div>
+            <div class="form-group">
+                <label>Novo anexo (até 20 MB)</label>
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px"><input id="card-attachment-file" type="file" class="form-input" @change="recordsError = ''"><button type="button" class="btn-add" @click="addAttachment()" :disabled="attachmentUploading" x-text="attachmentUploading ? 'Enviando...' : 'Anexar'"></button></div>
+                <div x-show="recordsError" x-text="recordsError" style="margin-top:8px;padding:9px 10px;border:1px solid rgba(255,83,112,.3);border-radius:7px;background:rgba(255,83,112,.08);color:#ffd7de;font-size:11px"></div>
+                <div style="margin-top:6px;color:var(--text-3);font-size:10px">Arquivos executáveis e scripts de servidor são bloqueados. Pacotes TGZ, TAR.GZ e demais evidências são aceitos.</div>
+            </div>
+            <div class="card-record-list">
+                <template x-for="attachment in (selectedEvent.anexos || [])" :key="attachment.id">
+                    <div class="card-record card-attachment-row"><div><a :href="`/execucao_controles/anexos/${attachment.id}/download`" style="color:var(--cyan);font-size:11px" x-text="attachment.nome_original"></a><div class="card-record-meta" style="margin:4px 0 0"><span x-text="attachment.autor?.name || 'Usuário removido'"></span><span x-text="formatBytes(attachment.tamanho)"></span></div></div><a class="btn-cancel" :href="`/execucao_controles/anexos/${attachment.id}/download`" style="text-decoration:none">Baixar</a><button type="button" class="btn-del" @click="removeAttachment(attachment)">×</button></div>
+                </template>
+                <div x-show="!selectedEvent.anexos || selectedEvent.anexos.length === 0" class="execution-empty">Nenhum anexo no card.</div>
+            </div>
+            <div class="modal-actions"><button type="button" class="btn-cancel" @click="showRecordsModal = false">Fechar</button></div>
         </div>
     </div>
 

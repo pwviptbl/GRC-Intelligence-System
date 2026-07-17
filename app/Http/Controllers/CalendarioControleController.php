@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ControleEvento;
 use App\Models\ControleEventoEtapa;
+use App\Models\ControleEventoAnexo;
 use App\Models\PlanoAcaoItemEvidencia;
 use App\Models\Procedimento;
 use App\Models\Software;
@@ -131,7 +132,76 @@ class CalendarioControleController extends Controller
             'executor:id,name,nivel_operacional,capacidade_semanal_horas',
             'revisor:id,name,nivel_operacional',
             'etapas.evidencias',
+            'notas.autor:id,name',
+            'anexos.autor:id,name',
         ]));
+    }
+
+    public function addNote(Request $request, ControleEvento $calendario_controle)
+    {
+        $data = $request->validate(['conteudo' => ['required', 'string', 'max:5000']]);
+        $note = $calendario_controle->notas()->create([
+            'user_id' => auth()->id(),
+            'conteudo' => $data['conteudo'],
+        ]);
+
+        return response()->json($note->load('autor:id,name'), 201);
+    }
+
+    public function addAttachment(Request $request, ControleEvento $calendario_controle)
+    {
+        $request->validate([
+            'arquivo' => [
+                'required',
+                'file',
+                'max:20480',
+                function (string $attribute, $file, \Closure $fail) {
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $name = strtolower($file->getClientOriginalName());
+                    $blockedExtensions = [
+                        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar',
+                        'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'zsh', 'fish',
+                        'exe', 'com', 'bat', 'cmd', 'msi', 'dll', 'so',
+                        'jar', 'war', 'jsp', 'asp', 'aspx', 'htaccess', 'env',
+                    ];
+
+                    if (in_array($extension, $blockedExtensions, true)
+                        || $name === '.htaccess'
+                        || $name === '.env') {
+                        $fail('Este tipo de arquivo não é permitido por segurança.');
+                    }
+                },
+            ],
+        ], [
+            'arquivo.required' => 'Selecione um arquivo para anexar.',
+            'arquivo.file' => 'O anexo enviado não é um arquivo válido.',
+            'arquivo.max' => 'O anexo deve ter no máximo 20 MB.',
+        ]);
+        $file = $request->file('arquivo');
+        $attachment = $calendario_controle->anexos()->create([
+            'user_id' => auth()->id(),
+            'nome_original' => $file->getClientOriginalName(),
+            'caminho' => $file->store('kanban_anexos', 'local'),
+            'mime_type' => $file->getMimeType(),
+            'tamanho' => $file->getSize(),
+        ]);
+
+        return response()->json($attachment->load('autor:id,name'), 201);
+    }
+
+    public function downloadAttachment(ControleEventoAnexo $anexo)
+    {
+        abort_unless(Storage::disk('local')->exists($anexo->caminho), 404);
+
+        return Storage::disk('local')->download($anexo->caminho, $anexo->nome_original);
+    }
+
+    public function removeAttachment(ControleEventoAnexo $anexo)
+    {
+        Storage::disk('local')->delete($anexo->caminho);
+        $anexo->delete();
+
+        return response()->json(['success' => true]);
     }
 
     public function addStep(Request $request, ControleEvento $calendario_controle)
@@ -391,6 +461,8 @@ class CalendarioControleController extends Controller
             Storage::disk('public')->delete($paths);
         }
 
+        Storage::disk('local')->delete($calendario_controle->anexos()->pluck('caminho')->all());
+
         $calendario_controle->delete();
 
         return redirect()->back()->with('success', 'Evento do calendario removido com sucesso!');
@@ -407,6 +479,8 @@ class CalendarioControleController extends Controller
             ->with(['software', 'cliente', 'risco', 'tierPolitica', 'executor', 'revisor', 'etapas.evidencias'])
             ->withCount([
                 'etapas',
+                'notas',
+                'anexos',
                 'etapas as etapas_concluidas_count' => fn ($query) => $query->where('concluido', true),
             ])
             // Tier 1 (Crítico) sempre primeiro

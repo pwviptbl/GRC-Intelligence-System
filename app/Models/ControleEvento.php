@@ -170,6 +170,16 @@ class ControleEvento extends Model
         return $this->hasMany(ControleEventoEtapa::class, 'controle_evento_id')->orderBy('ordem')->orderBy('id');
     }
 
+    public function notas()
+    {
+        return $this->hasMany(ControleEventoNota::class)->latest();
+    }
+
+    public function anexos()
+    {
+        return $this->hasMany(ControleEventoAnexo::class)->latest();
+    }
+
     public function getTierLabelAttribute(): string
     {
         return $this->tier ? 'T' . $this->tier : 'Geral';
