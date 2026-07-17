@@ -12,6 +12,7 @@ use App\Models\Politica;
 use App\Models\Procedimento;
 use App\Models\Risco;
 use App\Models\Software;
+use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
 use App\Models\User;
 use App\Services\ActivityRecurrenceService;
@@ -62,6 +63,21 @@ class GrcToolRegistry
                     'ativo' => ['type' => 'boolean'],
                     'search' => ['type' => 'string'],
                     'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
+                ]
+            ),
+            $this->tool(
+                'activity_catalog_coverage',
+                'Mostra lacunas no catalogo: softwares sem atividade especifica, regras Tier sem atividade e atividades sem regra vinculada.',
+                self::RISK_READ
+            ),
+            $this->tool(
+                'list_module_coverage',
+                'Lista modulos mapeados e informa quais ainda nao possuem atividade especifica aprovada.',
+                self::RISK_READ,
+                [
+                    'software_id' => ['type' => 'integer'],
+                    'only_uncovered' => ['type' => 'boolean'],
+                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 200],
                 ]
             ),
             $this->tool(
@@ -176,6 +192,32 @@ class GrcToolRegistry
                     'on_duplicate' => ['type' => 'string', 'enum' => ['skip', 'update', 'error']],
                 ],
                 ['activities']
+            ),
+            $this->tool(
+                'upsert_software_modules_batch',
+                'Cria ou atualiza ate 200 modulos de um software. Use antes de propor atividades por modulo.',
+                self::RISK_WRITE,
+                [
+                    'software_id' => ['type' => 'integer'],
+                    'area' => ['type' => 'string'],
+                    'origem' => ['type' => 'string'],
+                    'modules' => [
+                        'type' => 'array',
+                        'minItems' => 1,
+                        'maxItems' => 200,
+                        'items' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'nome' => ['type' => 'string'],
+                                'descricao' => ['type' => 'string'],
+                                'ativo' => ['type' => 'boolean'],
+                            ],
+                            'required' => ['nome'],
+                            'additionalProperties' => false,
+                        ],
+                    ],
+                ],
+                ['software_id', 'modules']
             ),
             $this->tool(
                 'update_activity',
@@ -372,6 +414,8 @@ class GrcToolRegistry
                 'dashboard_summary' => $this->dashboardSummary(),
                 'list_software' => $this->listSoftware($payload),
                 'list_activities' => $this->listActivities($payload),
+                'activity_catalog_coverage' => $this->activityCatalogCoverage(),
+                'list_module_coverage' => $this->listModuleCoverage($payload),
                 'list_team_members' => $this->listTeamMembers($payload),
                 'list_risks' => $this->listRisks($payload),
                 'list_policies' => $this->listPolicies($payload),
@@ -381,6 +425,7 @@ class GrcToolRegistry
                 'list_control_calendar' => $this->listControlCalendar($payload),
                 'create_activity' => $this->createActivity($payload, $dryRun),
                 'create_activities_batch' => $this->createActivitiesBatch($payload, $dryRun),
+                'upsert_software_modules_batch' => $this->upsertSoftwareModulesBatch($payload, $dryRun),
                 'update_activity' => $this->updateActivity($payload, $dryRun),
                 'assign_activities_to_tier_policy' => $this->assignActivitiesToTierPolicy($payload, $dryRun),
                 'create_risk' => $this->createRisk($payload, $dryRun),
@@ -764,6 +809,109 @@ class GrcToolRegistry
         $activity = Atividade::create($data);
 
         return $this->activityPayload($activity->load(['software:id,nome', 'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo']));
+    }
+
+    protected function activityCatalogCoverage(): array
+    {
+        return app(\App\Services\ActivityCatalogCoverageService::class)->summary();
+    }
+
+    protected function listModuleCoverage(array $payload): array
+    {
+        $data = $this->validate($payload, [
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'only_uncovered' => ['nullable', 'boolean'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return array_slice(
+            app(\App\Services\ActivityCatalogCoverageService::class)->moduleCoverage(
+                $data['software_id'] ?? null,
+                (bool) ($data['only_uncovered'] ?? false)
+            ),
+            0,
+            (int) ($data['limit'] ?? 100)
+        );
+    }
+
+    protected function upsertSoftwareModulesBatch(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'software_id' => ['required', 'integer', 'exists:software,id'],
+            'area' => ['nullable', 'string', 'max:255'],
+            'origem' => ['nullable', 'string', 'max:255'],
+            'modules' => ['required', 'array', 'min:1', 'max:200'],
+        ]);
+        $modules = [];
+        $names = [];
+
+        foreach ($data['modules'] as $index => $module) {
+            if (! is_array($module)) {
+                throw new ToolValidationException(["modules.$index" => ['O modulo deve ser um objeto.']]);
+            }
+            try {
+                $module = $this->validate($module, [
+                    'nome' => ['required', 'string', 'max:255'],
+                    'descricao' => ['nullable', 'string', 'max:2000'],
+                    'ativo' => ['nullable', 'boolean'],
+                ]);
+            } catch (ToolValidationException $exception) {
+                throw new ToolValidationException(["modules.$index" => $exception->errors()]);
+            }
+            $key = mb_strtolower(trim($module['nome']));
+            if (isset($names[$key])) {
+                throw new ToolValidationException(["modules.$index.nome" => ['Modulo repetido no mesmo lote.']]);
+            }
+
+            $names[$key] = true;
+            $modules[] = [
+                'nome' => trim($module['nome']),
+                'area' => $data['area'] ?? null,
+                'descricao' => $module['descricao'] ?? null,
+                'origem' => $data['origem'] ?? null,
+                'ativo' => $module['ativo'] ?? true,
+            ];
+        }
+
+        $result = ['requested' => count($modules), 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'items' => []];
+        $execute = function () use (&$result, $modules, $data, $dryRun): void {
+            foreach ($modules as $module) {
+                $existing = SoftwareModulo::query()
+                    ->where('software_id', $data['software_id'])
+                    ->whereRaw('LOWER(nome) = ?', [mb_strtolower($module['nome'])])
+                    ->first();
+
+                if (! $existing) {
+                    $result['created']++;
+                    $result['items'][] = ['nome' => $module['nome'], 'action' => $dryRun ? 'would_create' : 'created'];
+                    if (! $dryRun) {
+                        SoftwareModulo::create(array_merge(['software_id' => $data['software_id']], $module));
+                    }
+                    continue;
+                }
+
+                $changes = array_diff_assoc($module, $existing->only(array_keys($module)));
+                if ($changes === []) {
+                    $result['unchanged']++;
+                    $result['items'][] = ['id' => $existing->id, 'nome' => $existing->nome, 'action' => 'unchanged'];
+                    continue;
+                }
+
+                $result['updated']++;
+                $result['items'][] = ['id' => $existing->id, 'nome' => $existing->nome, 'action' => $dryRun ? 'would_update' : 'updated'];
+                if (! $dryRun) {
+                    $existing->update($changes);
+                }
+            }
+        };
+
+        if ($dryRun) {
+            $execute();
+        } else {
+            DB::transaction($execute);
+        }
+
+        return $result;
     }
 
     protected function createActivitiesBatch(array $payload, bool $dryRun): array
@@ -1344,6 +1492,7 @@ class GrcToolRegistry
     {
         return [
             'software_id' => ['type' => 'integer'],
+            'tier_politica_id' => ['type' => 'integer'],
             'atividade' => ['type' => 'string'],
             'modulo' => ['type' => 'string'],
             'categoria' => ['type' => 'string'],
@@ -1473,6 +1622,7 @@ class GrcToolRegistry
     {
         return [
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'tier_politica_id' => ['nullable', 'integer', 'exists:tier_politicas,id'],
             'atividade' => [$creating ? 'required' : 'nullable', 'string', 'max:255'],
             'modulo' => ['nullable', 'string', 'max:255'],
             'categoria' => ['nullable', 'string', 'max:255'],

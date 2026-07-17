@@ -478,6 +478,28 @@ class CalendarioControleController extends Controller
         return redirect()->back()->with('success', 'Evento do calendario atualizado com sucesso!');
     }
 
+    public function bulkAssignExecutor(Request $request)
+    {
+        abort_unless($this->managesCards(), 403);
+
+        $data = $request->validate([
+            'event_ids' => ['required', 'array', 'min:1', 'max:100'],
+            'event_ids.*' => ['integer', 'exists:controle_eventos,id'],
+            'executor_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        if (! empty($data['executor_id'])) {
+            User::query()->where('active', true)->where('disponivel_para_tarefas', true)->findOrFail($data['executor_id']);
+        }
+
+        $events = ControleEvento::query()->whereKey(array_unique($data['event_ids']))->get();
+        $events->each(fn (ControleEvento $event) => $event->update(['executor_id' => $data['executor_id'] ?? null]));
+
+        $label = empty($data['executor_id']) ? 'sem executor' : User::find($data['executor_id'])->name;
+
+        return redirect()->back()->with('success', $events->count()." card(s) atualizado(s): {$label}.");
+    }
+
     public function destroy(ControleEvento $calendario_controle)
     {
         $paths = $calendario_controle->etapas()

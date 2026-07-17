@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Atividade;
 use App\Models\Software;
+use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
+use App\Models\User;
 use App\Services\Agent\GrcToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -104,6 +106,75 @@ class McpActivityBatchTest extends TestCase
 
         $this->assertTrue($confirmed['ok'], json_encode($confirmed));
         $this->assertSame(2, Atividade::where('tier_politica_id', $policy->id)->where('tier_minimo', 1)->count());
+    }
+
+    public function test_mcp_imports_modules_and_exposes_uncovered_module_coverage(): void
+    {
+        $software = $this->software();
+        $registry = app(GrcToolRegistry::class);
+        $payload = [
+            'software_id' => $software->id,
+            'origem' => 'Inventario e-Cidade',
+            'modules' => [
+                ['nome' => 'Arrecadacao'],
+                ['nome' => 'Contabilidade', 'descricao' => 'Rotinas contabeis'],
+            ],
+        ];
+
+        $preview = $registry->call('upsert_software_modules_batch', $payload, true);
+        $this->assertTrue($preview['ok'], json_encode($preview));
+        $this->assertSame(2, $preview['result']['created']);
+        $this->assertDatabaseCount('software_modulos', 0);
+
+        $imported = $registry->call('upsert_software_modules_batch', $payload);
+        $this->assertTrue($imported['ok'], json_encode($imported));
+        $this->assertSame(2, SoftwareModulo::count());
+
+        Atividade::create([
+            'software_id' => $software->id,
+            'atividade' => 'Pentest interno',
+            'modulo' => 'Arrecadacao',
+            'esforco' => 'M',
+            'tier_minimo' => 1,
+            'recorrencia_meses' => 12,
+            'ativo' => true,
+        ]);
+
+        $coverage = $registry->call('list_module_coverage', [
+            'software_id' => $software->id,
+            'only_uncovered' => true,
+        ]);
+
+        $this->assertTrue($coverage['ok'], json_encode($coverage));
+        $this->assertCount(1, $coverage['result']);
+        $this->assertSame('Contabilidade', $coverage['result'][0]['modulo']);
+    }
+
+    public function test_governance_user_can_manage_modules_for_any_software(): void
+    {
+        $software = $this->software();
+        $user = User::factory()->create(['role' => 'governanca']);
+
+        $this->actingAs($user)->post(route('atividades.modules.store'), [
+            'software_id' => $software->id,
+            'area' => 'Financeiro',
+            'nome' => 'Tesouraria',
+            'descricao' => 'Gestão de caixa.',
+            'ativo' => true,
+        ])->assertRedirect();
+
+        $module = SoftwareModulo::query()->firstOrFail();
+        $this->assertSame('Tesouraria', $module->nome);
+
+        $this->actingAs($user)->patch(route('atividades.modules.update', $module), [
+            'software_id' => $software->id,
+            'area' => 'Financeiro',
+            'nome' => 'Tesouraria',
+            'descricao' => 'Gestão de caixa e pagamentos.',
+            'ativo' => false,
+        ])->assertRedirect();
+
+        $this->assertFalse($module->fresh()->ativo);
     }
 
     protected function software(): Software

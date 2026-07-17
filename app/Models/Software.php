@@ -76,6 +76,11 @@ class Software extends Model
         return $this->hasMany(Atividade::class);
     }
 
+    public function modulos()
+    {
+        return $this->hasMany(SoftwareModulo::class);
+    }
+
     public function getExposicaoLabelAttribute(): string
     {
         return $this->formatCriterionLabel($this->exposicao_nivel, $this->exposicao_detalhe);

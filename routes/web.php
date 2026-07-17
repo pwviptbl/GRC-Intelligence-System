@@ -65,6 +65,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/tier_politicas', [TierPoliticaController::class, 'index'])->name('tier_politicas.index');
         Route::get('/tier_politicas/export/all', [TierPoliticaController::class, 'printAll'])->name('tier_politicas.export.all');
         Route::get('/atividades', [AtividadeController::class, 'index'])->name('atividades.index');
+        Route::get('/cobertura-modulos', [AtividadeController::class, 'moduleCoverage'])->name('atividades.module_coverage');
+        Route::post('/cobertura-modulos', [AtividadeController::class, 'storeModule'])->middleware('role:admin,governanca')->name('atividades.modules.store');
+        Route::patch('/cobertura-modulos/{softwareModulo}', [AtividadeController::class, 'updateModule'])->middleware('role:admin,governanca')->name('atividades.modules.update');
+        Route::delete('/cobertura-modulos/{softwareModulo}', [AtividadeController::class, 'destroyModule'])->middleware('role:admin,governanca')->name('atividades.modules.destroy');
 
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
@@ -109,6 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->middleware('role:admin,governanca')->name('planejamento_semanal.close');
         Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->middleware('role:admin,governanca')->name('planejamento_semanal.remove');
         Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->middleware('role:admin,governanca')->name('calendario_controles.store_manual');
+        Route::post('/execucao_controles/lote/atribuir', [CalendarioControleController::class, 'bulkAssignExecutor'])->middleware('role:admin,governanca')->name('calendario_controles.bulk_assign_executor');
         Route::post('/execucao_controles/{calendario_controle}/notas', [CalendarioControleController::class, 'addNote'])->name('calendario_controles.add_note');
         Route::post('/execucao_controles/{calendario_controle}/anexos', [CalendarioControleController::class, 'addAttachment'])->name('calendario_controles.add_attachment');
         Route::get('/execucao_controles/anexos/{anexo}/download', [CalendarioControleController::class, 'downloadAttachment'])->name('calendario_controles.download_attachment');

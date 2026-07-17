@@ -120,4 +120,31 @@ class OperationalDashboardTest extends TestCase
             ->assertSee('Gestor GRC · Governanca')
             ->assertDontSee('Executar teste técnico');
     }
+
+    public function test_admin_can_assign_selected_kanban_cards_in_batch(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $executor = User::factory()->create(['disponivel_para_tarefas' => true]);
+        $events = collect([
+            ControleEvento::create([
+                'acao_controle_snapshot' => 'Card em lote 1',
+                'status' => 'planejado',
+                'prioridade' => 'Média',
+            ]),
+            ControleEvento::create([
+                'acao_controle_snapshot' => 'Card em lote 2',
+                'status' => 'planejado',
+                'prioridade' => 'Média',
+            ]),
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('calendario_controles.bulk_assign_executor'), [
+                'event_ids' => $events->pluck('id')->all(),
+                'executor_id' => $executor->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(2, ControleEvento::where('executor_id', $executor->id)->count());
+    }
 }

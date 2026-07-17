@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Atividade;
 use App\Models\ControleEvento;
 use App\Models\Software;
+use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
 use App\Services\ActivityRecurrenceService;
+use App\Services\ActivityCatalogCoverageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -23,6 +25,7 @@ class AtividadeController extends Controller
         }
 
         $activityCoverage = app(ActivityRecurrenceService::class)->summaries($atividades);
+        $catalogCoverage = app(ActivityCatalogCoverageService::class)->summary();
 
         return view('atividades.index', [
             'atividades' => $atividades,
@@ -35,7 +38,40 @@ class AtividadeController extends Controller
             'tierPolicies' => TierPolitica::query()->where('ativo', true)->orderBy('tier')->orderBy('acao_controle')->get(),
             'tierPolicyFilterOptions' => TierPolitica::query()->orderBy('tier')->orderBy('acao_controle')->get(),
             'activityCoverage' => $activityCoverage,
+            'catalogCoverage' => $catalogCoverage,
         ]);
+    }
+
+    public function moduleCoverage(Request $request)
+    {
+        $softwareId = $request->integer('software_id') ?: null;
+
+        return view('atividades.module_coverage', [
+            'softwares' => Software::query()->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'selectedSoftwareId' => $softwareId,
+            'coverage' => app(ActivityCatalogCoverageService::class)->moduleCoverage($softwareId),
+        ]);
+    }
+
+    public function storeModule(Request $request)
+    {
+        SoftwareModulo::create($this->validatedModuleData($request));
+
+        return redirect()->back()->with('success', 'Módulo cadastrado com sucesso.');
+    }
+
+    public function updateModule(Request $request, SoftwareModulo $softwareModulo)
+    {
+        $softwareModulo->update($this->validatedModuleData($request));
+
+        return redirect()->back()->with('success', 'Módulo atualizado com sucesso.');
+    }
+
+    public function destroyModule(SoftwareModulo $softwareModulo)
+    {
+        $softwareModulo->delete();
+
+        return redirect()->back()->with('success', 'Módulo removido do inventário.');
     }
 
     public function store(Request $request)
@@ -106,6 +142,17 @@ class AtividadeController extends Controller
         }
 
         return $data;
+    }
+
+    protected function validatedModuleData(Request $request): array
+    {
+        return $request->validate([
+            'software_id' => ['required', 'integer', 'exists:software,id'],
+            'area' => ['nullable', 'string', 'max:255'],
+            'nome' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string', 'max:2000'],
+            'ativo' => ['required', 'boolean'],
+        ]);
     }
 
     protected function tableAvailable(): bool

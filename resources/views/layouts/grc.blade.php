@@ -225,6 +225,10 @@
             :class="{ 'active': view.includes('atividades') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🧩</span> Atividades
           </a>
+          <a href="{{ route('atividades.module_coverage') }}" class="nav-btn submenu"
+            :class="{ 'active': view.includes('module_coverage') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🗺️</span> Cobertura de Módulos
+          </a>
           <a href="{{ route('procedimentos.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('procedimentos') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔄</span> Procedimentos

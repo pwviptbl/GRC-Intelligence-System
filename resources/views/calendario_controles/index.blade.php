@@ -215,6 +215,17 @@
         background: var(--cyan);
     }
     .kanban-capacity-bar > span.overflow { background: var(--red); }
+    .kanban-bulk-bar {
+        display: flex;
+        align-items: end;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 12px;
+        border: 1px solid rgba(0,229,255,.16);
+        border-radius: 8px;
+        background: rgba(0,229,255,.025);
+    }
+    .kanban-card-select { display:flex; align-items:center; gap:7px; margin:0 0 7px 2px; color:var(--text-3); font-size:10px; }
     .steps-list { display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
     .card-record-list { display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; }
     .card-record { padding:10px; border:1px solid rgba(255,255,255,.07); border-radius:7px; background:rgba(255,255,255,.025); }
@@ -303,6 +314,7 @@
     newNote: '',
     recordsError: '',
     attachmentUploading: false,
+    selectedEventIds: [],
     selectedProcedureId: '',
     executionFormAction: '',
     executionDeleteAction: '',
@@ -973,6 +985,21 @@
         ];
     @endphp
 
+    @if($canManageQueue)
+        <form id="kanban-bulk-form" action="{{ route('calendario_controles.bulk_assign_executor') }}" method="POST" class="kanban-bulk-bar">
+            @csrf
+            <div style="min-width:130px; color:var(--text-1); font-size:12px; font-weight:700"><span x-text="selectedEventIds.length"></span> card(s) selecionado(s)</div>
+            <div class="form-group" style="margin:0; min-width:220px; flex:1">
+                <label>Executor em lote</label>
+                <select name="executor_id" class="form-select">
+                    <option value="">Remover executor</option>
+                    @foreach($usuariosOperacionais as $usuario)<option value="{{ $usuario->id }}">{{ $usuario->name }}</option>@endforeach
+                </select>
+            </div>
+            <button type="submit" class="btn-add" :disabled="selectedEventIds.length === 0">Aplicar</button>
+        </form>
+    @endif
+
     <div class="execution-board" aria-label="Kanban de execucao">
         @foreach($boardColumns as $columnKey => $column)
             @php($columnEvents = $eventos->whereIn('status', $column['statuses']))
@@ -984,6 +1011,9 @@
                 <div class="execution-column-body">
                     @forelse($columnEvents as $evento)
                         @php($canWorkEvent = $canManageQueue || (auth()->user()->role === 'operacional' && in_array(auth()->id(), [$evento->executor_id, $evento->revisor_id], true)))
+                        @if($canManageQueue)
+                            <label class="kanban-card-select"><input type="checkbox" name="event_ids[]" value="{{ $evento->id }}" form="kanban-bulk-form" x-model="selectedEventIds"> Selecionar</label>
+                        @endif
                         <button
                             type="button"
                             class="execution-card"

@@ -192,6 +192,39 @@
         </div>
     </div>
 
+    <section style="margin-bottom:20px; padding:14px; border:1px solid rgba(255,215,64,.18); border-radius:8px; background:rgba(255,215,64,.035)">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap">
+            <div style="color:var(--text-1); font-size:12px; font-weight:700">Lacunas para decidir</div>
+            <a href="{{ route('atividades.index', ['tier_politica_id' => 'none']) }}" style="color:var(--cyan); font-size:11px">{{ $catalogCoverage['unlinked_activities'] }} atividade(s) sem regra Tier</a>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; font-size:11px; color:var(--text-2)">
+            <div>
+                <div style="color:var(--text-3); margin-bottom:5px">Software ativo sem atividade específica</div>
+                @forelse($catalogCoverage['software_without_specific_activity'] as $software)
+                    <div>{{ $software->nome }}</div>
+                @empty
+                    <div style="color:var(--green)">Todos possuem atividade específica.</div>
+                @endforelse
+            </div>
+            <div>
+                <div style="color:var(--text-3); margin-bottom:5px">Regra Tier ativa sem atividade</div>
+                @forelse($catalogCoverage['tier_policies_without_activity'] as $policy)
+                    <div>T{{ $policy->tier }} · {{ $policy->acao_controle }}</div>
+                @empty
+                    <div style="color:var(--green)">Todas as regras ativas possuem atividade.</div>
+                @endforelse
+            </div>
+            <div>
+                <div style="color:var(--text-3); margin-bottom:5px">Regra ativa sem responsável</div>
+                @forelse($catalogCoverage['tier_policies_without_responsible'] as $policy)
+                    <div>T{{ $policy->tier }} · {{ $policy->acao_controle }}</div>
+                @empty
+                    <div style="color:var(--green)">Responsáveis definidos.</div>
+                @endforelse
+            </div>
+        </div>
+    </section>
+
     <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
         <form action="{{ route('atividades.index') }}" method="GET" class="activities-filter-grid">
             <div class="form-group" style="margin-bottom:0">
