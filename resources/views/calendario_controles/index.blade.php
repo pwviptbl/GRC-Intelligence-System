@@ -8,7 +8,7 @@
 <style>
     .controls-filter-grid {
         display: grid;
-        grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr auto;
+        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
         gap: 12px;
         align-items: end;
     }
@@ -191,6 +191,7 @@
         esforco: '',
         esforco_estimado_horas: '',
         esforco_real_horas: '',
+        esforco_real_percebido: '',
         motivo_bloqueio: '',
         observacoes_execucao: '',
     },
@@ -397,6 +398,37 @@
                     @foreach($statusOptions as $status)
                         <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>{{ $status }}</option>
                     @endforeach
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Executor</label>
+                <select name="executor_id" class="form-select">
+                    <option value="">Todos</option>
+                    @foreach($usuariosOperacionais as $usuario)
+                        <option value="{{ $usuario->id }}" {{ (string) request('executor_id') === (string) $usuario->id ? 'selected' : '' }}>{{ $usuario->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Revisor</label>
+                <select name="revisor_id" class="form-select">
+                    <option value="">Todos</option>
+                    @foreach($usuariosOperacionais as $usuario)
+                        <option value="{{ $usuario->id }}" {{ (string) request('revisor_id') === (string) $usuario->id ? 'selected' : '' }}>{{ $usuario->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Semana</label>
+                <input type="date" name="semana" class="form-input" value="{{ request('semana') }}">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Pendência</label>
+                <select name="pendencia" class="form-select">
+                    <option value="">Todas</option>
+                    <option value="estimativa" {{ request('pendencia') === 'estimativa' ? 'selected' : '' }}>Sem estimativa</option>
+                    <option value="executor" {{ request('pendencia') === 'executor' ? 'selected' : '' }}>Sem executor</option>
+                    <option value="prazo" {{ request('pendencia') === 'prazo' ? 'selected' : '' }}>Sem prazo</option>
                 </select>
             </div>
             <div class="form-group" style="margin-bottom:0">
@@ -702,7 +734,7 @@
                             @endif
                             <span class="execution-card-meta">
                                 <span>{{ optional($evento->data_prevista)->format('d/m/Y') ?: 'Sem data' }}</span>
-                                <span>{{ $evento->esforco_estimado_horas !== null ? $evento->esforco_estimado_horas . 'h estimadas' : 'Esforco ' . ($evento->esforco ?: 'M') }}</span>
+                                <span>Esforço {{ $evento->esforco ?: 'A definir' }} · {{ $evento->effort_points ?: 'dividir' }}{{ $evento->effort_points ? ' pts' : '' }}</span>
                             </span>
                             <span class="execution-card-footer">
                                 <span>{{ $evento->executor?->name ?: ($evento->responsavel_planejado ?: 'Sem executor') }}</span>
@@ -776,8 +808,7 @@
                 </div>
 
                 <div class="execution-form-grid">
-                    <div class="form-group"><label>Estimativa (horas)</label><input type="number" name="esforco_estimado_horas" x-model="executionForm.esforco_estimado_horas" class="form-input" min="0" step="0.5"></div>
-                    <div class="form-group"><label>Realizado (horas)</label><input type="number" name="esforco_real_horas" x-model="executionForm.esforco_real_horas" class="form-input" min="0" step="0.5"></div>
+                    <div class="form-group"><label>Esforço percebido</label><select name="esforco_real_percebido" x-model="executionForm.esforco_real_percebido" class="form-select"><option value="">Avaliar ao concluir</option><option value="menor">Menor que o previsto</option><option value="compativel">Compatível</option><option value="maior">Maior que o previsto</option></select></div>
                     <div class="form-group"><label>Responsável legado</label><input name="responsavel_planejado" x-model="executionForm.responsavel_planejado" class="form-input" placeholder="Referência textual anterior"></div>
                 </div>
 
@@ -843,7 +874,7 @@
                     <div class="form-group"><label>Revisor</label><select name="revisor_id" class="form-select"><option value="">Sem revisor</option>@foreach($usuariosOperacionais as $usuario)<option value="{{ $usuario->id }}">{{ $usuario->name }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Prioridade</label><select name="prioridade" class="form-select" required><option>Baixa</option><option selected>Média</option><option>Alta</option><option>Crítica</option></select></div>
                 </div>
-                <div class="execution-form-grid"><div class="form-group"><label>Esforço</label><select name="esforco" class="form-select"><option value="">A definir</option>@foreach($effortOptions as $effort)<option value="{{ $effort }}">{{ $effort }}</option>@endforeach</select></div><div class="form-group"><label>Estimativa (horas)</label><input type="number" name="esforco_estimado_horas" class="form-input" min="0" step="0.5"></div><div class="form-group"><label>Responsável legado</label><input name="responsavel_planejado" class="form-input"></div></div>
+                <div class="execution-form-grid"><div class="form-group"><label>Esforço</label><select name="esforco" class="form-select"><option value="">A definir</option>@foreach($effortOptions as $effort)<option value="{{ $effort }}">{{ $effort }}</option>@endforeach</select></div><div class="form-group"><label>Responsável legado</label><input name="responsavel_planejado" class="form-input"></div></div>
                 <div class="form-group"><label>Data prevista</label><input type="date" name="data_prevista" class="form-input"></div>
                 <div class="modal-actions"><button type="button" class="btn-cancel" @click="showCreateModal = false">Cancelar</button><button class="btn-save">Criar Cartao</button></div>
             </form>

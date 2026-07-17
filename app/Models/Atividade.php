@@ -18,6 +18,7 @@ class Atividade extends Model
         'tier_minimo',
         'tipo_demanda',
         'frequencia_sugerida',
+        'recorrencia_meses',
         'sla_sugerido',
         'responsavel_padrao',
         'observacoes',
@@ -27,6 +28,7 @@ class Atividade extends Model
     protected $casts = [
         'software_id' => 'integer',
         'tier_minimo' => 'integer',
+        'recorrencia_meses' => 'integer',
         'ativo' => 'boolean',
     ];
 

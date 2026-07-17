@@ -47,6 +47,7 @@ class CalendarioControleController extends Controller
             'effortOptions' => ControleEvento::EFFORT_OPTIONS,
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
             'kanbanMode' => false,
+            'usuariosOperacionais' => User::query()->where('active', true)->where('disponivel_para_tarefas', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -316,6 +317,7 @@ class CalendarioControleController extends Controller
             'esforco'             => 'nullable|in:' . implode(',', ControleEvento::EFFORT_OPTIONS),
             'esforco_estimado_horas' => 'nullable|numeric|min:0|max:9999',
             'esforco_real_horas'  => 'nullable|numeric|min:0|max:9999',
+            'esforco_real_percebido' => 'nullable|in:menor,compativel,maior',
             'motivo_bloqueio'     => 'nullable|required_if:status,bloqueado|string|max:2000',
             'tipo_demanda'        => 'nullable|in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
             'score_impacto'       => 'nullable|integer|min:1|max:5',
@@ -433,6 +435,28 @@ class CalendarioControleController extends Controller
             $query->where('status', $request->status);
         } else {
             $query->whereNotIn('status', ['sugestao', 'triagem', 'cancelado', 'dispensado']);
+        }
+
+        if ($request->filled('executor_id')) {
+            $query->where('executor_id', $request->integer('executor_id'));
+        }
+
+        if ($request->filled('revisor_id')) {
+            $query->where('revisor_id', $request->integer('revisor_id'));
+        }
+
+        if ($request->filled('semana')) {
+            $weekStart = \Carbon\Carbon::parse($request->semana)->startOfWeek(\Carbon\Carbon::MONDAY);
+            $query->whereDate('semana_planejada', $weekStart->toDateString());
+        }
+
+        if ($request->filled('pendencia')) {
+            match ($request->pendencia) {
+                'estimativa' => $query->where(function ($subQuery) { $subQuery->whereNull('esforco')->orWhereIn('esforco', ['GG', 'Programa']); }),
+                'executor' => $query->whereNull('executor_id'),
+                'prazo' => $query->whereNull('data_prevista'),
+                default => null,
+            };
         }
 
         if ($request->filled('tier')) {

@@ -88,6 +88,7 @@
         tier_minimo: '3',
         tipo_demanda: '',
         frequencia_sugerida: '',
+        recorrencia_meses: 12,
         sla_sugerido: '',
         responsavel_padrao: '',
         observacoes: '',
@@ -107,6 +108,7 @@
             tier_minimo: '3',
             tipo_demanda: '',
             frequencia_sugerida: '',
+            recorrencia_meses: 12,
             sla_sugerido: '',
             responsavel_padrao: '',
             observacoes: '',
@@ -128,6 +130,7 @@
             categoria: activity.categoria ?? '',
             tipo_demanda: activity.tipo_demanda ?? '',
             frequencia_sugerida: activity.frequencia_sugerida ?? '',
+            recorrencia_meses: activity.recorrencia_meses ?? 12,
             sla_sugerido: activity.sla_sugerido ?? '',
             responsavel_padrao: activity.responsavel_padrao ?? '',
             observacoes: activity.observacoes ?? '',
@@ -249,7 +252,7 @@
                         <td>{{ $atividade->esforco }}</td>
                         <td>{{ $atividade->tier_minimo_label }}</td>
                         <td>{{ $atividade->tipo_demanda ?: '—' }}</td>
-                        <td>{{ $atividade->frequencia_sugerida ?: '—' }} @if($atividade->sla_sugerido)<br><span style="font-size:11px;color:var(--text-3)">SLA {{ $atividade->sla_sugerido }}</span>@endif</td>
+                        <td>A cada {{ $atividade->recorrencia_meses }} meses @if($atividade->sla_sugerido)<br><span style="font-size:11px;color:var(--text-3)">SLA {{ $atividade->sla_sugerido }}</span>@endif</td>
                         <td>{{ $atividade->responsavel_padrao ?: '—' }}</td>
                         <td>
                             <span class="badge" style="{{ $atividade->ativo ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,255,255,.05);color:var(--text-3);border-color:rgba(255,255,255,.08)' }}">
@@ -419,6 +422,10 @@
                     <div class="form-group">
                         <label>Frequencia Sugerida</label>
                         <input type="text" name="frequencia_sugerida" x-model="form.frequencia_sugerida" class="form-input" placeholder="Ex: Mensal" />
+                    </div>
+                    <div class="form-group">
+                        <label>Repetir após (meses)</label>
+                        <input type="number" name="recorrencia_meses" x-model="form.recorrencia_meses" class="form-input" min="1" max="120" required />
                     </div>
                     <div class="form-group">
                         <label>SLA Sugerido</label>

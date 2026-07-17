@@ -117,7 +117,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
     }
 
-    public function test_generation_skips_existing_policy_period_even_when_activity_differs(): void
+    public function test_generation_allows_different_activity_scope_in_same_policy_period(): void
     {
         $this->actingAs($this->adminUser());
 
@@ -160,9 +160,43 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         $this->post(route('calendario_controles.generate'))
             ->assertRedirect(route('calendario_controles.index'));
 
-        $this->assertDatabaseCount('controle_eventos', 1);
-        $this->assertDatabaseMissing('controle_eventos', [
+        $this->assertDatabaseCount('controle_eventos', 2);
+        $this->assertDatabaseHas('controle_eventos', [
             'atividade_id' => $newActivity->id,
+        ]);
+    }
+
+    public function test_generation_respects_activity_recurrence_for_the_same_scope(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        $policy = $this->createTierPolicy();
+        $activity = $this->createActivity($software);
+        $activity->update(['recorrencia_meses' => 12]);
+
+        $completed = ControleEvento::create([
+            'software_id' => $software->id,
+            'tier_politica_id' => $policy->id,
+            'atividade_id' => $activity->id,
+            'acao_controle_snapshot' => $activity->atividade,
+            'modulo' => $activity->modulo,
+            'categoria' => $activity->categoria,
+            'rotina' => $activity->rotina,
+            'status' => 'concluido',
+            'concluido_em' => now()->subMonths(6),
+        ]);
+
+        $this->post(route('calendario_controles.generate'))->assertRedirect();
+        $this->assertDatabaseCount('controle_eventos', 1);
+
+        $completed->update(['concluido_em' => now()->subMonths(13)]);
+        $this->post(route('calendario_controles.generate'))->assertRedirect();
+
+        $this->assertDatabaseCount('controle_eventos', 2);
+        $this->assertDatabaseHas('controle_eventos', [
+            'atividade_id' => $activity->id,
+            'status' => 'sugestao',
         ]);
     }
 

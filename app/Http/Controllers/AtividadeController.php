@@ -88,6 +88,7 @@ class AtividadeController extends Controller
             'tier_minimo' => 'required|integer|in:1,2,3',
             'tipo_demanda' => 'nullable|in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
             'frequencia_sugerida' => 'nullable|string|max:255',
+            'recorrencia_meses' => 'required|integer|min:1|max:120',
             'sla_sugerido' => 'nullable|string|max:255',
             'responsavel_padrao' => 'nullable|string|max:255',
             'observacoes' => 'nullable|string|max:1000',

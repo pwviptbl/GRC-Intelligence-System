@@ -58,6 +58,11 @@ class CalendarioControleService
                     }
 
                     foreach ($activities as $activity) {
+                        if (! $this->activityIsDue($software, $activity)) {
+                            $skipped++;
+                            continue;
+                        }
+
                         $neverTested = !ControleEvento::query()
                             ->where('software_id', $software->id)
                             ->where('atividade_id', $activity->id)
@@ -462,11 +467,61 @@ class CalendarioControleService
 
     protected function resolveExistingEvent(Software $software, TierPolitica $policy, ?Atividade $activity, string $periodoReferencia): ?ControleEvento
     {
-        return ControleEvento::query()
+        $query = ControleEvento::query()
             ->where('software_id', $software->id)
-            ->where('tier_politica_id', $policy->id)
-            ->where('periodo_referencia', $periodoReferencia)
-            ->first();
+            ->where('periodo_referencia', $periodoReferencia);
+
+        if ($activity) {
+            $query->where('atividade_id', $activity->id);
+        } else {
+            $query->where('tier_politica_id', $policy->id)->whereNull('atividade_id');
+        }
+
+        return $query->first();
+    }
+
+    protected function activityIsDue(Software $software, Atividade $activity): bool
+    {
+        $sameScope = ControleEvento::query()
+            ->where('software_id', $software->id)
+            ->where(function ($query) use ($activity) {
+                $query->where('atividade_id', $activity->id)
+                    ->orWhere(function ($fallback) use ($activity) {
+                        $fallback->where('acao_controle_snapshot', $activity->atividade)
+                            ->where($this->nullableScopeCondition('modulo', $activity->modulo))
+                            ->where($this->nullableScopeCondition('categoria', $activity->categoria))
+                            ->where($this->nullableScopeCondition('rotina', $activity->rotina));
+                    });
+            });
+
+        if ((clone $sameScope)->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])->exists()) {
+            return false;
+        }
+
+        $lastCompletion = (clone $sameScope)
+            ->where('status', 'concluido')
+            ->whereNotNull('concluido_em')
+            ->max('concluido_em');
+
+        if (! $lastCompletion) {
+            return true;
+        }
+
+        return Carbon::parse($lastCompletion)
+            ->addMonthsNoOverflow(max(1, (int) $activity->recorrencia_meses))
+            ->isPast();
+    }
+
+    protected function nullableScopeCondition(string $column, ?string $value): \Closure
+    {
+        return static function ($query) use ($column, $value) {
+            if ($value === null || $value === '') {
+                $query->whereNull($column)->orWhere($column, '');
+                return;
+            }
+
+            $query->where($column, $value);
+        };
     }
 
     protected function defaultEffortForFrequency(string $frequency): string

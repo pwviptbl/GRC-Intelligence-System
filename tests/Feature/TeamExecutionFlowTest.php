@@ -91,7 +91,7 @@ class TeamExecutionFlowTest extends TestCase
             'name' => $user->name,
             'role' => 'operacional',
             'nivel_operacional' => 'junior',
-            'capacidade_semanal_horas' => 30,
+            'capacidade_semanal_pontos' => 8,
             'areas_atuacao' => 'Pentest e análise de dependências',
             'disponivel_para_tarefas' => '1',
             'active' => '1',
@@ -100,7 +100,7 @@ class TeamExecutionFlowTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'nivel_operacional' => 'junior',
-            'capacidade_semanal_horas' => 30,
+            'capacidade_semanal_pontos' => 8,
             'disponivel_para_tarefas' => true,
         ]);
     }
@@ -112,7 +112,7 @@ class TeamExecutionFlowTest extends TestCase
         $available = User::factory()->create([
             'role' => 'operacional',
             'nivel_operacional' => 'junior',
-            'capacidade_semanal_horas' => 30,
+            'capacidade_semanal_pontos' => 8,
             'disponivel_para_tarefas' => true,
             'areas_atuacao' => 'Pentest',
         ]);
@@ -123,6 +123,6 @@ class TeamExecutionFlowTest extends TestCase
         $this->assertTrue($result['ok']);
         $this->assertCount(1, $result['result']);
         $this->assertSame($available->id, $result['result'][0]['id']);
-        $this->assertSame('30.0', $result['result'][0]['capacidade_semanal_horas']);
+        $this->assertSame(8, $result['result'][0]['capacidade_semanal_pontos']);
     }
 }

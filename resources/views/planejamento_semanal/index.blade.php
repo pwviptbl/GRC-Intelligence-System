@@ -66,7 +66,7 @@
     <div class="weekly-header">
         <div>
             <h3 style="margin:0;color:var(--text-1);font-size:16px">Planejamento da Equipe</h3>
-            <p style="margin:4px 0 0;color:var(--text-3);font-size:11px">Selecione tarefas estimadas e distribua sem ultrapassar a capacidade semanal.</p>
+            <p style="margin:4px 0 0;color:var(--text-3);font-size:11px">Distribuição por esforço relativo, preservando 20% da capacidade para imprevistos.</p>
         </div>
         <div class="weekly-navigation">
             <a href="{{ route('planejamento_semanal.index', ['semana' => $previousWeek]) }}" title="Semana anterior">←</a>
@@ -76,22 +76,22 @@
     </div>
 
     <div class="weekly-stats">
-        <div class="weekly-stat"><div class="weekly-stat-label">Capacidade</div><div class="weekly-stat-value">{{ number_format($totalCapacity, 1, ',', '.') }}h</div></div>
-        <div class="weekly-stat"><div class="weekly-stat-label">Planejado</div><div class="weekly-stat-value" style="color:var(--cyan)">{{ number_format($totalPlanned, 1, ',', '.') }}h</div></div>
-        <div class="weekly-stat"><div class="weekly-stat-label">Disponível</div><div class="weekly-stat-value" style="color:{{ $totalCapacity - $totalPlanned < 0 ? 'var(--red)' : 'var(--green)' }}">{{ number_format($totalCapacity - $totalPlanned, 1, ',', '.') }}h</div></div>
+        <div class="weekly-stat"><div class="weekly-stat-label">Capacidade total</div><div class="weekly-stat-value">{{ $totalCapacity }} pts</div></div>
+        <div class="weekly-stat"><div class="weekly-stat-label">Comprometido</div><div class="weekly-stat-value" style="color:var(--cyan)">{{ $totalPlanned }} pts</div></div>
+        <div class="weekly-stat"><div class="weekly-stat-label">Margem operacional</div><div class="weekly-stat-value" style="color:var(--green)">20%</div></div>
     </div>
 
     <div class="weekly-layout">
         <form method="POST" action="{{ route('planejamento_semanal.assign') }}" class="weekly-panel">
             @csrf
             <input type="hidden" name="semana" value="{{ $weekStart->toDateString() }}">
-            <div class="weekly-panel-header"><h3>Backlog Priorizado</h3><p>Itens sem semana definida. Tarefas sem estimativa não são distribuídas.</p></div>
+            <div class="weekly-panel-header"><h3>Backlog Priorizado</h3><p>PP=1, P=2, M=4 e G=8 pontos. GG precisa ser dividida.</p></div>
             <div class="weekly-backlog-list">
                 @forelse($backlog as $event)
                     <label class="weekly-backlog-item">
                         <input type="checkbox" name="event_ids[]" value="{{ $event->id }}">
                         <span><span class="weekly-backlog-title">{{ $event->acao_controle_snapshot }}</span><span class="weekly-backlog-meta"><span>{{ $event->prioridade ?: 'Sem prioridade' }}</span><span>{{ $event->software?->nome ?: 'Atividade geral' }}</span><span>{{ $event->scope_label }}</span>@if($event->decision_score !== null)<span>Score {{ $event->decision_score }}</span>@endif</span></span>
-                        <span class="weekly-hours">{{ $event->esforco_estimado_horas !== null ? number_format((float)$event->esforco_estimado_horas, 1, ',', '.') . 'h' : 'Sem horas' }}</span>
+                        <span class="weekly-hours">{{ $event->effort_points > 0 ? $event->esforco . ' · ' . $event->effort_points . ' pts' : ($event->esforco ?: 'Sem esforço') . ' · dividir' }}</span>
                     </label>
                 @empty
                     <div class="weekly-empty">Nenhuma tarefa aguardando planejamento.</div>
@@ -99,7 +99,7 @@
             </div>
             @if($backlog->isNotEmpty())
                 <div class="weekly-controls">
-                    <div class="form-group"><label>Executor manual</label><select name="executor_id" class="form-select"><option value="">Selecione...</option>@foreach($members as $member)<option value="{{ $member->id }}">{{ $member->name }} · {{ number_format((float)$member->capacidade_semanal_horas, 1, ',', '.') }}h</option>@endforeach</select></div>
+                    <div class="form-group"><label>Executor manual</label><select name="executor_id" class="form-select"><option value="">Selecione...</option>@foreach($members as $member)<option value="{{ $member->id }}">{{ $member->name }} · {{ $member->capacidade_semanal_pontos }} pts</option>@endforeach</select></div>
                     <div class="form-group"><label>Revisor opcional</label><select name="revisor_id" class="form-select"><option value="">Sem revisor</option>@foreach($members as $member)<option value="{{ $member->id }}">{{ $member->name }}</option>@endforeach</select></div>
                     <div class="weekly-buttons"><button type="submit" class="btn-save">Atribuir ao executor</button><button type="submit" formaction="{{ route('planejamento_semanal.auto_assign') }}" class="btn-add">Distribuir por capacidade</button></div>
                 </div>
@@ -107,15 +107,15 @@
         </form>
 
         <div>
-            <div class="weekly-panel-header" style="padding:0 0 12px;border:0"><h3>Capacidade por pessoa</h3><p>A distribuição automática usa primeiro quem possui mais horas restantes.</p></div>
+            <div class="weekly-panel-header" style="padding:0 0 12px;border:0"><h3>Capacidade por pessoa</h3><p>A distribuição automática respeita 80% da capacidade de cada pessoa.</p></div>
             <div class="weekly-team">
                 @forelse($team as $entry)
-                    @php($percent = $entry['capacity'] > 0 ? min(100, ($entry['planned'] / $entry['capacity']) * 100) : ($entry['planned'] > 0 ? 100 : 0))
+                    @php($percent = $entry['planning_limit'] > 0 ? min(100, ($entry['planned'] / $entry['planning_limit']) * 100) : ($entry['planned'] > 0 ? 100 : 0))
                     <section class="weekly-member">
-                        <div class="weekly-member-header"><div class="weekly-member-top"><div><div class="weekly-member-name">{{ $entry['member']->name }}</div><div class="weekly-member-role">{{ $entry['member']->nivel_operacional ?: 'Nível não definido' }} · {{ $entry['member']->areas_atuacao ?: 'Áreas não informadas' }}</div></div><div class="weekly-capacity {{ $entry['remaining'] < 0 ? 'overflow' : '' }}">{{ number_format($entry['planned'],1,',','.') }}/{{ number_format($entry['capacity'],1,',','.') }}h</div></div><div class="weekly-progress"><span class="{{ $entry['remaining'] < 0 ? 'overflow' : '' }}" style="width:{{ $percent }}%"></span></div></div>
+                        <div class="weekly-member-header"><div class="weekly-member-top"><div><div class="weekly-member-name">{{ $entry['member']->name }}</div><div class="weekly-member-role">{{ $entry['member']->nivel_operacional ?: 'Nível não definido' }} · {{ $entry['member']->areas_atuacao ?: 'Áreas não informadas' }}</div></div><div class="weekly-capacity {{ $entry['remaining'] < 0 ? 'overflow' : '' }}">{{ $entry['planned'] }}/{{ $entry['planning_limit'] }} pts</div></div><div class="weekly-progress"><span class="{{ $entry['remaining'] < 0 ? 'overflow' : '' }}" style="width:{{ $percent }}%"></span></div></div>
                         <div class="weekly-member-tasks">
                             @forelse($entry['tasks'] as $task)
-                                <div class="weekly-task"><div class="weekly-task-title">{{ $task->acao_controle_snapshot }}</div><div class="weekly-task-footer"><span>{{ number_format((float)$task->esforco_estimado_horas,1,',','.') }}h · {{ $task->status }}</span><form method="POST" action="{{ route('planejamento_semanal.remove', $task) }}">@csrf @method('DELETE')<input type="hidden" name="semana" value="{{ $weekStart->toDateString() }}"><button class="weekly-remove" onclick="return confirm('Devolver esta tarefa ao backlog?')">Remover</button></form></div></div>
+                                <div class="weekly-task"><div class="weekly-task-title">{{ $task->acao_controle_snapshot }}</div><div class="weekly-task-footer"><span>{{ $task->esforco }} · {{ $task->effort_points }} pts · {{ $task->status }}</span><form method="POST" action="{{ route('planejamento_semanal.remove', $task) }}">@csrf @method('DELETE')<input type="hidden" name="semana" value="{{ $weekStart->toDateString() }}"><button class="weekly-remove" onclick="return confirm('Devolver esta tarefa ao backlog?')">Remover</button></form></div></div>
                             @empty
                                 <div class="weekly-empty">Nenhuma tarefa nesta semana.</div>
                             @endforelse

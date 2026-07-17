@@ -112,8 +112,162 @@
         gap: 16px;
     }
 
+    .dashboard-operational-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin: 4px 0 12px;
+    }
+
+    .dashboard-operational-header h4 {
+        margin: 0;
+        color: var(--text-1);
+        font-size: 14px;
+    }
+
+    .dashboard-operational-header span {
+        color: var(--text-3);
+        font-size: 11px;
+    }
+
+    .dashboard-action-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .dashboard-action-card {
+        display: block;
+        min-width: 0;
+        padding: 13px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-surface);
+        text-decoration: none;
+        transition: border-color .15s, background .15s;
+    }
+
+    .dashboard-action-card:hover {
+        border-color: var(--border-glow);
+        background: var(--bg-hover);
+    }
+
+    .dashboard-action-label {
+        color: var(--text-3);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .dashboard-action-value {
+        margin-top: 5px;
+        color: var(--text-1);
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .dashboard-action-hint {
+        margin-top: 4px;
+        color: var(--text-3);
+        font-size: 10px;
+    }
+
+    .dashboard-weekly-grid {
+        display: grid;
+        grid-template-columns: minmax(260px, .7fr) minmax(0, 1.3fr);
+        gap: 16px;
+        margin-bottom: 25px;
+    }
+
+    .dashboard-week-summary {
+        min-width: 0;
+        padding: 18px;
+    }
+
+    .dashboard-week-numbers {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .dashboard-week-number {
+        padding: 10px;
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: 7px;
+        background: rgba(255,255,255,.02);
+    }
+
+    .dashboard-week-number strong {
+        display: block;
+        color: var(--text-1);
+        font-size: 17px;
+    }
+
+    .dashboard-week-number span {
+        color: var(--text-3);
+        font-size: 9px;
+        text-transform: uppercase;
+    }
+
+    .dashboard-team-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .dashboard-team-row {
+        display: grid;
+        grid-template-columns: minmax(100px, 1fr) minmax(100px, 1.2fr) auto;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-2);
+        font-size: 11px;
+    }
+
+    .dashboard-team-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .dashboard-team-progress {
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(255,255,255,.06);
+        overflow: hidden;
+    }
+
+    .dashboard-team-progress span {
+        display: block;
+        height: 100%;
+        background: var(--cyan);
+    }
+
+    .dashboard-team-progress span.overload {
+        background: var(--red);
+    }
+
+    .dashboard-team-hours {
+        color: var(--text-3);
+        font: 600 10px var(--mono);
+        white-space: nowrap;
+    }
+
     @media (max-width: 860px) {
         .dashboard-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .dashboard-action-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .dashboard-weekly-grid {
             grid-template-columns: minmax(0, 1fr);
         }
     }
@@ -142,6 +296,16 @@
             flex-direction: column;
             gap: 8px;
         }
+
+        .dashboard-operational-header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .dashboard-team-row {
+            grid-template-columns: minmax(90px, 1fr) minmax(70px, 1fr) auto;
+        }
     }
 </style>
 
@@ -163,6 +327,67 @@
         <a href="{{ route('dashboard.export') }}" target="_blank" class="btn-secondary dashboard-export">
             <span>📄 Exportar Relatório Executivo</span>
         </a>
+    </div>
+
+    <div class="dashboard-operational-header">
+        <h4>Operação da Semana</h4>
+        <span>{{ $operacional['semana_inicio']->format('d/m') }} a {{ $operacional['semana_fim']->format('d/m/Y') }} · clique em um indicador para abrir a fila</span>
+    </div>
+
+    <div class="dashboard-action-grid">
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['executor_id' => auth()->id()]) }}">
+            <div class="dashboard-action-label">Minhas tarefas</div><div class="dashboard-action-value" style="color:var(--cyan)">{{ $operacional['minhas_tarefas'] }}</div><div class="dashboard-action-hint">Trabalho sob sua execução</div>
+        </a>
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['revisor_id' => auth()->id(), 'status' => 'em_revisao']) }}">
+            <div class="dashboard-action-label">Minhas revisões</div><div class="dashboard-action-value" style="color:#b9a6ff">{{ $operacional['minhas_revisoes'] }}</div><div class="dashboard-action-hint">Aguardando sua validação</div>
+        </a>
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['status' => 'em_revisao']) }}">
+            <div class="dashboard-action-label">Em revisão</div><div class="dashboard-action-value">{{ $operacional['em_revisao'] }}</div><div class="dashboard-action-hint">Fila total da equipe</div>
+        </a>
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['status' => 'bloqueado']) }}">
+            <div class="dashboard-action-label">Bloqueadas</div><div class="dashboard-action-value" style="color:#ff9632">{{ $operacional['bloqueadas'] }}</div><div class="dashboard-action-hint">Exigem decisão ou dependência</div>
+        </a>
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['status' => 'atrasado']) }}">
+            <div class="dashboard-action-label">Atrasadas</div><div class="dashboard-action-value" style="color:var(--red)">{{ $operacional['atrasadas'] }}</div><div class="dashboard-action-hint">Prazo operacional vencido</div>
+        </a>
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['pendencia' => 'estimativa']) }}">
+            <div class="dashboard-action-label">Sem estimativa</div><div class="dashboard-action-value" style="color:var(--yellow)">{{ $operacional['sem_estimativa'] }}</div><div class="dashboard-action-hint">Não podem ser distribuídas</div>
+        </a>
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['pendencia' => 'executor']) }}">
+            <div class="dashboard-action-label">Sem executor</div><div class="dashboard-action-value">{{ $operacional['sem_executor'] }}</div><div class="dashboard-action-hint">Responsabilidade indefinida</div>
+        </a>
+        <a class="dashboard-action-card" href="{{ route('calendario_controles.kanban', ['pendencia' => 'prazo']) }}">
+            <div class="dashboard-action-label">Sem prazo</div><div class="dashboard-action-value">{{ $operacional['sem_prazo'] }}</div><div class="dashboard-action-hint">Sem data para acompanhamento</div>
+        </a>
+    </div>
+
+    <div class="dashboard-weekly-grid">
+        <div class="table-card dashboard-week-summary">
+            <div class="dashboard-panel-title">Resumo da semana</div>
+            <div class="dashboard-week-numbers">
+                <div class="dashboard-week-number"><strong>{{ $operacional['capacidade_total'] }} pts</strong><span>Capacidade</span></div>
+                <div class="dashboard-week-number"><strong style="color:var(--cyan)">{{ $operacional['planejado_pontos'] }} pts</strong><span>Comprometido</span></div>
+                <div class="dashboard-week-number"><strong>20%</strong><span>Margem operacional</span></div>
+                <div class="dashboard-week-number"><strong style="color:var(--green)">{{ $operacional['concluidas_semana'] }}/{{ $operacional['total_semana'] }}</strong><span>Concluídas</span></div>
+            </div>
+            <a href="{{ route('planejamento_semanal.index', ['semana' => $operacional['semana_inicio']->toDateString()]) }}" class="btn-add" style="justify-content:center;margin-top:14px;text-decoration:none;width:100%">Abrir planejamento semanal</a>
+        </div>
+
+        <div class="table-card dashboard-week-summary">
+            <div class="dashboard-panel-title">Carga da equipe</div>
+            <div class="dashboard-team-list">
+                @forelse($operacional['team'] as $entry)
+                    @php($loadPercent = $entry['capacity'] > 0 ? min(100, ($entry['planned'] / $entry['capacity']) * 100) : ($entry['planned'] > 0 ? 100 : 0))
+                    <a href="{{ route('calendario_controles.kanban', ['executor_id' => $entry['user']->id, 'semana' => $operacional['semana_inicio']->toDateString()]) }}" class="dashboard-team-row" style="text-decoration:none">
+                        <span class="dashboard-team-name">{{ $entry['user']->name }}</span>
+                        <span class="dashboard-team-progress"><span class="{{ $entry['remaining'] < 0 ? 'overload' : '' }}" style="width:{{ $loadPercent }}%"></span></span>
+                        <span class="dashboard-team-hours">{{ number_format($entry['planned'],1,',','.') }}/{{ number_format($entry['capacity'],1,',','.') }} pts</span>
+                    </a>
+                @empty
+                    <div style="color:var(--text-3);font-size:11px">Nenhum usuário disponível para tarefas.</div>
+                @endforelse
+            </div>
+        </div>
     </div>
 
     <!-- Visão do CISO (IA) -->

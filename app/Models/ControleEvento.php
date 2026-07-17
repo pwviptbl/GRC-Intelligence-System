@@ -14,6 +14,7 @@ class ControleEvento extends Model
     ];
 
     public const EFFORT_OPTIONS = [
+        'PP',
         'P',
         'M',
         'G',
@@ -81,6 +82,7 @@ class ControleEvento extends Model
         'esforco',
         'esforco_estimado_horas',
         'esforco_real_horas',
+        'esforco_real_percebido',
         'tipo_demanda',
         'score_impacto',
         'score_exposicao',
@@ -202,6 +204,7 @@ class ControleEvento extends Model
         }
 
         $effortBonus = match ($this->esforco) {
+            'PP' => 5,
             'P' => 4,
             'M' => 3,
             'G' => 2,
@@ -213,5 +216,16 @@ class ControleEvento extends Model
             + ($this->score_exposicao * 2)
             + ($this->score_confianca * 2)
             + $effortBonus;
+    }
+
+    public function getEffortPointsAttribute(): int
+    {
+        return match ($this->esforco) {
+            'PP' => 1,
+            'P' => 2,
+            'M' => 4,
+            'G' => 8,
+            default => 0,
+        };
     }
 }

@@ -38,11 +38,11 @@
     showModal: false, 
     editMode: false,
     formAction: '{{ route('usuarios.store') }}',
-    form: { id: '', name: '', email: '', role: 'operacional', nivel_operacional: '', capacidade_semanal_horas: 40, disponivel_para_tarefas: true, areas_atuacao: '', active: true, password: '' },
+    form: { id: '', name: '', email: '', role: 'operacional', nivel_operacional: '', capacidade_semanal_pontos: 10, disponivel_para_tarefas: true, areas_atuacao: '', active: true, password: '' },
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', name: '', email: '', role: 'operacional', nivel_operacional: '', capacidade_semanal_horas: 40, disponivel_para_tarefas: true, areas_atuacao: '', active: true, password: '' };
+        this.form = { id: '', name: '', email: '', role: 'operacional', nivel_operacional: '', capacidade_semanal_pontos: 10, disponivel_para_tarefas: true, areas_atuacao: '', active: true, password: '' };
         this.formAction = '{{ route('usuarios.store') }}';
         this.showModal = true;
     },
@@ -83,7 +83,7 @@
                     </td>
                     <td data-label="Planejamento">
                         <div style="font-size:11px;color:var(--text-2)">
-                            {{ $user->nivel_operacional ? ucfirst($user->nivel_operacional) : 'Nível não definido' }} · {{ number_format((float) $user->capacidade_semanal_horas, 1, ',', '.') }}h/semana
+                            {{ $user->nivel_operacional ? ucfirst($user->nivel_operacional) : 'Nível não definido' }} · {{ $user->capacidade_semanal_pontos }} pts/semana
                         </div>
                         <div style="font-size:10px;color:{{ $user->disponivel_para_tarefas ? 'var(--green)' : 'var(--text-3)' }}">
                             {{ $user->disponivel_para_tarefas ? 'Disponível para tarefas' : 'Fora da distribuição' }}
@@ -154,8 +154,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Capacidade semanal (horas)</label>
-                        <input type="number" name="capacidade_semanal_horas" x-model="form.capacidade_semanal_horas" class="form-input" min="0" max="168" step="0.5" required>
+                        <label>Capacidade semanal (pontos)</label>
+                        <input type="number" name="capacidade_semanal_pontos" x-model="form.capacidade_semanal_pontos" class="form-input" min="1" max="40" step="1" required>
                     </div>
                 </div>
 

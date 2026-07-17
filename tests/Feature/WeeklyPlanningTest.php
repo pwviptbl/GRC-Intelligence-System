@@ -18,26 +18,26 @@ class WeeklyPlanningTest extends TestCase
         User::factory()->create([
             'name' => 'Auxiliar Junior',
             'nivel_operacional' => 'junior',
-            'capacidade_semanal_horas' => 30,
+            'capacidade_semanal_pontos' => 10,
             'disponivel_para_tarefas' => true,
         ]);
-        $this->event('Análise de dependências', 8);
+        $this->event('Análise de dependências', 'M');
 
         $this->actingAs($admin)->get(route('planejamento_semanal.index'))
             ->assertOk()
             ->assertSee('Auxiliar Junior')
             ->assertSee('Análise de dependências')
-            ->assertSee('30,0h');
+            ->assertSee('10 pts');
     }
 
     public function test_manual_assignment_respects_weekly_capacity(): void
     {
         $admin = $this->admin();
         $executor = User::factory()->create([
-            'capacidade_semanal_horas' => 10,
+            'capacidade_semanal_pontos' => 10,
             'disponivel_para_tarefas' => true,
         ]);
-        $event = $this->event('Pentest interno', 8);
+        $event = $this->event('Pentest interno', 'G');
         $week = now()->startOfWeek(Carbon::MONDAY)->toDateString();
 
         $this->actingAs($admin)->post(route('planejamento_semanal.assign'), [
@@ -52,7 +52,7 @@ class WeeklyPlanningTest extends TestCase
             'semana_planejada' => $week,
         ]);
 
-        $second = $this->event('Revisão de código', 4);
+        $second = $this->event('Revisão de código', 'M');
         $this->actingAs($admin)->post(route('planejamento_semanal.assign'), [
             'event_ids' => [$second->id],
             'executor_id' => $executor->id,
@@ -67,11 +67,11 @@ class WeeklyPlanningTest extends TestCase
         User::query()->update(['disponivel_para_tarefas' => false]);
 
         $admin = $this->admin();
-        $first = User::factory()->create(['capacidade_semanal_horas' => 8, 'disponivel_para_tarefas' => true]);
-        $second = User::factory()->create(['capacidade_semanal_horas' => 4, 'disponivel_para_tarefas' => true]);
-        $large = $this->event('Teste de maior esforço', 6, 'Crítica');
-        $medium = $this->event('Teste médio', 4, 'Alta');
-        $overflow = $this->event('Tarefa sem espaço', 3, 'Média');
+        $first = User::factory()->create(['capacidade_semanal_pontos' => 10, 'disponivel_para_tarefas' => true]);
+        $second = User::factory()->create(['capacidade_semanal_pontos' => 5, 'disponivel_para_tarefas' => true]);
+        $large = $this->event('Teste de maior esforço', 'G', 'Crítica');
+        $medium = $this->event('Teste médio', 'M', 'Alta');
+        $overflow = $this->event('Tarefa sem espaço', 'P', 'Média');
         $week = now()->startOfWeek(Carbon::MONDAY)->toDateString();
 
         $this->actingAs($admin)->post(route('planejamento_semanal.auto_assign'), [
@@ -89,7 +89,7 @@ class WeeklyPlanningTest extends TestCase
         $admin = $this->admin();
         $executor = User::factory()->create(['disponivel_para_tarefas' => true]);
         $week = now()->startOfWeek(Carbon::MONDAY)->toDateString();
-        $event = $this->event('Tarefa planejada', 5);
+        $event = $this->event('Tarefa planejada', 'M');
         $event->update(['executor_id' => $executor->id, 'semana_planejada' => $week]);
 
         $this->actingAs($admin)->delete(route('planejamento_semanal.remove', $event), [
@@ -109,13 +109,13 @@ class WeeklyPlanningTest extends TestCase
         ]);
     }
 
-    private function event(string $title, ?float $hours, string $priority = 'Alta'): ControleEvento
+    private function event(string $title, ?string $effort, string $priority = 'Alta'): ControleEvento
     {
         return ControleEvento::create([
             'acao_controle_snapshot' => $title,
             'status' => 'planejado',
             'prioridade' => $priority,
-            'esforco_estimado_horas' => $hours,
+            'esforco' => $effort,
         ]);
     }
 }

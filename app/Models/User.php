@@ -17,6 +17,7 @@ class User extends Authenticatable
         'role',
         'nivel_operacional',
         'capacidade_semanal_horas',
+        'capacidade_semanal_pontos',
         'disponivel_para_tarefas',
         'areas_atuacao',
         'active',
@@ -35,6 +36,7 @@ class User extends Authenticatable
             'active' => 'boolean',
             'disponivel_para_tarefas' => 'boolean',
             'capacidade_semanal_horas' => 'decimal:1',
+            'capacidade_semanal_pontos' => 'integer',
         ];
     }
 

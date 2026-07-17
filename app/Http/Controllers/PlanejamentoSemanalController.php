@@ -32,16 +32,17 @@ class PlanejamentoSemanalController extends Controller
 
         $team = $members->map(function (User $member) use ($assignments) {
             $tasks = $assignments->get($member->id, collect());
-            $capacity = (float) $member->capacidade_semanal_horas;
-            $planned = (float) $tasks->sum(fn (ControleEvento $event) => (float) $event->esforco_estimado_horas);
+            $capacity = (int) $member->capacidade_semanal_pontos;
+            $planningLimit = (int) floor($capacity * 0.8);
+            $planned = (int) $tasks->sum(fn (ControleEvento $event) => $event->effort_points);
 
             return [
                 'member' => $member,
                 'tasks' => $tasks,
                 'capacity' => $capacity,
+                'planning_limit' => $planningLimit,
                 'planned' => $planned,
-                'remaining' => $capacity - $planned,
-                'actual' => (float) $tasks->sum(fn (ControleEvento $event) => (float) $event->esforco_real_horas),
+                'remaining' => $planningLimit - $planned,
             ];
         });
 
@@ -85,20 +86,22 @@ class PlanejamentoSemanalController extends Controller
             return back()->withErrors(['event_ids' => 'Um ou mais itens não estão disponíveis para planejamento.']);
         }
 
-        $withoutEstimate = $events->filter(fn (ControleEvento $event) => $event->esforco_estimado_horas === null);
+        $withoutEstimate = $events->filter(fn (ControleEvento $event) => $event->effort_points === 0);
         if ($withoutEstimate->isNotEmpty()) {
-            return back()->withErrors(['event_ids' => 'Defina a estimativa em horas antes de planejar: '.$withoutEstimate->pluck('acao_controle_snapshot')->take(3)->implode(', ')]);
+            return back()->withErrors(['event_ids' => 'Defina esforço PP, P, M ou G. Atividades GG precisam ser divididas: '.$withoutEstimate->pluck('acao_controle_snapshot')->take(3)->implode(', ')]);
         }
 
-        $alreadyPlanned = (float) ControleEvento::query()
+        $alreadyPlanned = ControleEvento::query()
             ->where('executor_id', $member->id)
             ->whereDate('semana_planejada', $weekStart->toDateString())
             ->whereNotIn('id', $events->pluck('id'))
-            ->sum('esforco_estimado_horas');
-        $requested = (float) $events->sum(fn (ControleEvento $event) => (float) $event->esforco_estimado_horas);
+            ->get()
+            ->sum(fn (ControleEvento $event) => $event->effort_points);
+        $requested = $events->sum(fn (ControleEvento $event) => $event->effort_points);
+        $planningLimit = (int) floor(((int) $member->capacidade_semanal_pontos) * 0.8);
 
-        if ($alreadyPlanned + $requested > (float) $member->capacidade_semanal_horas) {
-            return back()->withErrors(['executor_id' => "A atribuição excede a capacidade semanal de {$member->name}."]);
+        if ($alreadyPlanned + $requested > $planningLimit) {
+            return back()->withErrors(['executor_id' => "A atribuição excede o limite planejável de {$member->name} ({$planningLimit} pontos, preservando 20% de margem)."]);
         }
 
         ControleEvento::query()->whereKey($events->pluck('id'))->update([
@@ -124,12 +127,13 @@ class PlanejamentoSemanalController extends Controller
         $events = $this->eligibleEvents($data['event_ids']);
 
         $remaining = $members->mapWithKeys(function (User $member) use ($weekStart) {
-            $used = (float) ControleEvento::query()
+            $used = ControleEvento::query()
                 ->where('executor_id', $member->id)
                 ->whereDate('semana_planejada', $weekStart->toDateString())
-                ->sum('esforco_estimado_horas');
+                ->get()
+                ->sum(fn (ControleEvento $event) => $event->effort_points);
 
-            return [$member->id => (float) $member->capacidade_semanal_horas - $used];
+            return [$member->id => (int) floor($member->capacidade_semanal_pontos * 0.8) - $used];
         });
 
         $assigned = 0;
@@ -137,14 +141,14 @@ class PlanejamentoSemanalController extends Controller
 
         DB::transaction(function () use ($events, $members, $remaining, $weekStart, $data, &$assigned, &$skipped) {
             foreach ($events as $event) {
-                if ($event->esforco_estimado_horas === null) {
-                    $skipped[] = $event->acao_controle_snapshot.' (sem estimativa)';
+                if ($event->effort_points === 0) {
+                    $skipped[] = $event->acao_controle_snapshot.' (GG ou sem esforço)';
                     continue;
                 }
 
-                $hours = (float) $event->esforco_estimado_horas;
+                $points = $event->effort_points;
                 $candidate = $members
-                    ->filter(fn (User $member) => ($remaining[$member->id] ?? -1) >= $hours)
+                    ->filter(fn (User $member) => ($remaining[$member->id] ?? -1) >= $points)
                     ->sortByDesc(fn (User $member) => $remaining[$member->id])
                     ->first();
 
@@ -162,7 +166,7 @@ class PlanejamentoSemanalController extends Controller
                     'revisor_id' => $reviewerId,
                     'semana_planejada' => $weekStart->toDateString(),
                 ]);
-                $remaining[$candidate->id] -= $hours;
+                $remaining[$candidate->id] -= $points;
                 $assigned++;
             }
         });

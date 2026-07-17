@@ -10,13 +10,19 @@ use App\Models\Risco;
 use App\Models\Incidente;
 use App\Models\ControleEvento;
 use App\Models\LgpdItem;
+use App\Models\User;
 use App\Services\GeminiService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        $weekStart = now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $weekEnd = $weekStart->copy()->endOfWeek();
+        $operationalStatuses = ['planejado', 'pendente', 'em_execucao', 'em_revisao', 'bloqueado', 'atrasado'];
+
         $ativos = [
             'clientes' => Cliente::count(),
             'softwares' => Software::count(),
@@ -59,8 +65,50 @@ class DashboardController extends Controller
         $ultimos_riscos = Risco::latest()->take(3)->get();
         $ultimos_incidentes = Incidente::latest()->take(3)->get();
 
+        $weeklyEvents = ControleEvento::query()
+            ->whereDate('semana_planejada', $weekStart->toDateString())
+            ->whereNotIn('status', ['cancelado', 'dispensado'])
+            ->get();
+        $teamMembers = User::query()
+            ->where('active', true)
+            ->where('disponivel_para_tarefas', true)
+            ->orderBy('name')
+            ->get();
+        $eventsByExecutor = $weeklyEvents->groupBy('executor_id');
+        $teamWorkload = $teamMembers->map(function (User $member) use ($eventsByExecutor) {
+            $tasks = $eventsByExecutor->get($member->id, collect());
+            $capacity = (int) $member->capacidade_semanal_pontos;
+            $planned = (int) $tasks->sum(fn (ControleEvento $event) => $event->effort_points);
+
+            return [
+                'user' => $member,
+                'tasks' => $tasks->count(),
+                'capacity' => $capacity,
+                'planned' => $planned,
+                'remaining' => $capacity - $planned,
+            ];
+        });
+
+        $operacional = [
+            'semana_inicio' => $weekStart,
+            'semana_fim' => $weekEnd,
+            'minhas_tarefas' => ControleEvento::where('executor_id', auth()->id())->whereIn('status', $operationalStatuses)->count(),
+            'minhas_revisoes' => ControleEvento::where('revisor_id', auth()->id())->where('status', 'em_revisao')->count(),
+            'em_revisao' => ControleEvento::where('status', 'em_revisao')->count(),
+            'bloqueadas' => ControleEvento::where('status', 'bloqueado')->count(),
+            'atrasadas' => ControleEvento::where('status', 'atrasado')->count(),
+            'sem_estimativa' => ControleEvento::whereIn('status', ['planejado', 'pendente', 'atrasado'])->where(function ($query) { $query->whereNull('esforco')->orWhereIn('esforco', ['GG', 'Programa']); })->count(),
+            'sem_executor' => ControleEvento::whereIn('status', $operationalStatuses)->whereNull('executor_id')->count(),
+            'sem_prazo' => ControleEvento::whereIn('status', $operationalStatuses)->whereNull('data_prevista')->count(),
+            'planejado_pontos' => (int) $weeklyEvents->sum(fn (ControleEvento $event) => $event->effort_points),
+            'concluidas_semana' => $weeklyEvents->where('status', 'concluido')->count(),
+            'total_semana' => $weeklyEvents->count(),
+            'capacidade_total' => (float) $teamWorkload->sum('capacity'),
+            'team' => $teamWorkload,
+        ];
+
         return view('dashboard', compact(
-            'ativos', 'governanca', 'riscos', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_riscos', 'ultimos_incidentes'
+            'ativos', 'governanca', 'riscos', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_riscos', 'ultimos_incidentes', 'operacional'
         ));
     }
 

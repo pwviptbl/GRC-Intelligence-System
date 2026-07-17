@@ -28,7 +28,7 @@ class UserController extends Controller
             'password' => ['required', Rules\Password::min(8)->letters()->numbers()->symbols()],
             'role' => ['required', 'in:admin,governanca,operacional,auditor'],
             'nivel_operacional' => ['nullable', 'in:junior,pleno,especialista'],
-            'capacidade_semanal_horas' => ['required', 'numeric', 'min:0', 'max:168'],
+            'capacidade_semanal_pontos' => ['required', 'integer', 'min:1', 'max:40'],
             'areas_atuacao' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -38,7 +38,7 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
             'role' => $request->role,
             'nivel_operacional' => $request->nivel_operacional,
-            'capacidade_semanal_horas' => $request->capacidade_semanal_horas,
+            'capacidade_semanal_pontos' => $request->capacidade_semanal_pontos,
             'disponivel_para_tarefas' => $request->boolean('disponivel_para_tarefas'),
             'areas_atuacao' => $request->areas_atuacao,
             'active' => true,
@@ -53,7 +53,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'role' => ['required', 'in:admin,governanca,operacional,auditor'],
             'nivel_operacional' => ['nullable', 'in:junior,pleno,especialista'],
-            'capacidade_semanal_horas' => ['required', 'numeric', 'min:0', 'max:168'],
+            'capacidade_semanal_pontos' => ['required', 'integer', 'min:1', 'max:40'],
             'areas_atuacao' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -61,7 +61,7 @@ class UserController extends Controller
             'name' => $request->name,
             'role' => $request->role,
             'nivel_operacional' => $request->nivel_operacional,
-            'capacidade_semanal_horas' => $request->capacidade_semanal_horas,
+            'capacidade_semanal_pontos' => $request->capacidade_semanal_pontos,
             'disponivel_para_tarefas' => $request->boolean('disponivel_para_tarefas'),
             'areas_atuacao' => $request->areas_atuacao,
             'active' => $request->has('active'),
