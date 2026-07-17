@@ -353,8 +353,13 @@ class CalendarioControleController extends Controller
             'somente_atividades' => $catalogOnly,
         ]));
 
+        $indexFilters = array_filter([
+            'software_id' => $filters['software_id'] ?? null,
+            'somente_atividades' => $catalogOnly ? '1' : null,
+        ], fn ($value) => $value !== null);
+
         return redirect()
-            ->route('calendario_controles.index', ['software_id' => $filters['software_id'] ?? null])
+            ->route('calendario_controles.index', $indexFilters)
             ->with('success', "Geracao concluida: {$result['created']} sugestao(oes) criada(s), {$result['skipped']} ignorada(s), {$result['automatic']} automatica(s) fora do fluxo operacional, {$result['prioritized']} priorizada(s) por risco.".($catalogOnly ? ' Apenas atividades cadastradas foram consideradas.' : ' Regras de Tier sem atividade tambem foram consideradas.'));
     }
 
@@ -723,6 +728,10 @@ class CalendarioControleController extends Controller
 
         if ($request->filled('tier')) {
             $query->where('tier', $request->tier);
+        }
+
+        if ($request->boolean('somente_atividades')) {
+            $query->whereNotNull('atividade_id');
         }
 
         return $query;

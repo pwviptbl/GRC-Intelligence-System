@@ -59,6 +59,61 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
     }
 
+    public function test_catalog_only_suggestion_view_hides_legacy_tier_fallbacks(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        $activity = $this->createActivity($software);
+        ControleEvento::create([
+            'software_id' => $software->id,
+            'acao_controle_snapshot' => 'Fallback de Tier legado',
+            'status' => 'sugestao',
+            'prioridade' => 'Alta',
+            'origem' => 'tier',
+        ]);
+        ControleEvento::create([
+            'software_id' => $software->id,
+            'atividade_id' => $activity->id,
+            'acao_controle_snapshot' => 'Atividade catalogada',
+            'status' => 'sugestao',
+            'prioridade' => 'Alta',
+            'origem' => 'atividade+tier',
+        ]);
+
+        $this->get(route('calendario_controles.index', ['somente_atividades' => 1]))
+            ->assertOk()
+            ->assertSee('Atividade catalogada')
+            ->assertDontSee('Fallback de Tier legado');
+    }
+
+    public function test_catalog_generation_does_not_apply_global_activity_to_every_software(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        $policy = $this->createTierPolicy();
+        $globalActivity = Atividade::create([
+            'software_id' => null,
+            'tier_politica_id' => $policy->id,
+            'atividade' => 'Atividade global de governanca',
+            'esforco' => 'M',
+            'tier_minimo' => 1,
+            'tipo_demanda' => 'Governanca',
+            'ativo' => true,
+        ]);
+
+        $this->post(route('calendario_controles.generate'), [
+            'somente_atividades' => true,
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('controle_eventos', [
+            'software_id' => $software->id,
+            'atividade_id' => $globalActivity->id,
+            'status' => 'sugestao',
+        ]);
+    }
+
     public function test_generation_uses_catalog_activity_when_available(): void
     {
         $this->actingAs($this->adminUser());
@@ -100,7 +155,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'responsavel' => 'Time Base',
         ]);
         $atividade = Atividade::create([
-            'software_id' => null,
+            'software_id' => $software->id,
             'tier_politica_id' => $tierPolicy->id,
             'atividade' => 'Pentest interno',
             'modulo' => null,

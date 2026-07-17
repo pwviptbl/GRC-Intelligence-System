@@ -480,11 +480,7 @@ class CalendarioControleService
                 $query->whereNull('tier_politica_id')
                     ->orWhereHas('tierPolitica', fn ($policy) => $policy->where('tier', $tier)->where('ativo', true));
             })
-            ->where(function ($query) use ($software) {
-                $query->whereNull('software_id')
-                    ->orWhere('software_id', $software->id);
-            })
-            ->orderByRaw('CASE WHEN software_id IS NULL THEN 1 ELSE 0 END')
+            ->where('software_id', $software->id)
             ->orderByRaw("CASE WHEN rotina IS NULL OR rotina = '' THEN 1 ELSE 0 END")
             ->orderByRaw("CASE WHEN modulo IS NULL OR modulo = '' THEN 1 ELSE 0 END")
             ->orderBy('atividade')

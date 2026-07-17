@@ -758,7 +758,10 @@
                                     <td>{{ $sugestao->rotina ?: 'Escopo geral' }}</td>
                                     <td><span class="badge" :style="tierStyle('{{ $sugestao->tier }}')">{{ $sugestao->tier_label }}</span></td>
                                     <td style="min-width:240px">
-                                        <div style="color:var(--text-1)">{{ $sugestao->acao_controle_snapshot }}</div>
+                                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                                            <span style="font-size:10px;color:{{ $sugestao->atividade_id ? 'var(--cyan)' : 'var(--text-3)' }}">{{ $sugestao->atividade_id ? 'Atividade' : 'Tier' }}</span>
+                                            <span style="color:var(--text-1)">{{ $sugestao->acao_controle_snapshot }}</span>
+                                        </div>
                                         <div style="font-size:11px; color:var(--text-3); margin-top:4px">{{ $sugestao->frequencia_snapshot }}</div>
                                     </td>
                                     <td>{{ optional($sugestao->data_prevista)->format('d/m/Y') }}</td>
