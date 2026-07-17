@@ -345,13 +345,17 @@ class CalendarioControleController extends Controller
 
         $filters = $request->validate([
             'software_id' => 'nullable|integer|exists:software,id',
+            'somente_atividades' => 'nullable|boolean',
         ]);
 
-        $result = $this->service->generateSuggestions($filters);
+        $catalogOnly = $request->boolean('somente_atividades');
+        $result = $this->service->generateSuggestions(array_merge($filters, [
+            'somente_atividades' => $catalogOnly,
+        ]));
 
         return redirect()
-            ->route('calendario_controles.index', $filters)
-            ->with('success', "Geracao concluida: {$result['created']} sugestao(oes) criada(s), {$result['skipped']} ignorada(s), {$result['automatic']} automatica(s) fora do fluxo operacional, {$result['prioritized']} priorizada(s) por risco.");
+            ->route('calendario_controles.index', ['software_id' => $filters['software_id'] ?? null])
+            ->with('success', "Geracao concluida: {$result['created']} sugestao(oes) criada(s), {$result['skipped']} ignorada(s), {$result['automatic']} automatica(s) fora do fluxo operacional, {$result['prioritized']} priorizada(s) por risco.".($catalogOnly ? ' Apenas atividades cadastradas foram consideradas.' : ' Regras de Tier sem atividade tambem foram consideradas.'));
     }
 
     public function approveSuggestions(Request $request)

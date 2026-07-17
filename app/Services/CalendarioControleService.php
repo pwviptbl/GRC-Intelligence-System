@@ -14,6 +14,7 @@ class CalendarioControleService
 {
     public function generateSuggestions(array $filters = []): array
     {
+        $catalogOnly = (bool) ($filters['somente_atividades'] ?? false);
         $softwareQuery = Software::query()
             ->where('ativo', true)
             ->orderBy('nome');
@@ -30,7 +31,7 @@ class CalendarioControleService
         $automatic = 0;
         $messages = [];
 
-        DB::transaction(function () use ($softwares, &$created, &$skipped, &$prioritized, &$automatic, &$messages) {
+        DB::transaction(function () use ($softwares, $catalogOnly, &$created, &$skipped, &$prioritized, &$automatic, &$messages) {
             $candidates = [];
 
             foreach ($softwares as $software) {
@@ -88,10 +89,10 @@ class CalendarioControleService
                             'software' => $software,
                             'policy' => $activityPolicy,
                             'activity' => $activity,
-                            'risk' => $risk,
+                            'risk' => null,
                             'tier' => $tier,
                             'never_tested' => $neverTested,
-                            'weight' => $this->priorityWeight($tier, $risk, $neverTested),
+                            'weight' => $this->priorityWeight($tier, null, $neverTested),
                         ];
                     }
                 }
@@ -105,6 +106,10 @@ class CalendarioControleService
 
                 foreach ($policies as $policy) {
                     if (isset($coveredPolicyIds[$policy->id])) {
+                        continue;
+                    }
+
+                    if ($catalogOnly) {
                         continue;
                     }
 

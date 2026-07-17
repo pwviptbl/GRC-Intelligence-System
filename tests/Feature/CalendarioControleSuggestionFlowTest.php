@@ -40,6 +40,25 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
     }
 
+    public function test_catalog_only_generation_skips_tier_fallbacks_without_activities(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $software = $this->createSoftware();
+        $tierPolicy = $this->createTierPolicy();
+
+        $this->post(route('calendario_controles.generate'), [
+            'somente_atividades' => true,
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('controle_eventos', [
+            'software_id' => $software->id,
+            'tier_politica_id' => $tierPolicy->id,
+            'atividade_id' => null,
+            'status' => 'sugestao',
+        ]);
+    }
+
     public function test_generation_uses_catalog_activity_when_available(): void
     {
         $this->actingAs($this->adminUser());
@@ -56,6 +75,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'software_id' => $software->id,
             'tier_politica_id' => $tierPolicy->id,
             'atividade_id' => $atividade->id,
+            'risco_id' => null,
             'acao_controle_snapshot' => 'Analise autenticada',
             'modulo' => 'Arrecadacao',
             'categoria' => 'Cadastro',

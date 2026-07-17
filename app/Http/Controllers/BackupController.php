@@ -82,6 +82,7 @@ class BackupController extends Controller
                 'database_driver' => config('database.default'),
                 'database_dump' => 'database.sql',
                 'uploads_paths' => ['storage/app/public/', 'storage/app/private/'],
+                'backup_archives_excluded' => true,
                 'app' => config('app.name'),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
@@ -165,29 +166,28 @@ class BackupController extends Controller
 
     public function validateIntegrity(string $file): RedirectResponse
     {
-        $safeName = $this->existingBackupName($file);
-        $path = Storage::disk('local')->path(self::BACKUP_DIR . '/' . $safeName);
-        $valid = false;
-
-        if (class_exists(ZipArchive::class)) {
-            $zip = new ZipArchive();
-            if ($zip->open($path) === true) {
-                $valid = $zip->locateName('database.sql') !== false
-                    && $zip->locateName('manifest.json') !== false;
-                $zip->close();
-            }
-        }
-
-        $metadata = $this->readMetadata($safeName);
-        $metadata['integrity'] = $valid ? 'valid' : 'invalid';
-        $metadata['checksum'] = hash_file('sha256', $path);
-        $metadata['validated_at'] = now()->toIso8601String();
-        $this->writeMetadata($safeName, $metadata);
+        $result = $this->verifyBackup($file);
 
         return redirect()->route('backups.index')->with(
-            $valid ? 'success' : 'error',
-            $valid ? 'Integridade do backup validada com sucesso.' : 'Backup inválido ou incompleto.'
+            $result['valid'] ? 'success' : 'error',
+            $result['valid'] ? 'Integridade do backup validada com sucesso.' : 'Backup inválido: '.$result['reason']
         );
+    }
+
+    public function verifyBackup(string $file): array
+    {
+        $safeName = $this->existingBackupName($file);
+        $path = Storage::disk('local')->path(self::BACKUP_DIR . '/' . $safeName);
+        $metadata = $this->readMetadata($safeName);
+        $result = $this->inspectBackup($path, $metadata['checksum'] ?? null);
+
+        $metadata['integrity'] = $result['valid'] ? 'valid' : 'invalid';
+        $metadata['checksum'] = $result['checksum'];
+        $metadata['validated_at'] = now()->toIso8601String();
+        $metadata['validation_reason'] = $result['reason'];
+        $this->writeMetadata($safeName, $metadata);
+
+        return $result;
     }
 
     public function pruneAutomaticBackups(?int $retention = null): int
@@ -251,7 +251,7 @@ class BackupController extends Controller
 
             $privateFilesPath = $tempDir . '/storage/app/private';
             if (File::isDirectory($privateFilesPath)) {
-                $this->restoreUploads($privateFilesPath, storage_path('app/private'));
+                $this->restorePrivateFiles($privateFilesPath, storage_path('app/private'));
             }
 
             return redirect()->route('backups.index')
@@ -390,7 +390,7 @@ class BackupController extends Controller
         }
 
         if (File::isDirectory($privateFilesDir)) {
-            $this->addDirectoryToZip($zip, $privateFilesDir, 'storage/app/private');
+            $this->addDirectoryToZip($zip, $privateFilesDir, 'storage/app/private', ['backups']);
         }
 
         $zip->close();
@@ -453,7 +453,57 @@ class BackupController extends Controller
             || str_starts_with($normalized, 'storage/app/private/');
     }
 
-    private function addDirectoryToZip(ZipArchive $zip, string $sourceDir, string $zipRoot): void
+    private function inspectBackup(string $zipPath, ?string $expectedChecksum): array
+    {
+        $checksum = hash_file('sha256', $zipPath) ?: '';
+        if ($checksum === '') {
+            return ['valid' => false, 'reason' => 'Não foi possível calcular o checksum.', 'checksum' => null];
+        }
+
+        if ($expectedChecksum && !hash_equals($expectedChecksum, $checksum)) {
+            return ['valid' => false, 'reason' => 'Checksum diferente do registrado.', 'checksum' => $checksum];
+        }
+
+        if (!class_exists(ZipArchive::class)) {
+            return ['valid' => false, 'reason' => 'Extensão ZIP não disponível.', 'checksum' => $checksum];
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            return ['valid' => false, 'reason' => 'Arquivo ZIP inválido.', 'checksum' => $checksum];
+        }
+
+        try {
+            $databaseIndex = $zip->locateName('database.sql');
+            $manifestIndex = $zip->locateName('manifest.json');
+            if ($databaseIndex === false || $manifestIndex === false) {
+                return ['valid' => false, 'reason' => 'database.sql ou manifest.json ausente.', 'checksum' => $checksum];
+            }
+
+            for ($index = 0; $index < $zip->numFiles; $index++) {
+                $name = $zip->getNameIndex($index);
+                if ($name === false || !$this->isSafeRestoreEntry($name)) {
+                    return ['valid' => false, 'reason' => 'Caminho interno inválido.', 'checksum' => $checksum];
+                }
+            }
+
+            $databaseStat = $zip->statIndex($databaseIndex);
+            if (($databaseStat['size'] ?? 0) < 1) {
+                return ['valid' => false, 'reason' => 'database.sql está vazio.', 'checksum' => $checksum];
+            }
+
+            $manifest = json_decode((string) $zip->getFromIndex($manifestIndex), true);
+            if (!is_array($manifest)) {
+                return ['valid' => false, 'reason' => 'manifest.json inválido.', 'checksum' => $checksum];
+            }
+
+            return ['valid' => true, 'reason' => 'Estrutura e checksum validados.', 'checksum' => $checksum];
+        } finally {
+            $zip->close();
+        }
+    }
+
+    private function addDirectoryToZip(ZipArchive $zip, string $sourceDir, string $zipRoot, array $excludedTopLevel = []): void
     {
         $sourceDir = rtrim($sourceDir, DIRECTORY_SEPARATOR);
         $zip->addEmptyDir($zipRoot);
@@ -466,6 +516,10 @@ class BackupController extends Controller
         foreach ($iterator as $item) {
             $fullPath = $item->getPathname();
             $relativePath = ltrim(str_replace($sourceDir, '', $fullPath), DIRECTORY_SEPARATOR);
+            $normalizedRelativePath = str_replace('\\', '/', $relativePath);
+            if (collect($excludedTopLevel)->contains(fn (string $directory) => $normalizedRelativePath === $directory || str_starts_with($normalizedRelativePath, $directory.'/'))) {
+                continue;
+            }
             $zipPath = $zipRoot . '/' . str_replace('\\', '/', $relativePath);
 
             if ($item->isDir()) {
@@ -486,6 +540,40 @@ class BackupController extends Controller
 
         if (!File::copyDirectory($sourceDir, $targetDir)) {
             throw new RuntimeException('Não foi possível restaurar os uploads do backup.');
+        }
+    }
+
+    private function restorePrivateFiles(string $sourceDir, string $targetDir): void
+    {
+        File::ensureDirectoryExists($targetDir);
+
+        foreach (File::allFiles($targetDir) as $file) {
+            $relativePath = ltrim(str_replace($targetDir, '', $file->getPathname()), DIRECTORY_SEPARATOR);
+            if (!str_starts_with(str_replace('\\', '/', $relativePath), 'backups/')) {
+                File::delete($file->getPathname());
+            }
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($sourceDir, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $relativePath = ltrim(str_replace($sourceDir, '', $item->getPathname()), DIRECTORY_SEPARATOR);
+            $normalizedRelativePath = str_replace('\\', '/', $relativePath);
+            if ($normalizedRelativePath === 'backups' || str_starts_with($normalizedRelativePath, 'backups/')) {
+                continue;
+            }
+
+            $destination = $targetDir.DIRECTORY_SEPARATOR.$relativePath;
+            if ($item->isDir()) {
+                File::ensureDirectoryExists($destination);
+                continue;
+            }
+
+            File::ensureDirectoryExists(dirname($destination));
+            File::copy($item->getPathname(), $destination);
         }
     }
 

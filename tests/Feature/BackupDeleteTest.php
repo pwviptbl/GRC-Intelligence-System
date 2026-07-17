@@ -82,6 +82,46 @@ class BackupDeleteTest extends TestCase
         $this->assertNotEmpty($metadata['checksum']);
     }
 
+    public function test_validation_detects_checksum_change_after_a_previous_check(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->makeDirectory('backups');
+        $path = Storage::disk('local')->path('backups/checksum.zip');
+
+        $zip = new ZipArchive();
+        $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('database.sql', 'select 1;');
+        $zip->addFromString('manifest.json', '{}');
+        $zip->close();
+
+        $user = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($user)->post(route('backups.validate', ['file' => 'checksum.zip']))
+            ->assertSessionHas('success');
+
+        file_put_contents($path, 'arquivo alterado');
+
+        $this->actingAs($user)->post(route('backups.validate', ['file' => 'checksum.zip']))
+            ->assertSessionHas('error', 'Backup inválido: Checksum diferente do registrado.');
+    }
+
+    public function test_validation_rejects_unsafe_paths_inside_backup(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->makeDirectory('backups');
+        $path = Storage::disk('local')->path('backups/inseguro.zip');
+
+        $zip = new ZipArchive();
+        $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('database.sql', 'select 1;');
+        $zip->addFromString('manifest.json', '{}');
+        $zip->addFromString('../fora.txt', 'nao deve extrair');
+        $zip->close();
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->post(route('backups.validate', ['file' => 'inseguro.zip']))
+            ->assertSessionHas('error', 'Backup inválido: Caminho interno inválido.');
+    }
+
     public function test_retention_removes_only_old_unprotected_automatic_backups(): void
     {
         Storage::fake('local');

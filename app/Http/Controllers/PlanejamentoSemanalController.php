@@ -52,6 +52,10 @@ class PlanejamentoSemanalController extends Controller
             ->with(['software:id,nome', 'risco:id,titulo'])
             ->whereNull('semana_planejada')
             ->whereIn('status', ['planejado', 'pendente', 'atrasado'])
+            ->where(function ($query) {
+                $query->whereNotNull('atividade_id')
+                    ->orWhere('origem', 'manual');
+            })
             ->orderByRaw($this->priorityOrderSql())
             ->orderBy('data_prevista')
             ->limit(200)

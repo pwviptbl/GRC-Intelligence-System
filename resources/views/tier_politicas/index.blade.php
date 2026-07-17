@@ -14,7 +14,7 @@
     .tier-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
     .tier-observation { color:var(--text-2); font-size:13px; line-height:1.65; white-space:pre-wrap; overflow-wrap:anywhere; }
     .tiers-desktop-table { overflow-x:auto; }
-    .tiers-desktop-table .data-table { min-width:1080px; table-layout:auto; }
+    .tiers-desktop-table .data-table { min-width:940px; table-layout:auto; }
     .tiers-desktop-table .tier-action-cell { min-width:320px; max-width:520px; white-space:normal; line-height:1.45; }
 
     @media (max-width: 900px) {
@@ -79,6 +79,13 @@
         return 'opacity:.55; background:rgba(255,255,255,.02)';
     },
 
+    decodePolicy(policy) {
+        if (typeof policy !== 'string') return policy;
+
+        const bytes = Uint8Array.from(atob(policy), character => character.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
+    },
+
     statusStyle(policy) {
         if (policy.ativo) return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
         return 'background:rgba(255,255,255,.05);color:var(--text-3);border-color:rgba(255,255,255,.08)';
@@ -101,9 +108,7 @@
     },
 
     openEdit(policy) {
-        if (typeof policy === 'string') {
-            policy = JSON.parse(atob(policy));
-        }
+        policy = this.decodePolicy(policy);
 
         this.editMode = true;
         this.form = {
@@ -116,9 +121,7 @@
     },
 
     openDuplicate(policy) {
-        if (typeof policy === 'string') {
-            policy = JSON.parse(atob(policy));
-        }
+        policy = this.decodePolicy(policy);
 
         this.editMode = false;
         this.form = {
@@ -132,9 +135,7 @@
     },
 
     openObservation(policy) {
-        if (typeof policy === 'string') {
-            policy = JSON.parse(atob(policy));
-        }
+        policy = this.decodePolicy(policy);
 
         this.observationPolicy = policy;
         this.showObservation = true;
@@ -214,7 +215,7 @@
         <div class="tiers-guide-grid">
             <div><strong style="color:var(--text-1)">Acao</strong><br>Cada linha representa um controle dentro do tier.</div>
             <div><strong style="color:var(--text-1)">Frequencia</strong><br>Quando o controle deve ocorrer, como a cada commit, mensal ou anual.</div>
-            <div><strong style="color:var(--text-1)">Bloqueio e Responsavel</strong><br>Rigor da esteira e dono da execucao.</div>
+            <div><strong style="color:var(--text-1)">Bloqueio</strong><br>Define o rigor da esteira para a regra.</div>
         </div>
     </div>
 
@@ -242,7 +243,6 @@
                     <th>Frequencia</th>
                     <th>Bloqueio</th>
                     <th>Status</th>
-                    <th>Responsavel</th>
                     <th>Atividades</th>
                     <th>Detalhes</th>
                     @if($canManageTiers)
@@ -258,7 +258,6 @@
                     <td>{{ $policy->frequencia }}</td>
                     <td>{{ $policy->bloqueio_automatico_label }}</td>
                     <td><span class="badge" :style="statusStyle(@js($policy))">{{ $policy->ativo_label }}</span></td>
-                    <td>{{ $policy->responsavel }}</td>
                     <td><a href="{{ route('atividades.index', ['tier_politica_id' => $policy->id]) }}" style="color:{{ $policy->atividades_count ? 'var(--cyan)' : 'var(--text-3)' }};text-decoration:none;white-space:nowrap">{{ $policy->atividades_count }} vinculadas</a></td>
                     <td>
                         <button type="button" data-policy="{{ base64_encode($policy->toJson()) }}" @click="openObservation($el.dataset.policy)" class="btn-del" title="Ver observacoes" aria-label="Ver observacoes" style="color:var(--cyan)">ⓘ</button>
@@ -289,7 +288,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ $canManageTiers ? 9 : 8 }}">
+                    <td colspan="{{ $canManageTiers ? 8 : 7 }}">
                         <div class="empty-state">
                             <div class="empty-icon">📐</div>
                             <p>Nenhuma acao de tier cadastrada ainda.</p>
@@ -312,9 +311,6 @@
                 <div class="tier-mobile-meta">
                     <span>{{ $policy->frequencia }}</span>
                     <span>{{ $policy->bloqueio_automatico_label }}</span>
-                </div>
-                <div class="tier-mobile-owner">
-                    {{ $policy->responsavel ?: 'Sem responsavel' }}
                 </div>
                 <div class="tier-mobile-owner"><a href="{{ route('atividades.index', ['tier_politica_id' => $policy->id]) }}" style="color:var(--cyan);text-decoration:none">{{ $policy->atividades_count }} atividades vinculadas</a></div>
                 <div class="tier-mobile-actions">
@@ -382,7 +378,7 @@
                 <div class="tier-form-grid">
                     <div class="form-group">
                         <label>Responsavel</label>
-                        <input type="text" name="responsavel" x-model="form.responsavel" class="form-input" placeholder="Ex: Analista / Devs / Junior" required />
+                        <input type="text" name="responsavel" x-model="form.responsavel" class="form-input" placeholder="Ex: Analista, Devs ou Junior" required />
                     </div>
                 </div>
                 <div class="form-group">

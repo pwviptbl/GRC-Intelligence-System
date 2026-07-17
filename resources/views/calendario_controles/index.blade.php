@@ -702,6 +702,11 @@
             <form action="{{ route('calendario_controles.generate') }}" method="POST" style="display:flex; gap:10px; align-items:end;">
                 @csrf
                 <input type="hidden" name="software_id" value="{{ request('software_id') }}">
+                <input type="hidden" name="somente_atividades" value="0">
+                <label style="display:flex;align-items:center;gap:7px;min-height:42px;padding:0 10px;color:var(--text-2);font-size:12px;cursor:pointer">
+                    <input type="checkbox" name="somente_atividades" value="1" checked>
+                    Somente atividades cadastradas
+                </label>
                 <button type="submit" class="btn-add">Gerar Sugestoes</button>
             </form>
             <a href="{{ route('calendario_controles.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">

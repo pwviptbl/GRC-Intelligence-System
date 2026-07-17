@@ -30,6 +30,23 @@ class WeeklyPlanningTest extends TestCase
             ->assertSee('10 pts');
     }
 
+    public function test_weekly_backlog_hides_generic_tier_fallbacks_but_keeps_manual_cards(): void
+    {
+        $admin = $this->admin();
+        $this->event('Atividade manual de governanca', 'P');
+        ControleEvento::create([
+            'acao_controle_snapshot' => 'Pentest generico de Tier',
+            'status' => 'atrasado',
+            'prioridade' => 'Alta',
+            'origem' => 'tier',
+        ]);
+
+        $this->actingAs($admin)->get(route('planejamento_semanal.index'))
+            ->assertOk()
+            ->assertSee('Atividade manual de governanca')
+            ->assertDontSee('Pentest generico de Tier');
+    }
+
     public function test_manual_assignment_respects_weekly_capacity(): void
     {
         $admin = $this->admin();
@@ -171,6 +188,7 @@ class WeeklyPlanningTest extends TestCase
             'status' => 'planejado',
             'prioridade' => $priority,
             'esforco' => $effort,
+            'origem' => 'manual',
         ]);
     }
 }
