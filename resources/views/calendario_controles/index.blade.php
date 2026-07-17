@@ -196,6 +196,9 @@
         .card-attachment-row > div:first-child { grid-column:1/-1; }
     }
 </style>
+@php
+    $canManageQueue = in_array(auth()->user()->role, ['admin', 'governanca'], true);
+@endphp
 <div class="table-view" x-data="{
     showExecutionModal: false,
     showCreateModal: false,
@@ -365,6 +368,16 @@
         if (!bytes) return '0 KB';
         if (bytes < 1048576) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
         return `${(bytes / 1048576).toFixed(1)} MB`;
+    },
+    auditFields(changes) {
+        if (!changes) return 'Sem detalhes adicionais';
+        const labels = {
+            status: 'status', executor_id: 'executor', revisor_id: 'revisor', prioridade: 'prioridade',
+            esforco: 'esforço', esforco_real_percebido: 'esforço percebido', data_prevista: 'data prevista',
+            modulo: 'módulo', categoria: 'categoria', rotina: 'rotina', tipo_demanda: 'natureza',
+            motivo_bloqueio: 'bloqueio', observacoes_execucao: 'observações'
+        };
+        return Object.keys(changes).map(field => labels[field] || field).join(', ');
     },
     async addStep() {
         if (!this.newStepTitle.trim()) return;
@@ -808,7 +821,7 @@
         </div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <div style="font-size:12px; color:var(--text-3)">{{ $eventos->count() }} item(ns) na fila</div>
-            <button type="button" class="btn-add" @click="showCreateModal = true">Novo Cartao</button>
+            @if($canManageQueue)<button type="button" class="btn-add" @click="showCreateModal = true">Novo Cartao</button>@endif
         </div>
     </div>
 
@@ -833,12 +846,14 @@
                 </header>
                 <div class="execution-column-body">
                     @forelse($columnEvents as $evento)
+                        @php($canWorkEvent = $canManageQueue || (auth()->user()->role === 'operacional' && in_array(auth()->id(), [$evento->executor_id, $evento->revisor_id], true)))
                         <button
                             type="button"
                             class="execution-card"
                             data-evento="{{ base64_encode($evento->toJson()) }}"
-                            @click="openExecution($el.dataset.evento)"
-                            title="Abrir gestao da atividade"
+                            @if($canWorkEvent) @click="openExecution($el.dataset.evento)" @endif
+                            title="{{ $canWorkEvent ? 'Abrir gestão da atividade' : 'Somente leitura: card atribuído a outro usuário' }}"
+                            {{ $canWorkEvent ? '' : 'disabled' }}
                         >
                             <span class="execution-card-top">
                                 <span class="execution-card-software">{{ $evento->software?->nome ?: 'Atividade geral' }}</span>
@@ -965,7 +980,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="submit" form="execution-delete-form" class="btn-del" style="margin-right:auto; font-size:12px;" onclick="return confirm('Deseja excluir este item da fila?')">Excluir</button>
+                    @if($canManageQueue)<button type="submit" form="execution-delete-form" class="btn-del" style="margin-right:auto; font-size:12px;" onclick="return confirm('Deseja excluir este item da fila?')">Excluir</button>@endif
                     <button type="button" class="btn-cancel" @click="openSteps(executionForm.id)">Etapas</button>
                     <button type="button" class="btn-cancel" @click="openRecords(executionForm.id)">Notas e anexos</button>
                     <button type="button" class="btn-cancel" @click="showExecutionModal = false">Cancelar</button>
@@ -1005,6 +1020,13 @@
                     <div class="card-record card-attachment-row"><div><a :href="`/execucao_controles/anexos/${attachment.id}/download`" style="color:var(--cyan);font-size:11px" x-text="attachment.nome_original"></a><div class="card-record-meta" style="margin:4px 0 0"><span x-text="attachment.autor?.name || 'Usuário removido'"></span><span x-text="formatBytes(attachment.tamanho)"></span></div></div><a class="btn-cancel" :href="`/execucao_controles/anexos/${attachment.id}/download`" style="text-decoration:none">Baixar</a><button type="button" class="btn-del" @click="removeAttachment(attachment)">×</button></div>
                 </template>
                 <div x-show="!selectedEvent.anexos || selectedEvent.anexos.length === 0" class="execution-empty">Nenhum anexo no card.</div>
+            </div>
+            <div style="margin-top:18px;margin-bottom:8px;color:var(--text-1);font-size:12px;font-weight:700">Histórico de alterações</div>
+            <div class="card-record-list">
+                <template x-for="history in (selectedEvent.historicos || [])" :key="history.id">
+                    <div class="card-record"><div class="card-record-meta"><span><span x-text="history.autor?.name || (history.origem === 'mcp' ? 'MCP' : 'Sistema')"></span> · <span x-text="history.acao"></span></span><span x-text="new Date(history.created_at).toLocaleString('pt-BR')"></span></div><div class="card-record-content" x-text="auditFields(history.alteracoes)"></div></div>
+                </template>
+                <div x-show="!selectedEvent.historicos || selectedEvent.historicos.length === 0" class="execution-empty">Nenhuma alteração registrada.</div>
             </div>
             <div class="modal-actions"><button type="button" class="btn-cancel" @click="showRecordsModal = false">Fechar</button></div>
         </div>

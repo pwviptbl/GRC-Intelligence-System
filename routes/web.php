@@ -104,11 +104,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
         Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
         Route::get('/planejamento_semanal', [PlanejamentoSemanalController::class, 'index'])->name('planejamento_semanal.index');
-        Route::post('/planejamento_semanal/atribuir', [PlanejamentoSemanalController::class, 'assign'])->name('planejamento_semanal.assign');
-        Route::post('/planejamento_semanal/distribuir', [PlanejamentoSemanalController::class, 'autoAssign'])->name('planejamento_semanal.auto_assign');
-        Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->name('planejamento_semanal.close');
-        Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->name('planejamento_semanal.remove');
-        Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->name('calendario_controles.store_manual');
+        Route::post('/planejamento_semanal/atribuir', [PlanejamentoSemanalController::class, 'assign'])->middleware('role:admin,governanca')->name('planejamento_semanal.assign');
+        Route::post('/planejamento_semanal/distribuir', [PlanejamentoSemanalController::class, 'autoAssign'])->middleware('role:admin,governanca')->name('planejamento_semanal.auto_assign');
+        Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->middleware('role:admin,governanca')->name('planejamento_semanal.close');
+        Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->middleware('role:admin,governanca')->name('planejamento_semanal.remove');
+        Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->middleware('role:admin,governanca')->name('calendario_controles.store_manual');
         Route::post('/execucao_controles/{calendario_controle}/notas', [CalendarioControleController::class, 'addNote'])->name('calendario_controles.add_note');
         Route::post('/execucao_controles/{calendario_controle}/anexos', [CalendarioControleController::class, 'addAttachment'])->name('calendario_controles.add_attachment');
         Route::get('/execucao_controles/anexos/{anexo}/download', [CalendarioControleController::class, 'downloadAttachment'])->name('calendario_controles.download_attachment');
@@ -120,12 +120,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'removeStep'])->name('calendario_controles.remove_step');
         Route::delete('/execucao_controles/evidencias/{evidencia}', [CalendarioControleController::class, 'removeStepEvidence'])->name('calendario_controles.remove_step_evidence');
         Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
-        Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
-        Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');
-        Route::post('/calendario_controles/plan-triaged', [CalendarioControleController::class, 'planTriaged'])->name('calendario_controles.plan_triaged');
-        Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->name('calendario_controles.discard_suggestions');
+        Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->middleware('role:admin,governanca')->name('calendario_controles.generate');
+        Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->middleware('role:admin,governanca')->name('calendario_controles.approve_suggestions');
+        Route::post('/calendario_controles/plan-triaged', [CalendarioControleController::class, 'planTriaged'])->middleware('role:admin,governanca')->name('calendario_controles.plan_triaged');
+        Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->middleware('role:admin,governanca')->name('calendario_controles.discard_suggestions');
         Route::patch('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
-        Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->name('calendario_controles.destroy');
+        Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->middleware('role:admin,governanca')->name('calendario_controles.destroy');
 
         Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
         Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');

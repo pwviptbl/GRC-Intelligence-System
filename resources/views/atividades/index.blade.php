@@ -23,6 +23,20 @@
     .activity-form-grid.details { grid-template-columns: repeat(3, 1fr); }
     .activity-form-grid.owner { grid-template-columns: 1fr 1fr; }
     .activity-modal { width: min(980px, 94vw); max-width: 980px; }
+    .activities-desktop-table { overflow-x: auto; }
+    .activities-desktop-table .data-table { min-width: 1320px; }
+    .activities-desktop-table th:last-child,
+    .activities-desktop-table td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 1;
+        min-width: 132px;
+        width: 132px;
+        background: var(--bg-surface);
+        box-shadow: -8px 0 14px rgba(0,0,0,.16);
+    }
+    .activities-desktop-table th:last-child { z-index: 2; background: var(--bg-card); }
+    .activities-desktop-table td:last-child > div { justify-content: center; white-space: nowrap; }
 
     @media (max-width: 1180px) {
         .activities-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -72,7 +86,9 @@
         .table-header .btn-add { justify-content: center; min-height: 42px; }
     }
 </style>
-@php($canManageActivities = in_array(auth()->user()->role, ['admin', 'governanca']))
+@php
+    $canManageActivities = in_array(auth()->user()->role, ['admin', 'governanca'], true);
+@endphp
 <div class="table-view" x-data="{
     showModal: false,
     editMode: false,

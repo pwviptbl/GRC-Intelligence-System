@@ -180,6 +180,11 @@ class ControleEvento extends Model
         return $this->hasMany(ControleEventoAnexo::class)->latest();
     }
 
+    public function historicos()
+    {
+        return $this->hasMany(ControleEventoHistorico::class)->latest();
+    }
+
     public function getTierLabelAttribute(): string
     {
         return $this->tier ? 'T' . $this->tier : 'Geral';

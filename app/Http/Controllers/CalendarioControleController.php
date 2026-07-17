@@ -134,11 +134,13 @@ class CalendarioControleController extends Controller
             'etapas.evidencias',
             'notas.autor:id,name',
             'anexos.autor:id,name',
+            'historicos.autor:id,name',
         ]));
     }
 
     public function addNote(Request $request, ControleEvento $calendario_controle)
     {
+        $this->authorizeCardWork($calendario_controle);
         $data = $request->validate(['conteudo' => ['required', 'string', 'max:5000']]);
         $note = $calendario_controle->notas()->create([
             'user_id' => auth()->id(),
@@ -150,6 +152,7 @@ class CalendarioControleController extends Controller
 
     public function addAttachment(Request $request, ControleEvento $calendario_controle)
     {
+        $this->authorizeCardWork($calendario_controle);
         $request->validate([
             'arquivo' => [
                 'required',
@@ -198,6 +201,8 @@ class CalendarioControleController extends Controller
 
     public function removeAttachment(ControleEventoAnexo $anexo)
     {
+        $this->authorizeCardWork($anexo->evento);
+        abort_unless($this->managesCards() || $anexo->user_id === auth()->id(), 403, 'Você só pode remover anexos enviados por você.');
         Storage::disk('local')->delete($anexo->caminho);
         $anexo->delete();
 
@@ -206,6 +211,7 @@ class CalendarioControleController extends Controller
 
     public function addStep(Request $request, ControleEvento $calendario_controle)
     {
+        $this->authorizeCardWork($calendario_controle);
         $data = $request->validate(['titulo' => ['required', 'string', 'max:255']]);
         $step = $calendario_controle->etapas()->create([
             'titulo' => $data['titulo'],
@@ -218,6 +224,7 @@ class CalendarioControleController extends Controller
 
     public function updateStep(Request $request, ControleEventoEtapa $etapa)
     {
+        $this->authorizeCardWork($etapa->evento);
         $data = $request->validate([
             'concluido' => ['nullable', 'boolean'],
             'observacoes' => ['nullable', 'string', 'max:5000'],
@@ -244,6 +251,7 @@ class CalendarioControleController extends Controller
 
     public function removeStep(ControleEventoEtapa $etapa)
     {
+        $this->authorizeCardWork($etapa->evento);
         Storage::disk('public')->delete($etapa->evidencias()->pluck('arquivo_caminho')->all());
         $etapa->delete();
 
@@ -252,6 +260,8 @@ class CalendarioControleController extends Controller
 
     public function removeStepEvidence(PlanoAcaoItemEvidencia $evidencia)
     {
+        $step = ControleEventoEtapa::findOrFail($evidencia->plano_acao_item_id);
+        $this->authorizeCardWork($step->evento);
         Storage::disk('public')->delete($evidencia->arquivo_caminho);
         $evidencia->delete();
 
@@ -260,6 +270,7 @@ class CalendarioControleController extends Controller
 
     public function importProcedure(Request $request, ControleEvento $calendario_controle)
     {
+        $this->authorizeCardWork($calendario_controle);
         $data = $request->validate([
             'procedimento_id' => ['required', 'integer', 'exists:procedimentos,id'],
         ]);
@@ -371,6 +382,7 @@ class CalendarioControleController extends Controller
 
     public function update(Request $request, ControleEvento $calendario_controle)
     {
+        $this->authorizeCardWork($calendario_controle);
         $data = $request->validate([
             'status'              => 'required|in:' . implode(',', ControleEvento::STATUS_OPTIONS),
             'acao_controle_snapshot' => 'nullable|string|max:255',
@@ -399,6 +411,15 @@ class CalendarioControleController extends Controller
             'score_confianca'     => 'nullable|integer|min:1|max:5',
             'triagem_observacoes' => 'nullable|string|max:1500',
         ]);
+
+        if (! $this->managesCards()) {
+            $data = collect($data)->only([
+                'status',
+                'observacoes_execucao',
+                'esforco_real_percebido',
+                'motivo_bloqueio',
+            ])->all();
+        }
 
         // Processa mudança de data
         if (!empty($data['data_prevista'])) {
@@ -471,6 +492,25 @@ class CalendarioControleController extends Controller
     protected function tableAvailable(): bool
     {
         return Schema::hasTable('controle_eventos');
+    }
+
+    protected function authorizeCardWork(ControleEvento $event): void
+    {
+        if ($this->managesCards()) {
+            return;
+        }
+
+        abort_unless(
+            auth()->user()?->role === 'operacional'
+                && in_array(auth()->id(), [$event->executor_id, $event->revisor_id], true),
+            403,
+            'Você só pode atuar em cards nos quais é executor ou revisor.'
+        );
+    }
+
+    protected function managesCards(): bool
+    {
+        return in_array(auth()->user()?->role, ['admin', 'governanca'], true);
     }
 
     protected function filteredOperationalQuery(Request $request)

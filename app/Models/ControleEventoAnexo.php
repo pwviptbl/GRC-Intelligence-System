@@ -12,4 +12,9 @@ class ControleEventoAnexo extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function evento()
+    {
+        return $this->belongsTo(ControleEvento::class, 'controle_evento_id');
+    }
 }
