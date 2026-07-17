@@ -203,6 +203,7 @@ class CalendarioControleController extends Controller
 
     public function downloadAttachment(ControleEventoAnexo $anexo)
     {
+        $this->authorizeCardWork($anexo->evento);
         abort_unless(Storage::disk('local')->exists($anexo->caminho), 404);
 
         return Storage::disk('local')->download($anexo->caminho, $anexo->nome_original);
@@ -238,7 +239,7 @@ class CalendarioControleController extends Controller
             'concluido' => ['nullable', 'boolean'],
             'observacoes' => ['nullable', 'string', 'max:5000'],
             'ordem' => ['nullable', 'integer', 'min:1'],
-            'evidencia' => ['nullable', 'file', 'max:10240'],
+            'evidencia' => $this->stepEvidenceUploadRules(),
         ]);
 
         if ($request->has('concluido')) {
@@ -251,7 +252,7 @@ class CalendarioControleController extends Controller
             $file = $request->file('evidencia');
             $etapa->evidencias()->create([
                 'arquivo_nome' => $file->getClientOriginalName(),
-                'arquivo_caminho' => $file->store('evidencias_planos', 'public'),
+                'arquivo_caminho' => $file->store('evidencias_planos', 'local'),
             ]);
         }
 
@@ -261,7 +262,7 @@ class CalendarioControleController extends Controller
     public function removeStep(ControleEventoEtapa $etapa)
     {
         $this->authorizeCardWork($etapa->evento);
-        Storage::disk('public')->delete($etapa->evidencias()->pluck('arquivo_caminho')->all());
+        Storage::disk('local')->delete($etapa->evidencias()->pluck('arquivo_caminho')->all());
         $etapa->delete();
 
         return response()->json(['success' => true]);
@@ -271,10 +272,19 @@ class CalendarioControleController extends Controller
     {
         $step = ControleEventoEtapa::findOrFail($evidencia->plano_acao_item_id);
         $this->authorizeCardWork($step->evento);
-        Storage::disk('public')->delete($evidencia->arquivo_caminho);
+        Storage::disk('local')->delete($evidencia->arquivo_caminho);
         $evidencia->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    public function downloadStepEvidence(PlanoAcaoItemEvidencia $evidencia)
+    {
+        $step = ControleEventoEtapa::findOrFail($evidencia->plano_acao_item_id);
+        $this->authorizeCardWork($step->evento);
+        abort_unless(Storage::disk('local')->exists($evidencia->arquivo_caminho), 404);
+
+        return Storage::disk('local')->download($evidencia->arquivo_caminho, $evidencia->arquivo_nome);
     }
 
     public function importProcedure(Request $request, ControleEvento $calendario_controle)
@@ -510,7 +520,7 @@ class CalendarioControleController extends Controller
             ->all();
 
         if ($paths !== []) {
-            Storage::disk('public')->delete($paths);
+            Storage::disk('local')->delete($paths);
         }
 
         Storage::disk('local')->delete($calendario_controle->anexos()->pluck('caminho')->all());
@@ -542,6 +552,26 @@ class CalendarioControleController extends Controller
     protected function managesCards(): bool
     {
         return in_array(auth()->user()?->role, ['admin', 'governanca'], true);
+    }
+
+    private function stepEvidenceUploadRules(): array
+    {
+        return [
+            'nullable',
+            'file',
+            'max:10240',
+            function (string $attribute, $file, \Closure $fail): void {
+                $extension = strtolower($file->getClientOriginalExtension());
+                $allowedExtensions = [
+                    'pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'zip',
+                    'tgz', 'gz', 'tar', 'doc', 'docx', 'xls', 'xlsx', 'md', 'json',
+                ];
+
+                if (!in_array($extension, $allowedExtensions, true)) {
+                    $fail('Tipo de arquivo não permitido. Envie documento, imagem, log ou arquivo compactado seguro.');
+                }
+            },
+        ];
     }
 
     protected function buildKanbanCapacitySummary($members, $events)

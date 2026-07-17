@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\AtividadeController;
+use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\CalendarioControleController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClienteController;
@@ -46,13 +47,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Gestão de Usuários (Apenas Admin)
     Route::middleware('role:admin')->group(function () {
         Route::resource('usuarios', UserController::class);
+        Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
         Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('/backups/create', [BackupController::class, 'create'])->name('backups.create');
         Route::get('/backups/download/{file}', [BackupController::class, 'download'])->where('file', '.*')->name('backups.download');
         Route::delete('/backups/{file}', [BackupController::class, 'destroy'])->where('file', '[^/]+')->name('backups.destroy');
         Route::patch('/backups/{file}/protection', [BackupController::class, 'toggleProtection'])->where('file', '[^/]+')->name('backups.protection');
         Route::post('/backups/{file}/validate', [BackupController::class, 'validateIntegrity'])->where('file', '[^/]+')->name('backups.validate');
-        Route::post('/backups/restore', [BackupController::class, 'restore'])->name('backups.restore');
+        Route::post('/backups/restore', [BackupController::class, 'restore'])->middleware('password.confirm')->name('backups.restore');
     });
 
     // 1. MÓDULOS RESTRITOS (Ativos e Governança)
@@ -102,6 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
         Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
         Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->name('incidentes.add_evidence');
+        Route::get('/incidentes/evidencia/{evidencia}/download', [IncidenteController::class, 'downloadEvidence'])->name('incidentes.download_evidence');
         Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->name('incidentes.remove_evidence');
 
         Route::get('/plano_acoes', fn () => redirect()->route('calendario_controles.kanban'))->name('plano_acoes.index');
@@ -124,6 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'updateStep'])->name('calendario_controles.update_step');
         Route::delete('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'removeStep'])->name('calendario_controles.remove_step');
         Route::delete('/execucao_controles/evidencias/{evidencia}', [CalendarioControleController::class, 'removeStepEvidence'])->name('calendario_controles.remove_step_evidence');
+        Route::get('/execucao_controles/evidencias/{evidencia}/download', [CalendarioControleController::class, 'downloadStepEvidence'])->name('calendario_controles.download_step_evidence');
         Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
         Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->middleware('role:admin,governanca')->name('calendario_controles.generate');
         Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->middleware('role:admin,governanca')->name('calendario_controles.approve_suggestions');

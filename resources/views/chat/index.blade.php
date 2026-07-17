@@ -71,9 +71,6 @@
             });
         }
     },
-    renderMd(text) {
-        return marked.parse(text);
-    },
     tipoLabel(tipo) {
         const labels = { consulta: '🔍 Consulta', cadastro: '✅ Cadastro', analise: '🧠 Análise', erro: '❌ Erro', geral: '🤖 IA' };
         return labels[tipo] || '🤖 IA';
@@ -85,7 +82,7 @@
                 <div class="msg-avatar" x-text="m.role === 'ai' ? '🤖' : '👤'"></div>
                 <div>
                     <span x-show="m.tipo && m.role === 'ai'" class="tipo-tag" :class="'tipo-' + m.tipo" x-text="tipoLabel(m.tipo)"></span>
-                    <div class="msg-bubble" x-html="renderMd(m.text)"></div>
+                    <div class="msg-bubble" x-text="m.text" style="white-space:pre-wrap"></div>
                 </div>
             </div>
         </template>

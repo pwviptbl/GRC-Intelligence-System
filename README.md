@@ -127,8 +127,12 @@ O projeto tambem expõe um endpoint HTTP em `/mcp`, adequado para clientes remot
 
 ```env
 MCP_SERVER_TOKEN=troque-este-token
+# Durante uma rotacao, aceite temporariamente os dois valores separados por virgula.
+# MCP_SERVER_TOKENS=token-atual,token-novo
 MCP_ALLOW_UNAUTHENTICATED=false
 MCP_ALLOWED_ORIGINS=https://chatgpt.com
+MCP_RATE_LIMIT_PER_MINUTE=120
+MCP_WRITE_RATE_LIMIT_PER_MINUTE=30
 ```
 
 Regras operacionais do MCP:
@@ -138,6 +142,8 @@ Regras operacionais do MCP:
 - Ferramentas de leitura executam normalmente.
 - Ferramentas de escrita retornam `dry_run` por padrao.
 - Para gravar de fato, o cliente deve chamar a tool com `confirm=true`.
+- Chamadas de escrita, inclusive previews, sao registradas na Auditoria sem os argumentos enviados.
+- O limite HTTP e aplicado por token e IP; ferramentas de escrita possuem um limite separado.
 - Requisicoes HTTP nao inicializadas devem enviar `MCP-Protocol-Version: 2025-11-25`.
 - O MCP permite listar, criar e atualizar politicas, regras de tier, procedimentos e etapas, riscos, incidentes e eventos do calendario.
 

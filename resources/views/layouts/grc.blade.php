@@ -130,7 +130,6 @@
       .modal-actions > button { min-height: 40px; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
@@ -274,6 +273,9 @@
         </a>
         <a href="{{ route('backups.index') }}" class="nav-btn" :class="{ 'active': view.includes('backups') }">
           <span class="icon" style="margin-right: 10px;">💾</span> Backup e Restauração
+        </a>
+        <a href="{{ route('auditoria.index') }}" class="nav-btn" :class="{ 'active': view.includes('auditoria') }">
+          <span class="icon" style="margin-right: 10px;">📜</span> Auditoria
         </a>
         @endif
       </nav>

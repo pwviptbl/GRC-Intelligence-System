@@ -515,10 +515,15 @@
         if (file) formData.append('evidencia', file);
         const response = await fetch(`/execucao_controles/etapas/${step.id}`, {
             method: 'POST',
-            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+            headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}'},
             body: formData
         });
         const updated = await response.json();
+        if (!response.ok) {
+            const messages = Object.values(updated.errors || {}).flat();
+            alert(messages[0] || updated.message || 'Não foi possível salvar a etapa.');
+            return;
+        }
         this.selectedEvent.etapas = this.selectedEvent.etapas.map(item => item.id === step.id ? updated : item);
     },
     async removeStep(step) {
@@ -1246,7 +1251,7 @@
                                 <div style="color:var(--text-1);font-size:12px;font-weight:600" x-text="step.titulo"></div>
                                 <textarea x-model="step.observacoes" class="form-textarea" rows="2" style="margin-top:8px" placeholder="Observacoes da etapa"></textarea>
                                 <input type="file" :id="`step-file-${step.id}`" class="form-input" style="margin-top:8px;font-size:11px">
-                                <div class="step-evidences"><template x-for="evidence in step.evidencias" :key="evidence.id"><span style="display:flex;gap:4px"><a class="step-evidence" :href="'/storage/' + evidence.arquivo_caminho" target="_blank" x-text="evidence.arquivo_nome"></a><button type="button" class="btn-del" @click="removeEvidence(evidence, step)">×</button></span></template></div>
+                                <div class="step-evidences"><template x-for="evidence in step.evidencias" :key="evidence.id"><span style="display:flex;gap:4px"><a class="step-evidence" :href="'/execucao_controles/evidencias/' + evidence.id + '/download'" x-text="evidence.arquivo_nome"></a><button type="button" class="btn-del" @click="removeEvidence(evidence, step)">×</button></span></template></div>
                             </div>
                             <div style="display:flex;flex-direction:column;gap:4px">
                                 <button type="button" class="btn-del" @click="moveStep(stepIndex, -1)" title="Mover para cima">↑</button>

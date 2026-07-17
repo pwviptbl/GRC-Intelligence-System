@@ -74,10 +74,15 @@
 
         const res = await fetch(`/incidentes/${this.viewInc.id}/evidencia`, {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: formData
         });
         const data = await res.json();
+        if (!res.ok) {
+            const messages = Object.values(data.errors || {}).flat();
+            alert(messages[0] || data.message || 'Não foi possível anexar a evidência.');
+            return;
+        }
         this.viewInc.evidencias = data.evidencias;
         fileInput.value = '';
         alert('Evidência anexada!');
@@ -359,7 +364,7 @@
             <div style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
                 <template x-for="ev in viewInc.evidencias" :key="ev.id">
                     <div class="incident-evidence-item" style="display:flex; justify-content:space-between; align-items:center; gap:10px; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05)">
-                        <a :href="'/storage/' + ev.arquivo_caminho" target="_blank" style="font-size:12px; color:var(--cyan); text-decoration:none; display:flex; align-items:center; gap:8px">
+                        <a :href="'/incidentes/evidencia/' + ev.id + '/download'" style="font-size:12px; color:var(--cyan); text-decoration:none; display:flex; align-items:center; gap:8px">
                             <span>📄</span> <span x-text="ev.arquivo_nome" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
                         </a>
                         <button @click="deleteEvidence(ev.id)" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:14px" title="Remover evidência">🗑</button>

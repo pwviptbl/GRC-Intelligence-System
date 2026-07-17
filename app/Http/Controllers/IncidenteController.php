@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Incidente;
+use App\Models\IncidenteEvidencia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class IncidenteController extends Controller
 {
@@ -23,25 +25,29 @@ class IncidenteController extends Controller
 
     public function addEvidence(Request $request, Incidente $incidente)
     {
-        try {
-            if ($request->hasFile('evidencia')) {
-                $file = $request->file('evidencia');
-                $path = $file->store('evidencias_incidentes', 'public');
-                
-                $incidente->evidencias()->create([
-                    'arquivo_nome' => $file->getClientOriginalName(),
-                    'arquivo_caminho' => $path
-                ]);
-            }
-            return response()->json($incidente->load('evidencias'));
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        $request->validate([
+            'evidencia' => $this->evidenceUploadRules(),
+        ]);
+
+        $file = $request->file('evidencia');
+        $incidente->evidencias()->create([
+            'arquivo_nome' => $file->getClientOriginalName(),
+            'arquivo_caminho' => $file->store('evidencias_incidentes', 'local'),
+        ]);
+
+        return response()->json($incidente->load('evidencias'));
     }
 
-    public function removeEvidence(\App\Models\IncidenteEvidencia $evidencia)
+    public function downloadEvidence(IncidenteEvidencia $evidencia)
     {
-        \Illuminate\Support\Facades\Storage::disk('public')->delete($evidencia->arquivo_caminho);
+        abort_unless(Storage::disk('local')->exists($evidencia->arquivo_caminho), 404);
+
+        return Storage::disk('local')->download($evidencia->arquivo_caminho, $evidencia->arquivo_nome);
+    }
+
+    public function removeEvidence(IncidenteEvidencia $evidencia)
+    {
+        Storage::disk('local')->delete($evidencia->arquivo_caminho);
         $evidencia->delete();
         return response()->json(['success' => true]);
     }
@@ -85,7 +91,7 @@ class IncidenteController extends Controller
         $paths = $incidente->evidencias()->pluck('arquivo_caminho')->filter()->toArray();
 
         if (!empty($paths)) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($paths);
+            Storage::disk('local')->delete($paths);
         }
 
         $incidente->delete();
@@ -111,5 +117,25 @@ class IncidenteController extends Controller
             'detectado_por.required' => 'O campo detectado por é obrigatório.',
             'detectado_por.max' => 'O campo detectado por deve ter no máximo 255 caracteres.',
         ]);
+    }
+
+    private function evidenceUploadRules(): array
+    {
+        return [
+            'required',
+            'file',
+            'max:10240',
+            function (string $attribute, $file, \Closure $fail): void {
+                $extension = strtolower($file->getClientOriginalExtension());
+                $allowedExtensions = [
+                    'pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'zip',
+                    'tgz', 'gz', 'tar', 'doc', 'docx', 'xls', 'xlsx', 'md', 'json',
+                ];
+
+                if (!in_array($extension, $allowedExtensions, true)) {
+                    $fail('Tipo de arquivo não permitido. Envie documento, imagem, log ou arquivo compactado seguro.');
+                }
+            },
+        ];
     }
 }

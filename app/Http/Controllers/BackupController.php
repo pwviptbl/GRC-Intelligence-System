@@ -81,11 +81,17 @@ class BackupController extends Controller
                 'generated_at' => now()->toIso8601String(),
                 'database_driver' => config('database.default'),
                 'database_dump' => 'database.sql',
-                'uploads_path' => 'storage/app/public/',
+                'uploads_paths' => ['storage/app/public/', 'storage/app/private/'],
                 'app' => config('app.name'),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-            $this->buildZip($zipPath, $dumpPath, $manifestPath, storage_path('app/public'));
+            $this->buildZip(
+                $zipPath,
+                $dumpPath,
+                $manifestPath,
+                storage_path('app/public'),
+                storage_path('app/private'),
+            );
             $this->writeMetadata($zipName, [
                 'origin' => $origin,
                 'protected' => false,
@@ -243,6 +249,11 @@ class BackupController extends Controller
                 $this->restoreUploads($uploadsPath, storage_path('app/public'));
             }
 
+            $privateFilesPath = $tempDir . '/storage/app/private';
+            if (File::isDirectory($privateFilesPath)) {
+                $this->restoreUploads($privateFilesPath, storage_path('app/private'));
+            }
+
             return redirect()->route('backups.index')
                 ->with('success', 'Backup restaurado com sucesso.');
         } catch (\Throwable $e) {
@@ -353,7 +364,13 @@ class BackupController extends Controller
         throw new RuntimeException('Driver de banco não suportado para restauração automática: ' . $driver);
     }
 
-    private function buildZip(string $zipPath, string $dumpPath, string $manifestPath, string $uploadsDir): void
+    private function buildZip(
+        string $zipPath,
+        string $dumpPath,
+        string $manifestPath,
+        string $publicUploadsDir,
+        string $privateFilesDir,
+    ): void
     {
         if (!class_exists(ZipArchive::class)) {
             throw new RuntimeException('Extensão ZIP não disponível no PHP.');
@@ -368,8 +385,12 @@ class BackupController extends Controller
         $zip->addFile($dumpPath, 'database.sql');
         $zip->addFile($manifestPath, 'manifest.json');
 
-        if (File::isDirectory($uploadsDir)) {
-            $this->addDirectoryToZip($zip, $uploadsDir, 'storage/app/public');
+        if (File::isDirectory($publicUploadsDir)) {
+            $this->addDirectoryToZip($zip, $publicUploadsDir, 'storage/app/public');
+        }
+
+        if (File::isDirectory($privateFilesDir)) {
+            $this->addDirectoryToZip($zip, $privateFilesDir, 'storage/app/private');
         }
 
         $zip->close();
@@ -387,8 +408,49 @@ class BackupController extends Controller
             throw new RuntimeException('Não foi possível abrir o arquivo zip para restauração.');
         }
 
-        $zip->extractTo($extractTo);
-        $zip->close();
+        try {
+            $hasDatabaseDump = false;
+            $hasManifest = false;
+
+            for ($index = 0; $index < $zip->numFiles; $index++) {
+                $name = $zip->getNameIndex($index);
+                if ($name === false || !$this->isSafeRestoreEntry($name)) {
+                    throw new RuntimeException('O backup contém um caminho de arquivo inválido.');
+                }
+
+                $hasDatabaseDump = $hasDatabaseDump || $name === 'database.sql';
+                $hasManifest = $hasManifest || $name === 'manifest.json';
+            }
+
+            if (!$hasDatabaseDump || !$hasManifest) {
+                throw new RuntimeException('O backup deve conter database.sql e manifest.json.');
+            }
+
+            if (!$zip->extractTo($extractTo)) {
+                throw new RuntimeException('Não foi possível extrair o arquivo de backup.');
+            }
+        } finally {
+            $zip->close();
+        }
+    }
+
+    private function isSafeRestoreEntry(string $name): bool
+    {
+        $normalized = str_replace('\\', '/', $name);
+
+        if ($normalized === '' || str_contains($normalized, "\0") || str_starts_with($normalized, '/')) {
+            return false;
+        }
+
+        $segments = explode('/', rtrim($normalized, '/'));
+        if (in_array('..', $segments, true)) {
+            return false;
+        }
+
+        return $normalized === 'database.sql'
+            || $normalized === 'manifest.json'
+            || str_starts_with($normalized, 'storage/app/public/')
+            || str_starts_with($normalized, 'storage/app/private/');
     }
 
     private function addDirectoryToZip(ZipArchive $zip, string $sourceDir, string $zipRoot): void

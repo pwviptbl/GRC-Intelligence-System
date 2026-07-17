@@ -22,6 +22,16 @@ class RoleMiddleware
 
         $user = auth()->user();
 
+        if (! $user->active) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Esta conta está desativada.',
+            ]);
+        }
+
         // 1. Admin tem acesso total sempre
         if ($user->role === 'admin') {
             return $next($request);

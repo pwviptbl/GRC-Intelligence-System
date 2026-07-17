@@ -13,17 +13,18 @@ class ValidateGrcMcpCommand extends Command
 
     public function handle(GrcMcpProtocol $protocol): int
     {
-        $token = (string) config('mcp.token');
+        $tokens = config('mcp.tokens', []);
+        $token = (string) ($tokens[0] ?? config('mcp.token'));
         $allowUnauthenticated = (bool) config('mcp.allow_unauthenticated', false);
 
         if ($token === '' && ! $allowUnauthenticated) {
-            $this->error('MCP invalido: defina MCP_SERVER_TOKEN.');
+            $this->error('MCP invalido: defina MCP_SERVER_TOKEN ou MCP_SERVER_TOKENS.');
 
             return self::FAILURE;
         }
 
-        if ($token !== '' && strlen($token) < 32) {
-            $this->error('MCP invalido: MCP_SERVER_TOKEN deve ter pelo menos 32 caracteres.');
+        if ($token !== '' && collect($tokens ?: [$token])->contains(fn (string $value) => strlen($value) < 32)) {
+            $this->error('MCP invalido: cada token MCP deve ter pelo menos 32 caracteres.');
 
             return self::FAILURE;
         }

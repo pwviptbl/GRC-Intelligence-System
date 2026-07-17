@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Services\AuditLogService;
 
 class LoginRequest extends FormRequest
 {
@@ -42,8 +43,13 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credentials = array_merge($this->only('email', 'password'), ['active' => true]);
+
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+            app(AuditLogService::class)->record('auth.login_failed', 'auth', $this, statusCode: 422, context: [
+                'email_fingerprint' => substr(hash('sha256', Str::lower($this->string('email'))), 0, 16),
+            ]);
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),

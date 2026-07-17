@@ -99,7 +99,7 @@
                 <h2 style="color: var(--text-1); margin: 0; font-size: 18px;">Plano de Voo Sugerido</h2>
             </div>
             
-            <div class="roadmap-content" x-html="roadmap.replace(/\n/g, '<br>')" style="color: var(--text-2); line-height: 1.8; font-size: 15px; white-space: pre-wrap;">
+            <div class="roadmap-content" x-text="roadmap" style="color: var(--text-2); line-height: 1.8; font-size: 15px; white-space: pre-wrap;">
             </div>
 
             <div style="margin-top: 40px; padding: 20px; background: rgba(0,255,159,0.03); border: 1px solid rgba(0,255,159,0.1); border-radius: 12px;">
