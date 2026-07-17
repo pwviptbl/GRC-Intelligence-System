@@ -106,6 +106,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/planejamento_semanal', [PlanejamentoSemanalController::class, 'index'])->name('planejamento_semanal.index');
         Route::post('/planejamento_semanal/atribuir', [PlanejamentoSemanalController::class, 'assign'])->name('planejamento_semanal.assign');
         Route::post('/planejamento_semanal/distribuir', [PlanejamentoSemanalController::class, 'autoAssign'])->name('planejamento_semanal.auto_assign');
+        Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->name('planejamento_semanal.close');
         Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->name('planejamento_semanal.remove');
         Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->name('calendario_controles.store_manual');
         Route::get('/execucao_controles/{calendario_controle}', [CalendarioControleController::class, 'showExecution'])->name('calendario_controles.show_execution');

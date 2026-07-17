@@ -23,6 +23,9 @@ class ControleEvento extends Model
     ];
 
     public const DEMAND_TYPE_OPTIONS = [
+        'Gestao',
+        'Governanca',
+        'Planejamento',
         'Investigacao',
         'Campanha',
         'Controle recorrente',

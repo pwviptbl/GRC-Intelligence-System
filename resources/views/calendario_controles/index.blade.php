@@ -135,6 +135,31 @@
     }
     .execution-modal-summary { grid-template-columns: 1fr; margin-bottom: 18px; }
     .execution-form-grid { grid-template-columns: repeat(3, 1fr); }
+    .execution-edit-modal {
+        width: min(860px, calc(100vw - 32px));
+        max-width: 860px;
+        max-height: min(92dvh, 920px);
+        padding: 22px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+    .execution-edit-modal > h3 {
+        margin-bottom: 14px;
+    }
+    .execution-edit-modal .execution-modal-summary {
+        margin-bottom: 14px;
+    }
+    .execution-edit-modal .modal-actions {
+        position: sticky;
+        bottom: -22px;
+        z-index: 2;
+        margin: 4px -22px -22px;
+        padding: 14px 22px;
+        border-top: 1px solid var(--border);
+        background: var(--bg-card);
+    }
 
     @media (max-width: 1180px) {
         .controls-filter-grid { grid-template-columns: repeat(3, 1fr); }
@@ -151,13 +176,17 @@
         .execution-column-body { max-height: none; }
         .execution-modal-summary,
         .execution-form-grid { grid-template-columns: 1fr; }
-        .modal-overlay { align-items: flex-start; padding: 12px; overflow-y: auto; }
+        .modal-overlay { align-items: center; padding: 10px; overflow: hidden; }
         .modal-overlay .modal { width: 100%; max-width: 100% !important; padding: 18px; }
-        .modal-actions { position: sticky; bottom: 0; padding-top: 12px; background: var(--bg-card); }
+        .execution-edit-modal { max-height: calc(100dvh - 20px); }
+        .execution-edit-modal .modal-actions { bottom:-18px; margin:4px -18px -18px; padding:12px 18px; }
     }
     @media (max-width: 480px) {
         .controls-filter-grid { grid-template-columns: 1fr; }
         .execution-board { grid-template-columns: repeat(6, minmax(88vw, 88vw)); }
+        .execution-edit-modal .modal-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+        .execution-edit-modal .modal-actions .btn-del { margin-right:0 !important; }
+        .execution-edit-modal .modal-actions button { width:100%; min-width:0; }
     }
 </style>
 <div class="table-view" x-data="{
@@ -189,6 +218,7 @@
         categoria: '',
         rotina: '',
         esforco: '',
+        tipo_demanda: '',
         esforco_estimado_horas: '',
         esforco_real_horas: '',
         esforco_real_percebido: '',
@@ -243,8 +273,10 @@
             categoria: activity.categoria ?? '',
             rotina: activity.rotina ?? '',
             esforco: activity.esforco ?? '',
+            tipo_demanda: activity.tipo_demanda ?? '',
             esforco_estimado_horas: activity.esforco_estimado_horas ?? '',
             esforco_real_horas: activity.esforco_real_horas ?? '',
+            esforco_real_percebido: activity.esforco_real_percebido ?? '',
             motivo_bloqueio: activity.motivo_bloqueio ?? '',
             observacoes_execucao: activity.observacoes_execucao ?? '',
         };
@@ -401,11 +433,22 @@
                 </select>
             </div>
             <div class="form-group" style="margin-bottom:0">
-                <label>Executor</label>
+                <label>Responsável</label>
                 <select name="executor_id" class="form-select">
                     <option value="">Todos</option>
-                    @foreach($usuariosOperacionais as $usuario)
-                        <option value="{{ $usuario->id }}" {{ (string) request('executor_id') === (string) $usuario->id ? 'selected' : '' }}>{{ $usuario->name }}</option>
+                    <option value="me" {{ request('executor_id') === 'me' ? 'selected' : '' }}>Minhas tarefas</option>
+                    <option value="none" {{ request('executor_id') === 'none' ? 'selected' : '' }}>Sem responsável</option>
+                    @foreach($usuariosFiltro as $usuario)
+                        <option value="{{ $usuario->id }}" {{ (string) request('executor_id') === (string) $usuario->id ? 'selected' : '' }}>{{ $usuario->name }} · {{ ucfirst($usuario->role) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Natureza</label>
+                <select name="tipo_demanda" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach($demandTypeOptions as $demandType)
+                        <option value="{{ $demandType }}" {{ request('tipo_demanda') === $demandType ? 'selected' : '' }}>{{ $demandType }}</option>
                     @endforeach
                 </select>
             </div>
@@ -729,6 +772,7 @@
                             </span>
                             <span class="execution-card-action">{{ $evento->acao_controle_snapshot }}</span>
                             <span class="execution-card-scope">{{ $evento->scope_label }}</span>
+                            @if($evento->tipo_demanda)<span class="execution-progress">{{ $evento->tipo_demanda }}</span>@endif
                             @if($evento->etapas_count > 0)
                                 <span class="execution-progress">Etapas {{ $evento->progress_label }}</span>
                             @endif
@@ -750,7 +794,7 @@
     </div>
 
     <div class="modal-overlay" x-show="showExecutionModal" style="display: none;" x-transition>
-        <div class="modal" @click.away="showExecutionModal = false" style="max-width:860px;">
+        <div class="modal execution-edit-modal" @click.away="showExecutionModal = false">
             <h3>Atualizar Execucao</h3>
             <div class="execution-modal-summary">
                 <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px;">
@@ -809,6 +853,7 @@
 
                 <div class="execution-form-grid">
                     <div class="form-group"><label>Esforço percebido</label><select name="esforco_real_percebido" x-model="executionForm.esforco_real_percebido" class="form-select"><option value="">Avaliar ao concluir</option><option value="menor">Menor que o previsto</option><option value="compativel">Compatível</option><option value="maior">Maior que o previsto</option></select></div>
+                    <div class="form-group"><label>Natureza</label><select name="tipo_demanda" x-model="executionForm.tipo_demanda" class="form-select"><option value="">A classificar</option>@foreach($demandTypeOptions as $demandType)<option value="{{ $demandType }}">{{ $demandType }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Responsável legado</label><input name="responsavel_planejado" x-model="executionForm.responsavel_planejado" class="form-input" placeholder="Referência textual anterior"></div>
                 </div>
 
@@ -875,6 +920,7 @@
                     <div class="form-group"><label>Prioridade</label><select name="prioridade" class="form-select" required><option>Baixa</option><option selected>Média</option><option>Alta</option><option>Crítica</option></select></div>
                 </div>
                 <div class="execution-form-grid"><div class="form-group"><label>Esforço</label><select name="esforco" class="form-select"><option value="">A definir</option>@foreach($effortOptions as $effort)<option value="{{ $effort }}">{{ $effort }}</option>@endforeach</select></div><div class="form-group"><label>Responsável legado</label><input name="responsavel_planejado" class="form-input"></div></div>
+                <div class="form-group"><label>Natureza da demanda</label><select name="tipo_demanda" class="form-select" required><option value="">Selecione...</option>@foreach($demandTypeOptions as $demandType)<option value="{{ $demandType }}" {{ $demandType === 'Governanca' ? 'selected' : '' }}>{{ $demandType }}</option>@endforeach</select></div>
                 <div class="form-group"><label>Data prevista</label><input type="date" name="data_prevista" class="form-input"></div>
                 <div class="modal-actions"><button type="button" class="btn-cancel" @click="showCreateModal = false">Cancelar</button><button class="btn-save">Criar Cartao</button></div>
             </form>

@@ -145,7 +145,7 @@
 
                 <div class="users-operational-grid">
                     <div class="form-group">
-                        <label>Nível operacional</label>
+                    <label>Nível técnico (opcional)</label>
                         <select name="nivel_operacional" x-model="form.nivel_operacional" class="form-select">
                             <option value="">Não definido</option>
                             <option value="junior">Júnior</option>
@@ -166,7 +166,7 @@
 
                 <div class="form-group" style="margin-top:12px;display:flex;align-items:center;gap:10px">
                     <input type="checkbox" name="disponivel_para_tarefas" x-model="form.disponivel_para_tarefas" id="user_available" value="1">
-                    <label for="user_available" style="margin:0">Disponível para receber tarefas</label>
+                    <label for="user_available" style="margin:0">Participa do Kanban e pode receber tarefas</label>
                 </div>
 
                 <div class="form-group" style="margin-top:10px">

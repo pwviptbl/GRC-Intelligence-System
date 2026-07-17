@@ -48,6 +48,7 @@ class CalendarioControleController extends Controller
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
             'kanbanMode' => false,
             'usuariosOperacionais' => User::query()->where('active', true)->where('disponivel_para_tarefas', true)->orderBy('name')->get(),
+            'usuariosFiltro' => User::query()->where('active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -76,6 +77,7 @@ class CalendarioControleController extends Controller
             'riscos' => \App\Models\Risco::query()->orderBy('titulo')->get(),
             'procedimentos' => Procedimento::query()->orderBy('titulo')->get(['id', 'titulo', 'tipo']),
             'usuariosOperacionais' => User::query()->where('active', true)->where('disponivel_para_tarefas', true)->orderBy('name')->get(),
+            'usuariosFiltro' => User::query()->where('active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -92,6 +94,7 @@ class CalendarioControleController extends Controller
             'revisor_id' => ['nullable', 'integer', 'different:executor_id', 'exists:users,id'],
             'prioridade' => ['required', 'in:Baixa,Média,Alta,Crítica'],
             'esforco' => ['nullable', 'in:' . implode(',', ControleEvento::EFFORT_OPTIONS)],
+            'tipo_demanda' => ['required', 'in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
             'esforco_estimado_horas' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'criterios_aceite' => ['nullable', 'string', 'max:5000'],
             'data_prevista' => ['nullable', 'date'],
@@ -108,6 +111,7 @@ class CalendarioControleController extends Controller
             'revisor_id' => $data['revisor_id'] ?? null,
             'prioridade' => $data['prioridade'],
             'esforco' => $data['esforco'] ?? null,
+            'tipo_demanda' => $data['tipo_demanda'],
             'esforco_estimado_horas' => $data['esforco_estimado_horas'] ?? null,
             'criterios_aceite' => $data['criterios_aceite'] ?? null,
             'data_prevista' => $data['data_prevista'] ?? null,
@@ -438,7 +442,15 @@ class CalendarioControleController extends Controller
         }
 
         if ($request->filled('executor_id')) {
-            $query->where('executor_id', $request->integer('executor_id'));
+            match ($request->executor_id) {
+                'me' => $query->where('executor_id', auth()->id()),
+                'none' => $query->whereNull('executor_id'),
+                default => $query->where('executor_id', $request->integer('executor_id')),
+            };
+        }
+
+        if ($request->filled('tipo_demanda')) {
+            $query->where('tipo_demanda', $request->tipo_demanda);
         }
 
         if ($request->filled('revisor_id')) {

@@ -75,4 +75,38 @@ class OperationalDashboardTest extends TestCase
             ->assertSee('Tarefa sem estimativa')
             ->assertDontSee('Tarefa do executor');
     }
+
+    public function test_kanban_filters_governance_work_by_user_and_demand_type(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $governance = User::factory()->create([
+            'name' => 'Gestor GRC',
+            'role' => 'governanca',
+            'disponivel_para_tarefas' => true,
+        ]);
+
+        ControleEvento::create([
+            'acao_controle_snapshot' => 'Mapear módulos do e-Cidade',
+            'status' => 'planejado',
+            'prioridade' => 'Alta',
+            'executor_id' => $governance->id,
+            'tipo_demanda' => 'Governanca',
+            'esforco' => 'M',
+        ]);
+        ControleEvento::create([
+            'acao_controle_snapshot' => 'Executar teste técnico',
+            'status' => 'planejado',
+            'prioridade' => 'Média',
+            'tipo_demanda' => 'Backlog tecnico',
+            'esforco' => 'P',
+        ]);
+
+        $this->actingAs($admin)->get(route('calendario_controles.kanban', [
+            'executor_id' => $governance->id,
+            'tipo_demanda' => 'Governanca',
+        ]))->assertOk()
+            ->assertSee('Mapear módulos do e-Cidade')
+            ->assertSee('Gestor GRC · Governanca')
+            ->assertDontSee('Executar teste técnico');
+    }
 }

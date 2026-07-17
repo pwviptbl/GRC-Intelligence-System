@@ -383,12 +383,14 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'descricao' => 'Atividade geral sem software vinculado.',
             'prioridade' => 'Alta',
             'esforco' => 'M',
+            'tipo_demanda' => 'Governanca',
         ])->assertRedirect(route('calendario_controles.kanban'));
 
         $this->assertDatabaseHas('controle_eventos', [
             'software_id' => null,
             'acao_controle_snapshot' => 'Revisar processo interno de acesso',
             'origem' => 'manual',
+            'tipo_demanda' => 'Governanca',
             'status' => 'planejado',
         ]);
     }

@@ -24,6 +24,7 @@ class TeamExecutionFlowTest extends TestCase
             'executor_id' => $executor->id,
             'revisor_id' => $reviewer->id,
             'esforco' => 'M',
+            'tipo_demanda' => 'Backlog tecnico',
             'esforco_estimado_horas' => 12.5,
             'criterios_aceite' => 'Relatório anexado e vulnerabilidades classificadas.',
         ])->assertRedirect(route('calendario_controles.kanban'));

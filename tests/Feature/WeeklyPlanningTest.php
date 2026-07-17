@@ -101,6 +101,61 @@ class WeeklyPlanningTest extends TestCase
         $this->assertNull($event->semana_planejada);
     }
 
+    public function test_weekly_closure_records_snapshot_and_transports_open_work(): void
+    {
+        $admin = $this->admin();
+        $week = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+        $nextWeek = now()->startOfWeek(Carbon::MONDAY)->addWeek()->toDateString();
+
+        $completed = $this->event('Entrega concluída', 'M');
+        $completed->update(['status' => 'concluido', 'semana_planejada' => $week, 'concluido_em' => now()]);
+        $blocked = $this->event('Entrega bloqueada', 'P');
+        $blocked->update(['status' => 'bloqueado', 'semana_planejada' => $week, 'motivo_bloqueio' => 'Aguardando acesso']);
+        $pending = $this->event('Entrega não iniciada', 'PP');
+        $pending->update(['semana_planejada' => $week]);
+
+        $this->actingAs($admin)->post(route('planejamento_semanal.close'), [
+            'semana' => $week,
+            'observacoes' => 'Semana encerrada com dependência externa registrada.',
+        ])->assertRedirect(route('planejamento_semanal.index', ['semana' => $nextWeek]));
+
+        $this->assertDatabaseHas('fechamentos_semanais', [
+            'semana_inicio' => $week,
+            'comprometido_pontos' => 7,
+            'concluido_pontos' => 4,
+            'itens_concluidos' => 1,
+            'itens_bloqueados' => 1,
+            'itens_transportados' => 2,
+        ]);
+        $this->assertSame($week, $completed->fresh()->semana_planejada->toDateString());
+        $this->assertSame($nextWeek, $blocked->fresh()->semana_planejada->toDateString());
+        $this->assertSame('bloqueado', $blocked->fresh()->status);
+        $this->assertSame('atrasado', $pending->fresh()->status);
+    }
+
+    public function test_closed_week_rejects_new_assignments(): void
+    {
+        $admin = $this->admin();
+        $executor = User::factory()->create(['capacidade_semanal_pontos' => 10, 'disponivel_para_tarefas' => true]);
+        $week = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+        $planned = $this->event('Primeira tarefa', 'P');
+        $planned->update(['semana_planejada' => $week, 'executor_id' => $executor->id]);
+
+        $this->actingAs($admin)->post(route('planejamento_semanal.close'), [
+            'semana' => $week,
+            'observacoes' => 'Fechamento válido para impedir alterações posteriores.',
+        ])->assertRedirect();
+
+        $newEvent = $this->event('Nova tarefa', 'P');
+        $this->actingAs($admin)->post(route('planejamento_semanal.assign'), [
+            'event_ids' => [$newEvent->id],
+            'executor_id' => $executor->id,
+            'semana' => $week,
+        ])->assertSessionHasErrors('semana');
+
+        $this->assertNull($newEvent->fresh()->semana_planejada);
+    }
+
     private function admin(): User
     {
         return User::factory()->create([
