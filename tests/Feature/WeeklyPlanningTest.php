@@ -118,6 +118,36 @@ class WeeklyPlanningTest extends TestCase
         $this->assertNull($event->semana_planejada);
     }
 
+    public function test_blocked_task_remains_visible_without_consuming_weekly_capacity(): void
+    {
+        $admin = $this->admin();
+        $executor = User::factory()->create([
+            'capacidade_semanal_pontos' => 10,
+            'disponivel_para_tarefas' => true,
+        ]);
+        $week = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+        $blocked = $this->event('Dependência externa', 'G');
+        $blocked->update([
+            'status' => 'bloqueado',
+            'executor_id' => $executor->id,
+            'semana_planejada' => $week,
+            'motivo_bloqueio' => 'Aguardando acesso ao ambiente.',
+        ]);
+        $newWork = $this->event('Trabalho executável', 'G');
+
+        $this->actingAs($admin)->post(route('planejamento_semanal.assign'), [
+            'event_ids' => [$newWork->id],
+            'executor_id' => $executor->id,
+            'semana' => $week,
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $this->actingAs($admin)->get(route('planejamento_semanal.index', ['semana' => $week]))
+            ->assertOk()
+            ->assertSee('Dependência externa')
+            ->assertSee('Trabalho executável')
+            ->assertSee('8/8 pts');
+    }
+
     public function test_weekly_closure_records_snapshot_and_transports_open_work(): void
     {
         $admin = $this->admin();

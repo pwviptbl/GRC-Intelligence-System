@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "grc": {
+      "command": "php",
+      "args": [
+        "/home/dbseller/Modelos/GRC-Intelligence-System/artisan",
+        "grc:mcp"
+      ],
+      "env": {},
+      "timeout": 30000
+    }
+  }
+}

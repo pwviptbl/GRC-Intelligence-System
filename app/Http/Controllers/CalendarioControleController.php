@@ -593,7 +593,9 @@ class CalendarioControleController extends Controller
             $tasks = $assignments->get($member->id, collect());
             $capacity = (int) $member->capacidade_semanal_pontos;
             $planningLimit = (int) floor($capacity * 0.8);
-            $planned = (int) $tasks->sum(fn (ControleEvento $event) => $event->effort_points);
+            $planned = (int) $tasks
+                ->reject(fn (ControleEvento $event) => $event->status === 'bloqueado')
+                ->sum(fn (ControleEvento $event) => $event->effort_points);
 
             return [
                 'member' => $member,

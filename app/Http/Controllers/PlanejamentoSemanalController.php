@@ -36,7 +36,9 @@ class PlanejamentoSemanalController extends Controller
             $tasks = $assignments->get($member->id, collect());
             $capacity = (int) $member->capacidade_semanal_pontos;
             $planningLimit = (int) floor($capacity * 0.8);
-            $planned = (int) $tasks->sum(fn (ControleEvento $event) => $event->effort_points);
+            $planned = (int) $tasks
+                ->reject(fn (ControleEvento $event) => $event->status === 'bloqueado')
+                ->sum(fn (ControleEvento $event) => $event->effort_points);
 
             return [
                 'member' => $member,
@@ -107,6 +109,7 @@ class PlanejamentoSemanalController extends Controller
             ->where('executor_id', $member->id)
             ->whereDate('semana_planejada', $weekStart->toDateString())
             ->whereNotIn('id', $events->pluck('id'))
+            ->where('status', '!=', 'bloqueado')
             ->get()
             ->sum(fn (ControleEvento $event) => $event->effort_points);
         $requested = $events->sum(fn (ControleEvento $event) => $event->effort_points);
@@ -145,6 +148,7 @@ class PlanejamentoSemanalController extends Controller
             $used = ControleEvento::query()
                 ->where('executor_id', $member->id)
                 ->whereDate('semana_planejada', $weekStart->toDateString())
+                ->where('status', '!=', 'bloqueado')
                 ->get()
                 ->sum(fn (ControleEvento $event) => $event->effort_points);
 
