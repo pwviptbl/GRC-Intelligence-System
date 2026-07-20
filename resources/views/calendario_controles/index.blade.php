@@ -171,6 +171,7 @@
         gap: 8px;
     }
     .kanban-capacity-card {
+        display: block;
         min-width: 0;
         padding: 10px;
         border: 1px solid rgba(255,255,255,.07);
@@ -203,6 +204,8 @@
     }
     .kanban-capacity-score.overflow { color: var(--red); }
     .kanban-capacity-bar {
+        display: block;
+        width: 100%;
         height: 5px;
         margin-top: 9px;
         border-radius: 3px;
