@@ -1,10 +1,25 @@
 #!/usr/bin/env php
 <?php
 
-use Illuminate\Foundation\Application;
-use Symfony\Component\Console\Input\ArgvInput;
+if (!file_exists('/.dockerenv')) {
+    $_ENV['DB_HOST'] = '127.0.0.1';
+    $_ENV['DB_PORT'] = '5433';
+    $_ENV['REDIS_HOST'] = '127.0.0.1';
+    $_ENV['REDIS_PORT'] = '6380';
+    $_SERVER['DB_HOST'] = '127.0.0.1';
+    $_SERVER['DB_PORT'] = '5433';
+    $_SERVER['REDIS_HOST'] = '127.0.0.1';
+    $_SERVER['REDIS_PORT'] = '6380';
+    putenv('DB_HOST=127.0.0.1');
+    putenv('DB_PORT=5433');
+    putenv('REDIS_HOST=127.0.0.1');
+    putenv('REDIS_PORT=6380');
+}
 
 define('LARAVEL_START', microtime(true));
+
+use Illuminate\Foundation\Application;
+use Symfony\Component\Console\Input\ArgvInput;
 
 // Register the Composer autoloader...
 require __DIR__.'/vendor/autoload.php';
