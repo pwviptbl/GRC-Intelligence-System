@@ -309,6 +309,7 @@
 @endphp
 <div class="table-view" x-data="{
     showExecutionModal: false,
+    showTriageModal: false,
     showCreateModal: false,
     showStepsModal: false,
     showRecordsModal: false,
@@ -321,6 +322,21 @@
     selectedProcedureId: '',
     executionFormAction: '',
     executionDeleteAction: '',
+    triageFormAction: '',
+    triageForm: {
+        software_nome: '',
+        scope_label: '',
+        acao_controle_snapshot: '',
+        modulo: '',
+        categoria: '',
+        rotina: '',
+        tipo_demanda: '',
+        esforco: '',
+        score_impacto: '',
+        score_exposicao: '',
+        score_confianca: '',
+        triagem_observacoes: '',
+    },
     executionForm: {
         id: '',
         software_nome: '',
@@ -370,6 +386,28 @@
         if (String(tier) === '1') return 'background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)';
         if (String(tier) === '2') return 'background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)';
         return 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)';
+    },
+    openTriage(item) {
+        if (typeof item === 'string') {
+            item = JSON.parse(atob(item));
+        }
+
+        this.triageForm = {
+            software_nome: item.software?.nome ?? '',
+            scope_label: item.scope_label ?? '',
+            acao_controle_snapshot: item.acao_controle_snapshot ?? '',
+            modulo: item.modulo ?? '',
+            categoria: item.categoria ?? '',
+            rotina: item.rotina ?? '',
+            tipo_demanda: item.tipo_demanda ?? '',
+            esforco: item.esforco ?? '',
+            score_impacto: item.score_impacto ?? '',
+            score_exposicao: item.score_exposicao ?? '',
+            score_confianca: item.score_confianca ?? '',
+            triagem_observacoes: item.triagem_observacoes ?? '',
+        };
+        this.triageFormAction = `/calendario_controles/${item.id}`;
+        this.showTriageModal = true;
     },
     openExecution(activity) {
         if (typeof activity === 'string') {
@@ -860,54 +898,8 @@
                                             </div>
                                         @endif
                                     </td>
-                                    <td style="min-width:280px">
-                                        <form action="{{ route('calendario_controles.update', $triagem) }}" method="POST">
-                                            @csrf
-                                            @method('PATCH')
-                                            <input type="hidden" name="status" value="triagem">
-                                            <input type="text" name="modulo" class="form-input" value="{{ $triagem->modulo }}" placeholder="Modulo" style="height:34px; font-size:12px; width:100%; box-sizing:border-box; margin-bottom:8px;">
-                                            <select name="categoria" class="form-select" style="margin-bottom:8px; height:36px; font-size:12px">
-                                                <option value="">Categoria</option>
-                                                @foreach($categoryOptions as $category)
-                                                    <option value="{{ $category }}" {{ $triagem->categoria === $category ? 'selected' : '' }}>{{ $category }}</option>
-                                                @endforeach
-                                            </select>
-                                            <input type="text" name="rotina" class="form-input" value="{{ $triagem->rotina }}" placeholder="Rotina" style="height:34px; font-size:12px; width:100%; box-sizing:border-box; margin-bottom:8px;">
-                                            <select name="tipo_demanda" class="form-select" style="margin-bottom:8px; height:36px; font-size:12px">
-                                                <option value="">Tipo de demanda</option>
-                                                @foreach($demandTypeOptions as $demandType)
-                                                    <option value="{{ $demandType }}" {{ $triagem->tipo_demanda === $demandType ? 'selected' : '' }}>{{ $demandType }}</option>
-                                                @endforeach
-                                            </select>
-                                            <select name="esforco" class="form-select" style="margin-bottom:8px; height:36px; font-size:12px">
-                                                <option value="">Esforco</option>
-                                                @foreach($effortOptions as $effort)
-                                                    <option value="{{ $effort }}" {{ $triagem->esforco === $effort ? 'selected' : '' }}>{{ $effort }}</option>
-                                                @endforeach
-                                            </select>
-                                            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:8px;">
-                                                <select name="score_impacto" class="form-select" style="height:36px; font-size:12px">
-                                                    <option value="">Impacto</option>
-                                                    @for($score = 1; $score <= 5; $score++)
-                                                        <option value="{{ $score }}" {{ (int) $triagem->score_impacto === $score ? 'selected' : '' }}>{{ $score }}</option>
-                                                    @endfor
-                                                </select>
-                                                <select name="score_exposicao" class="form-select" style="height:36px; font-size:12px">
-                                                    <option value="">Exposicao</option>
-                                                    @for($score = 1; $score <= 5; $score++)
-                                                        <option value="{{ $score }}" {{ (int) $triagem->score_exposicao === $score ? 'selected' : '' }}>{{ $score }}</option>
-                                                    @endfor
-                                                </select>
-                                                <select name="score_confianca" class="form-select" style="height:36px; font-size:12px">
-                                                    <option value="">Confianca</option>
-                                                    @for($score = 1; $score <= 5; $score++)
-                                                        <option value="{{ $score }}" {{ (int) $triagem->score_confianca === $score ? 'selected' : '' }}>{{ $score }}</option>
-                                                    @endfor
-                                                </select>
-                                            </div>
-                                            <textarea name="triagem_observacoes" class="form-textarea" rows="2" placeholder="Observacoes de triagem">{{ $triagem->triagem_observacoes }}</textarea>
-                                            <button type="submit" class="btn-secondary" style="margin-top:8px; width:100%; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:8px 10px;">Salvar triagem</button>
-                                        </form>
+                                    <td>
+                                        <button type="button" class="btn-secondary" style="padding:8px 10px" data-triagem="{{ base64_encode($triagem->toJson()) }}" @click="openTriage($el.dataset.triagem)">Atualizar</button>
                                     </td>
                             </tr>
                         @endforeach
@@ -924,6 +916,43 @@
                 <p>Nenhuma demanda em triagem.</p>
             </div>
         @endif
+    </div>
+
+    <div class="modal-overlay" x-show="showTriageModal" style="display:none" x-transition>
+        <div class="modal execution-edit-modal" @click.away="showTriageModal = false" style="width:min(720px,94vw);max-width:720px">
+            <h3>Atualizar triagem</h3>
+            <div class="execution-modal-summary">
+                <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px;">
+                    <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; margin-bottom:6px;">Software</div>
+                    <div style="color:var(--text-1); font-weight:600;" x-text="triageForm.software_nome || 'Sem software'"></div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:12px; text-transform:uppercase; margin-bottom:6px;">Atividade</div>
+                    <div style="color:var(--text-2);" x-text="triageForm.acao_controle_snapshot"></div>
+                </div>
+            </div>
+
+            <form :action="triageFormAction" method="POST">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status" value="triagem">
+
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Modulo</label><input type="text" name="modulo" x-model="triageForm.modulo" class="form-input" placeholder="Modulo"></div>
+                    <div class="form-group"><label>Categoria</label><select name="categoria" x-model="triageForm.categoria" class="form-select"><option value="">Categoria</option>@foreach($categoryOptions as $category)<option value="{{ $category }}">{{ $category }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Rotina</label><input type="text" name="rotina" x-model="triageForm.rotina" class="form-input" placeholder="Rotina"></div>
+                </div>
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Tipo de demanda</label><select name="tipo_demanda" x-model="triageForm.tipo_demanda" class="form-select"><option value="">Selecione...</option>@foreach($demandTypeOptions as $demandType)<option value="{{ $demandType }}">{{ $demandType }}</option>@endforeach</select></div>
+                    <div class="form-group"><label>Esforco</label><select name="esforco" x-model="triageForm.esforco" class="form-select"><option value="">Selecione...</option>@foreach($effortOptions as $effort)<option value="{{ $effort }}">{{ $effort }}</option>@endforeach</select></div>
+                </div>
+                <div class="execution-form-grid">
+                    <div class="form-group"><label>Impacto</label><select name="score_impacto" x-model="triageForm.score_impacto" class="form-select"><option value="">Selecione...</option>@for($score = 1; $score <= 5; $score++)<option value="{{ $score }}">{{ $score }}</option>@endfor</select></div>
+                    <div class="form-group"><label>Exposicao</label><select name="score_exposicao" x-model="triageForm.score_exposicao" class="form-select"><option value="">Selecione...</option>@for($score = 1; $score <= 5; $score++)<option value="{{ $score }}">{{ $score }}</option>@endfor</select></div>
+                    <div class="form-group"><label>Confianca</label><select name="score_confianca" x-model="triageForm.score_confianca" class="form-select"><option value="">Selecione...</option>@for($score = 1; $score <= 5; $score++)<option value="{{ $score }}">{{ $score }}</option>@endfor</select></div>
+                </div>
+                <div class="form-group"><label>Observacoes de triagem</label><textarea name="triagem_observacoes" x-model="triageForm.triagem_observacoes" class="form-textarea" rows="4" placeholder="Decisões, contexto, dependências e critérios para o planejamento."></textarea></div>
+                <div class="modal-actions"><button type="button" class="btn-cancel" @click="showTriageModal = false">Cancelar</button><button type="submit" class="btn-save">Salvar triagem</button></div>
+            </form>
+        </div>
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:20px; padding:16px; background:rgba(0,229,255,.035); border:1px solid rgba(0,229,255,.13); border-radius:8px; flex-wrap:wrap;">
@@ -1216,7 +1245,7 @@
     </div>
 
     <div class="modal-overlay" x-show="showCreateModal" style="display:none" x-transition>
-        <div class="modal" @click.away="showCreateModal = false" style="width:min(760px,94vw);max-width:760px">
+        <div class="modal execution-edit-modal" @click.away="showCreateModal = false" style="width:min(760px,94vw);max-width:760px">
             <h3>Novo Cartao</h3>
             <form action="{{ route('calendario_controles.store_manual') }}" method="POST">
                 @csrf
