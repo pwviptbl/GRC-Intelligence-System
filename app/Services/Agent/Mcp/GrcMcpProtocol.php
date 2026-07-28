@@ -89,22 +89,27 @@ class GrcMcpProtocol
                 ];
             }
 
+            $securitySchemes = $this->securityFor($tool);
+
             return [
-                'name'        => $tool['name'],
-                'title'       => str_replace('_', ' ', ucfirst($tool['name'])),
-                'description' => $this->descriptionFor($tool),
-                'inputSchema' => $schema,
-                'security'    => $this->securityFor($tool),
+                'name'           => $tool['name'],
+                'title'          => str_replace('_', ' ', ucfirst($tool['name'])),
+                'description'    => $this->descriptionFor($tool),
+                'inputSchema'    => $schema,
+                'securitySchemes' => $securitySchemes,
+                '_meta'          => ['securitySchemes' => $securitySchemes],
             ];
         }, $this->registry->listTools());
     }
 
     /**
-     * Retorna as declarações de segurança para a ferramenta.
+     * Retorna as declarações de segurança para a ferramenta no formato
+     * esperado pelo ChatGPT/MCP:
      *
-     * Ferramentas de leitura exigem o scope grc:read.
-     * Ferramentas de escrita exigem o scope grc:write.
-     * O valor é compatível com o campo `security` do objeto Tool da especificação MCP.
+     *   [{"type": "oauth2", "scopes": ["grc:read"]}]
+     *
+     * Ferramentas de leitura usam grc:read; de escrita usam grc:write.
+     * O mesmo array é emitido em `securitySchemes` e em `_meta.securitySchemes`.
      */
     protected function securityFor(array $tool): array
     {
@@ -116,7 +121,8 @@ class GrcMcpProtocol
 
         return [
             [
-                'oauth2' => [$scope],
+                'type'   => 'oauth2',
+                'scopes' => [$scope],
             ],
         ];
     }

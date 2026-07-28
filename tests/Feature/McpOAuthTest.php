@@ -234,18 +234,94 @@ class McpOAuthTest extends TestCase
             ->assertJsonPath('jsonrpc', '2.0')
             ->assertJsonStructure(['result' => ['tools']]);
 
-        // Verifica que as ferramentas expõem securitySchemes
         $tools = $response->json('result.tools');
         $this->assertNotEmpty($tools);
 
         $readTool = collect($tools)->firstWhere('name', 'list_risks');
         $this->assertNotNull($readTool, 'Ferramenta list_risks não encontrada na lista');
-        $this->assertArrayHasKey('security', $readTool);
-        $this->assertSame('grc:read', $readTool['security'][0]['oauth2'][0]);
+        $this->assertArrayHasKey('securitySchemes', $readTool);
+        $this->assertSame('grc:read', $readTool['securitySchemes'][0]['oauth2'][0] ?? $readTool['securitySchemes'][0]['scopes'][0]);
 
         $writeTool = collect($tools)->firstWhere('name', 'create_risk');
         $this->assertNotNull($writeTool, 'Ferramenta create_risk não encontrada na lista');
-        $this->assertSame('grc:write', $writeTool['security'][0]['oauth2'][0]);
+        $this->assertSame('grc:write', $writeTool['securitySchemes'][0]['oauth2'][0] ?? $writeTool['securitySchemes'][0]['scopes'][0]);
+    }
+
+    // -------------------------------------------------------------------
+    // 8b. Formato de securitySchemes validado em todas as ferramentas
+    // -------------------------------------------------------------------
+
+    public function test_tools_list_security_schemes_format_is_correct_for_all_tools(): void
+    {
+        $token = $this->buildToken(scopes: ['grc:read']);
+
+        $response = $this->withHeaders([
+            'Authorization'        => "Bearer {$token}",
+            'MCP-Protocol-Version' => '2025-11-25',
+        ])->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id'      => 1,
+            'method'  => 'tools/list',
+            'params'  => [],
+        ]);
+
+        $response->assertOk();
+        $tools = $response->json('result.tools');
+        $this->assertNotEmpty($tools);
+
+        // Ferramentas de escrita conhecidas (requiresConfirmation = true)
+        $writeToolNames = [
+            'create_activity', 'create_activities_batch', 'upsert_software_modules_batch',
+            'update_activity', 'assign_activities_to_tier_policy',
+            'create_risk', 'update_risk', 'update_risk_status',
+            'create_policy', 'update_policy',
+            'create_tier_policy', 'update_tier_policy',
+            'create_procedure', 'update_procedure',
+            'create_incident', 'update_incident',
+            'create_control_event', 'update_control_event',
+            'create_action_plan',
+        ];
+
+        foreach ($tools as $tool) {
+            $name = $tool['name'];
+
+            // 1. A chave antiga `security` não deve existir
+            $this->assertArrayNotHasKey(
+                'security',
+                $tool,
+                "Ferramenta '{$name}' ainda contém a chave 'security' (formato antigo)."
+            );
+
+            // 2. `securitySchemes` deve existir
+            $this->assertArrayHasKey(
+                'securitySchemes',
+                $tool,
+                "Ferramenta '{$name}' não tem 'securitySchemes'."
+            );
+
+            // 3. securitySchemes[0].type === "oauth2"
+            $this->assertSame(
+                'oauth2',
+                $tool['securitySchemes'][0]['type'] ?? null,
+                "Ferramenta '{$name}': securitySchemes[0].type deve ser 'oauth2'."
+            );
+
+            // 4. securitySchemes[0].scopes contém exatamente o escopo esperado
+            $expectedScope = in_array($name, $writeToolNames, true) ? 'grc:write' : 'grc:read';
+            $actualScopes  = $tool['securitySchemes'][0]['scopes'] ?? [];
+            $this->assertSame(
+                [$expectedScope],
+                $actualScopes,
+                "Ferramenta '{$name}': escopo esperado '{$expectedScope}', obtido: ".json_encode($actualScopes)
+            );
+
+            // 5. _meta.securitySchemes espelha o mesmo conteúdo
+            $this->assertSame(
+                $tool['securitySchemes'],
+                $tool['_meta']['securitySchemes'] ?? null,
+                "Ferramenta '{$name}': _meta.securitySchemes não espelha securitySchemes."
+            );
+        }
     }
 
     // -------------------------------------------------------------------
