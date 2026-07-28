@@ -84,22 +84,63 @@ class GrcMcpProtocol
 
             if ($this->registry->requiresConfirmation($tool['name'])) {
                 $schema['properties']['confirm'] = [
-                    'type' => 'boolean',
+                    'type'        => 'boolean',
                     'description' => 'Use true para confirmar a gravacao. Sem esse campo, a ferramenta roda em dry-run.',
                 ];
             }
 
+            $schema = $this->normalizeSchema($schema);
+
             $securitySchemes = $this->securityFor($tool);
 
             return [
-                'name'           => $tool['name'],
-                'title'          => str_replace('_', ' ', ucfirst($tool['name'])),
-                'description'    => $this->descriptionFor($tool),
-                'inputSchema'    => $schema,
+                'name'            => $tool['name'],
+                'title'           => str_replace('_', ' ', ucfirst($tool['name'])),
+                'description'     => $this->descriptionFor($tool),
+                'inputSchema'     => $schema,
                 'securitySchemes' => $securitySchemes,
-                '_meta'          => ['securitySchemes' => $securitySchemes],
+                '_meta'           => ['securitySchemes' => $securitySchemes],
             ];
         }, $this->registry->listTools());
+    }
+
+    /**
+     * Garante que qualquer chave `properties` dentro de um JSON Schema seja
+     * serializada como objeto JSON (`{}`), nunca como array (`[]`).
+     *
+     * `json_encode` converte um array PHP vazio em `[]`; para obrigar `{}`
+     * é necessário usar `(object) []` ou `new \stdClass()`. Este método
+     * percorre o schema recursivamente e aplica essa conversão onde necessário.
+     *
+     * Apenas `properties` é afetado; `required` permanece array.
+     */
+    protected function normalizeSchema(array $schema): array
+    {
+        foreach ($schema as $key => $value) {
+            if ($key === 'properties' && is_array($value) && $value === []) {
+                // Converte array vazio → stdClass para forçar `{}` no JSON.
+                $schema[$key] = (object) [];
+
+                continue;
+            }
+
+            if (! is_array($value)) {
+                continue;
+            }
+
+            // Percorre recursivamente schemas em properties, items, oneOf,
+            // anyOf, allOf e quaisquer outras palavras-chave estruturais,
+            // sem afetar arrays escalares como required ou enum.
+            foreach ($value as $childKey => $childValue) {
+                if (is_array($childValue)) {
+                    $value[$childKey] = $this->normalizeSchema($childValue);
+                }
+            }
+
+            $schema[$key] = $value;
+        }
+
+        return $schema;
     }
 
     /**

@@ -325,6 +325,70 @@ class McpOAuthTest extends TestCase
     }
 
     // -------------------------------------------------------------------
+    // 8c. JSON Schema serializa todo `properties` como objeto JSON
+    // -------------------------------------------------------------------
+
+    public function test_tools_list_serializes_all_schema_properties_as_json_objects(): void
+    {
+        $token = $this->buildToken(scopes: ['grc:read']);
+
+        $response = $this->withHeaders([
+            'Authorization'        => "Bearer {$token}",
+            'MCP-Protocol-Version' => '2025-11-25',
+        ])->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id'      => 1,
+            'method'  => 'tools/list',
+            'params'  => [],
+        ]);
+
+        $response->assertOk();
+
+        // Usa json_decode sem associação para preservar a diferença entre
+        // `{}` (stdClass) e `[]` (array), que se perde em Response::json().
+        $payload = json_decode($response->getContent());
+        $this->assertNotNull($payload);
+
+        $assertPropertiesAreObjects = function (mixed $node, string $path = '$') use (&$assertPropertiesAreObjects): void {
+            if ($node instanceof \stdClass) {
+                foreach (get_object_vars($node) as $key => $value) {
+                    if ($key === 'properties') {
+                        $this->assertInstanceOf(
+                            \stdClass::class,
+                            $value,
+                            "{$path}.properties deve ser um objeto JSON, nunca um array."
+                        );
+                    }
+
+                    $assertPropertiesAreObjects($value, "{$path}.{$key}");
+                }
+
+                return;
+            }
+
+            if (is_array($node)) {
+                foreach ($node as $index => $value) {
+                    $assertPropertiesAreObjects($value, "{$path}[{$index}]");
+                }
+            }
+        };
+
+        foreach ($payload->result->tools as $tool) {
+            $assertPropertiesAreObjects($tool->inputSchema, '$.result.tools.'.$tool->name.'.inputSchema');
+        }
+
+        foreach (['context_snapshot', 'dashboard_summary'] as $toolName) {
+            $tool = collect($payload->result->tools)->first(
+                fn (\stdClass $candidate) => $candidate->name === $toolName
+            );
+
+            $this->assertNotNull($tool, "Ferramenta '{$toolName}' não encontrada.");
+            $this->assertInstanceOf(\stdClass::class, $tool->inputSchema->properties);
+            $this->assertSame([], get_object_vars($tool->inputSchema->properties));
+        }
+    }
+
+    // -------------------------------------------------------------------
     // 9. Escrita sem confirm=true → dry-run (preview) mesmo com grc:write
     // -------------------------------------------------------------------
 
