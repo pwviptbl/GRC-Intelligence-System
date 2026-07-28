@@ -12,6 +12,7 @@ use App\Http\Controllers\IncidenteController;
 use App\Http\Controllers\InstanciaClienteController;
 use App\Http\Controllers\LgpdController;
 use App\Http\Controllers\McpController;
+use App\Http\Controllers\WellKnownMcpController;
 use App\Http\Controllers\PoliticaController;
 use App\Http\Controllers\PlanejamentoSemanalController;
 use App\Http\Controllers\ProcedimentoController;
@@ -29,7 +30,12 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// MCP HTTP endpoint (POST somente; GET e DELETE retornam 405 no controller)
 Route::match(['GET', 'POST', 'DELETE'], '/mcp', [McpController::class, 'handle'])
+    ->withoutMiddleware([ValidateCsrfToken::class]);
+
+// Metadata de recurso protegido OAuth 2.1 (RFC 9728 / especificação MCP)
+Route::get('/.well-known/oauth-protected-resource', [WellKnownMcpController::class, 'protectedResource'])
     ->withoutMiddleware([ValidateCsrfToken::class]);
 
 Route::middleware(['auth', 'verified'])->group(function () {

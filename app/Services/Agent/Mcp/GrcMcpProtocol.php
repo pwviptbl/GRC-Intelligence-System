@@ -90,12 +90,35 @@ class GrcMcpProtocol
             }
 
             return [
-                'name' => $tool['name'],
-                'title' => str_replace('_', ' ', ucfirst($tool['name'])),
+                'name'        => $tool['name'],
+                'title'       => str_replace('_', ' ', ucfirst($tool['name'])),
                 'description' => $this->descriptionFor($tool),
                 'inputSchema' => $schema,
+                'security'    => $this->securityFor($tool),
             ];
         }, $this->registry->listTools());
+    }
+
+    /**
+     * Retorna as declarações de segurança para a ferramenta.
+     *
+     * Ferramentas de leitura exigem o scope grc:read.
+     * Ferramentas de escrita exigem o scope grc:write.
+     * O valor é compatível com o campo `security` do objeto Tool da especificação MCP.
+     */
+    protected function securityFor(array $tool): array
+    {
+        $isWrite = $this->registry->requiresConfirmation($tool['name']);
+
+        $scope = $isWrite
+            ? $this->configValue('mcp.oauth.scope_write', 'grc:write')
+            : $this->configValue('mcp.oauth.scope_read', 'grc:read');
+
+        return [
+            [
+                'oauth2' => [$scope],
+            ],
+        ];
     }
 
     protected function descriptionFor(array $tool): string
