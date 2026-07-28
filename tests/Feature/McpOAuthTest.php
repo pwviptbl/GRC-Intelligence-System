@@ -319,6 +319,116 @@ class McpOAuthTest extends TestCase
     }
 
     // -------------------------------------------------------------------
+    // 11. Apenas `permissions` (sem `scope`) autoriza leitura
+    // -------------------------------------------------------------------
+
+    public function test_permissions_claim_without_scope_authorizes_read_tool(): void
+    {
+        // Token emitido pelo Auth0 com permissions=["grc:read"], sem campo scope
+        $token = $this->buildTokenWithPermissions(permissions: ['grc:read']);
+
+        $response = $this->withHeaders([
+            'Authorization'        => "Bearer {$token}",
+            'MCP-Protocol-Version' => '2025-11-25',
+        ])->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id'      => 1,
+            'method'  => 'tools/list',
+            'params'  => [],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonStructure(['result' => ['tools']]);
+    }
+
+    // -------------------------------------------------------------------
+    // 12. `permissions: ['grc:write']` (sem scope) autoriza escrita c/ confirm
+    // -------------------------------------------------------------------
+
+    public function test_permissions_claim_with_write_authorizes_write_tool_with_confirm(): void
+    {
+        // Auth0 emite permissions=["grc:read","grc:write"], sem campo scope
+        $token = $this->buildTokenWithPermissions(permissions: ['grc:read', 'grc:write']);
+
+        // Sem confirm → dry-run (preview), mas autorizado
+        $dryRun = $this->withHeaders([
+            'Authorization'        => "Bearer {$token}",
+            'MCP-Protocol-Version' => '2025-11-25',
+        ])->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id'      => 1,
+            'method'  => 'tools/call',
+            'params'  => [
+                'name'      => 'create_risk',
+                'arguments' => [
+                    'titulo'        => 'Risco permissions dry-run',
+                    'descricao'     => 'Teste via permissions claim',
+                    'probabilidade' => 'Alta',
+                    'impacto'       => 'Alto',
+                    'responsavel'   => 'Analista',
+                ],
+            ],
+        ]);
+
+        $dryRun->assertOk()
+            ->assertJsonPath('result.structuredContent.dry_run', true);
+
+        $this->assertDatabaseCount('riscos', 0);
+
+        // Com confirm → grava
+        $confirmed = $this->withHeaders([
+            'Authorization'        => "Bearer {$token}",
+            'MCP-Protocol-Version' => '2025-11-25',
+        ])->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id'      => 2,
+            'method'  => 'tools/call',
+            'params'  => [
+                'name'      => 'create_risk',
+                'arguments' => [
+                    'titulo'        => 'Risco permissions confirmado',
+                    'descricao'     => 'Gravado via permissions claim',
+                    'probabilidade' => 'Media',
+                    'impacto'       => 'Medio',
+                    'responsavel'   => 'Analista',
+                    'confirm'       => true,
+                ],
+            ],
+        ]);
+
+        $confirmed->assertOk()
+            ->assertJsonPath('result.structuredContent.dry_run', false);
+
+        $this->assertDatabaseHas('riscos', ['titulo' => 'Risco permissions confirmado']);
+    }
+
+    // -------------------------------------------------------------------
+    // 13. Token sem `scope` e sem `permissions` → 403
+    // -------------------------------------------------------------------
+
+    public function test_token_without_scope_and_without_permissions_returns_403(): void
+    {
+        // Token completamente vazio de permissões (nem scope nem permissions)
+        $token = $this->buildTokenWithPermissions(permissions: []);
+
+        $response = $this->withHeaders([
+            'Authorization'        => "Bearer {$token}",
+            'MCP-Protocol-Version' => '2025-11-25',
+        ])->postJson('/mcp', [
+            'jsonrpc' => '2.0',
+            'id'      => 1,
+            'method'  => 'tools/list',
+            'params'  => [],
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error.code', -32001);
+
+        $wwwAuth = $response->headers->get('WWW-Authenticate') ?? '';
+        $this->assertStringContainsString('insufficient_scope', $wwwAuth);
+    }
+
+    // -------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------
 
@@ -374,5 +484,32 @@ class McpOAuthTest extends TestCase
             null,
             $headers,
         );
+    }
+
+    /**
+     * Constrói um JWT sem o campo `scope`, usando apenas o array `permissions`
+     * — exatamente como o Auth0 emite tokens para o ChatGPT quando as
+     * permissões são configuradas como RBAC na API.
+     *
+     * @param list<string> $permissions Permissões a incluir no campo `permissions`
+     */
+    private function buildTokenWithPermissions(array $permissions): string
+    {
+        $now = time();
+
+        $payload = [
+            'iss'         => self::$issuer,
+            'aud'         => self::$audience,
+            'sub'         => 'test-client@grc-mcp-tests',
+            'iat'         => $now,
+            'nbf'         => $now,
+            'exp'         => $now + 3600,
+            // Intencionalmente omitimos 'scope' para simular o Auth0 RBAC
+            'permissions' => $permissions,
+        ];
+
+        $headers = ['kid' => self::$kid];
+
+        return JWT::encode($payload, self::$privateKey, 'RS256', null, $headers);
     }
 }

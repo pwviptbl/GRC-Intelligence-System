@@ -100,10 +100,32 @@ final class OAuthJwtGuard
             );
         }
 
-        // Extrair subject e scopes
+        // Extrair subject e scopes.
+        //
+        // O Auth0 pode enviar permissões de duas formas distintas e o token
+        // emitido para o ChatGPT costuma usar APENAS `permissions` (array),
+        // omitindo o campo `scope` por completo.  Combinamos as duas fontes
+        // para garantir compatibilidade sem reduzir a segurança:
+        //
+        //   • `scope`       – string separada por espaços (RFC 6749 / RFC 9068)
+        //   • `permissions` – array de strings proprietário do Auth0
+        //
+        // A validação de "escopo suficiente" continua sendo feita no controller;
+        // aqui apenas normalizamos o que o token declara.
         $subject = (string) ($payload->sub ?? '');
-        $scopeString = (string) ($payload->scope ?? '');
-        $scopes = $scopeString !== '' ? explode(' ', $scopeString) : [];
+
+        $fromScope = $payload->scope ?? null;
+        $scopeList = (is_string($fromScope) && $fromScope !== '')
+            ? explode(' ', $fromScope)
+            : [];
+
+        $fromPermissions = $payload->permissions ?? null;
+        $permissionList  = is_array($fromPermissions)
+            ? array_filter(array_map('strval', $fromPermissions))
+            : [];
+
+        /** @var list<string> $scopes */
+        $scopes = array_values(array_unique(array_merge($scopeList, $permissionList)));
 
         $fingerprint = substr(hash('sha256', $rawToken), 0, 16);
 
