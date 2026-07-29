@@ -116,6 +116,20 @@ class McpOAuthTest extends TestCase
         $this->assertStringContainsString('resource_metadata', $wwwAuth);
     }
 
+    public function test_legacy_bearer_token_is_accepted_when_enabled_in_oauth_mode(): void
+    {
+        config([
+            'mcp.legacy_bearer_enabled' => true,
+            'mcp.token' => 'token-estatico-para-codex-com-mais-de-trinta-e-dois-caracteres',
+            'mcp.tokens' => ['token-estatico-para-codex-com-mais-de-trinta-e-dois-caracteres'],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer token-estatico-para-codex-com-mais-de-trinta-e-dois-caracteres')
+            ->postJson('/mcp', $this->initializePayload())
+            ->assertOk()
+            ->assertJsonPath('result.protocolVersion', '2025-11-25');
+    }
+
     // -------------------------------------------------------------------
     // 3. JWT com assinatura inválida → 401
     // -------------------------------------------------------------------

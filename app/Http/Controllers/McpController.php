@@ -115,6 +115,14 @@ class McpController extends Controller
         }
 
         if ($authMode === 'oauth') {
+            if ((bool) config('mcp.legacy_bearer_enabled', false)) {
+                $legacyResponse = $this->guardBearerToken($request);
+
+                if ($legacyResponse === null) {
+                    return null;
+                }
+            }
+
             return $this->guardOAuth($request);
         }
 
