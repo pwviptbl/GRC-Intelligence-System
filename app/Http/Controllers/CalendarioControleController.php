@@ -666,6 +666,7 @@ class CalendarioControleController extends Controller
         $query->where(function ($query) {
             $query->whereNotNull('atividade_id')
                 ->orWhere('origem', 'manual')
+                ->orWhere('origem', 'mcp')
                 ->orWhereNull('tier_politica_id');
         });
 

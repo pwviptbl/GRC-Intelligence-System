@@ -253,7 +253,7 @@ class GrcToolRegistry
                     'software_id' => ['type' => 'integer'],
                     'cliente_id' => ['type' => 'integer'],
                 ],
-                ['titulo', 'descricao', 'probabilidade', 'impacto', 'responsavel']
+                ['titulo', 'descricao']
             ),
             $this->tool(
                 'update_risk',
@@ -344,7 +344,7 @@ class GrcToolRegistry
                 'Cria manualmente uma sugestao ou item de controle.',
                 self::RISK_WRITE,
                 $this->controlEventInputSchema(),
-                ['software_id', 'tier_policy_id', 'periodo_referencia', 'data_prevista']
+                []
             ),
             $this->tool(
                 'update_control_event',
@@ -769,23 +769,34 @@ class GrcToolRegistry
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['required', 'string'],
             'origem' => ['nullable', 'string', 'max:255'],
+            'categoria' => ['nullable', 'string', 'max:255'],
+            'severidade' => ['nullable', 'string', 'max:255'],
             'ativo_afetado' => ['nullable', 'string', 'max:255'],
-            'probabilidade' => ['required', 'in:Alta,Media,Baixa'],
-            'impacto' => ['required', 'in:Alto,Medio,Baixo'],
+            'probabilidade' => ['nullable', 'in:Alta,Media,Baixa,Média'],
+            'impacto' => ['nullable', 'in:Alto,Medio,Baixo,Médio'],
             'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
             'plano_acao' => ['nullable', 'string'],
-            'responsavel' => ['required', 'string', 'max:255'],
+            'responsavel' => ['nullable', 'string', 'max:255'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
         ]);
+
+        $probabilidade = $data['probabilidade'] ?? 'Alta';
+        $impacto = $data['impacto'] ?? 'Alto';
+        if ($probabilidade === 'Média') $probabilidade = 'Media';
+        if ($impacto === 'Médio') $impacto = 'Medio';
 
         $data = array_merge([
             'origem' => 'Tecnico',
             'ativo_afetado' => '',
             'status' => 'aberto',
             'plano_acao' => '',
+            'probabilidade' => $probabilidade,
+            'impacto' => $impacto,
+            'responsavel' => $data['responsavel'] ?? 'Analista de Segurança da Informação',
         ], $data);
-        $data['criticidade'] = $this->calculateRiskCriticality($data['probabilidade'], $data['impacto']);
+        $data['criticidade'] = $data['severidade'] ?? $this->calculateRiskCriticality($data['probabilidade'], $data['impacto']);
+        unset($data['categoria'], $data['severidade']);
 
         if ($dryRun) {
             return ['would_create' => $data];
@@ -1282,29 +1293,32 @@ class GrcToolRegistry
     protected function createControlEvent(array $payload, bool $dryRun): array
     {
         $data = $this->validate($payload, $this->controlEventValidationRules(true));
-        $tier = TierPolitica::query()->findOrFail($data['tier_policy_id']);
+        $tierPolicyId = $data['tier_policy_id'] ?? null;
+        $tier = $tierPolicyId ? TierPolitica::query()->find($tierPolicyId) : null;
+
         $data = array_merge([
-            'tier_politica_id' => $data['tier_policy_id'],
-            'tier' => $tier->tier,
-            'acao_controle_snapshot' => $tier->acao_controle,
-            'frequencia_snapshot' => $tier->frequencia,
+            'tier_politica_id' => $tierPolicyId,
+            'tier' => $tier ? $tier->tier : 1,
+            'acao_controle_snapshot' => $data['titulo'] ?? ($tier ? $tier->acao_controle : 'Atividade de Controle'),
+            'frequencia_snapshot' => $tier ? $tier->frequencia : 'Eventual',
             'sla_correcao_snapshot' => null,
-            'bloqueio_automatico_snapshot' => $tier->bloqueio_automatico,
-            'responsavel_planejado' => $data['responsavel_planejado'] ?? $tier->responsavel,
+            'bloqueio_automatico_snapshot' => $tier ? $tier->bloqueio_automatico : false,
+            'responsavel_planejado' => $data['responsavel_planejado'] ?? ($tier ? $tier->responsavel : 'Analista de Segurança da Informação'),
             'modulo' => $data['modulo'] ?? null,
             'categoria' => $data['categoria'] ?? null,
             'rotina' => $data['rotina'] ?? null,
             'esforco' => $data['esforco'] ?? 'M',
-            'tipo_demanda' => $data['tipo_demanda'] ?? null,
+            'tipo_demanda' => $data['tipo_demanda'] ?? 'Governança',
             'score_impacto' => $data['score_impacto'] ?? null,
             'score_exposicao' => $data['score_exposicao'] ?? null,
             'score_confianca' => $data['score_confianca'] ?? null,
             'triagem_observacoes' => $data['triagem_observacoes'] ?? null,
-            'origem' => 'agent',
-            'prioridade' => 'Media',
-            'status' => 'sugestao',
+            'origem' => $data['origem'] ?? 'manual',
+            'prioridade' => $data['prioridade'] ?? 'Média',
+            'status' => $data['status'] ?? 'planejado',
         ], $data);
-        unset($data['tier_policy_id']);
+
+        unset($data['tier_policy_id'], $data['titulo']);
 
         if ($dryRun) {
             return ['would_create' => $data];
@@ -1511,7 +1525,10 @@ class GrcToolRegistry
         return [
             'software_id' => ['type' => 'integer'],
             'tier_policy_id' => ['type' => 'integer'],
+            'cliente_id' => ['type' => 'integer'],
             'risco_id' => ['type' => 'integer'],
+            'titulo' => ['type' => 'string'],
+            'descricao' => ['type' => 'string'],
             'modulo' => ['type' => 'string'],
             'categoria' => ['type' => 'string'],
             'rotina' => ['type' => 'string'],
@@ -1524,7 +1541,7 @@ class GrcToolRegistry
             'periodo_referencia' => ['type' => 'string'],
             'data_prevista' => ['type' => 'string', 'format' => 'date'],
             'data_limite' => ['type' => 'string', 'format' => 'date'],
-            'prioridade' => ['type' => 'string', 'enum' => ['Baixa', 'Media', 'Alta', 'Critica']],
+            'prioridade' => ['type' => 'string', 'enum' => ['Baixa', 'Media', 'Alta', 'Critica', 'Média', 'Crítica']],
             'status' => ['type' => 'string', 'enum' => ControleEvento::STATUS_OPTIONS],
             'responsavel_planejado' => ['type' => 'string'],
             'executor_id' => ['type' => 'integer'],
@@ -1534,6 +1551,7 @@ class GrcToolRegistry
             'esforco_real_percebido' => ['type' => 'string', 'enum' => ['menor', 'compativel', 'maior']],
             'criterios_aceite' => ['type' => 'string'],
             'motivo_bloqueio' => ['type' => 'string'],
+            'origem' => ['type' => 'string'],
             'observacoes_geracao' => ['type' => 'string'],
         ];
     }
@@ -1664,9 +1682,12 @@ class GrcToolRegistry
         }
 
         return [
-            'software_id' => ['required', 'integer', 'exists:software,id'],
-            'tier_policy_id' => ['required', 'integer', 'exists:tier_politicas,id'],
+            'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'tier_policy_id' => ['nullable', 'integer', 'exists:tier_politicas,id'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
             'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
+            'titulo' => ['nullable', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string', 'max:5000'],
             'modulo' => ['nullable', 'string', 'max:255'],
             'categoria' => ['nullable', 'string', 'max:255'],
             'rotina' => ['nullable', 'string', 'max:255'],
@@ -1676,10 +1697,10 @@ class GrcToolRegistry
             'score_exposicao' => ['nullable', 'integer', 'min:1', 'max:5'],
             'score_confianca' => ['nullable', 'integer', 'min:1', 'max:5'],
             'triagem_observacoes' => ['nullable', 'string', 'max:1500'],
-            'periodo_referencia' => ['required', 'string', 'max:255'],
-            'data_prevista' => ['required', 'date'],
+            'periodo_referencia' => ['nullable', 'string', 'max:255'],
+            'data_prevista' => ['nullable', 'date'],
             'data_limite' => ['nullable', 'date'],
-            'prioridade' => ['nullable', 'in:Baixa,Media,Alta,Critica'],
+            'prioridade' => ['nullable', 'in:Baixa,Média,Alta,Crítica,Media,Critica'],
             'status' => ['nullable', 'in:'.implode(',', ControleEvento::STATUS_OPTIONS)],
             'responsavel_planejado' => ['nullable', 'string', 'max:255'],
             'executor_id' => ['nullable', 'integer', 'exists:users,id'],
@@ -1687,6 +1708,7 @@ class GrcToolRegistry
             'esforco_estimado_horas' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'criterios_aceite' => ['nullable', 'string', 'max:5000'],
             'observacoes_geracao' => ['nullable', 'string', 'max:1000'],
+            'origem' => ['nullable', 'string', 'max:255'],
         ];
     }
 
