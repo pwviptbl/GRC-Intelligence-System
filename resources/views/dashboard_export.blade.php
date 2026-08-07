@@ -35,17 +35,23 @@
             .no-print { display: none; }
             .header { -webkit-print-color-adjust: exact; }
         }
+
+        body.generic-pdf .grc-branding,
+        body.generic-pdf .print-date,
+        body.generic-pdf .grc-footer {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div>
-            <h1>Executive GRC Scorecard</h1>
-            <p>{{ $company }} · Sistema de Inteligência em Governança</p>
+            <h1>Executive Scorecard</h1>
+            <p>{{ $company }} · <span class="grc-branding">Sistema de Inteligência em </span>Governança</p>
         </div>
         <div style="text-align: right">
-            <div style="font-size: 20px; font-weight: 800;">CONFIDENCIAL</div>
-            <div style="font-size: 12px; opacity: 0.8;">Gerado em: {{ $date }}</div>
+            <div class="grc-footer" style="font-size: 20px; font-weight: 800;">CONFIDENCIAL</div>
+            <div class="print-date" style="font-size: 12px; opacity: 0.8;">Gerado em: {{ $date }}</div>
         </div>
     </div>
 
@@ -124,17 +130,38 @@
         </div>
         @endif
 
-        <div style="margin-top: 50px; font-size: 12px; color: #64748b;">
-            <strong>Sobre este relatório:</strong> Este documento é uma síntese automática gerada pelo GRC Intelligence System. Ele consolida dados de ativos, vulnerabilidades, incidentes e conformidade legal para apoiar a tomada de decisão executiva.
+        <div class="grc-footer" style="margin-top: 50px; font-size: 12px; color: #64748b;">
+            <strong>Sobre este relatório:</strong> Este documento é uma síntese gerada para apoiar a tomada de decisão executiva.
         </div>
     </div>
 
-    <div class="footer">
-        Gerado pelo GRC Intelligence System · {{ $company }}
+    <div class="footer grc-footer">
+        <span class="grc-branding">Gerado pelo GRC Intelligence System · </span>{{ $company }}
     </div>
 
-    <div class="no-print" style="position: fixed; bottom: 30px; right: 30px;">
-        <button onclick="window.print()" style="background: #06b6d4; color: #fff; border: none; padding: 15px 30px; border-radius: 50px; font-weight: 800; cursor: pointer; box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.4);">🖨️ IMPRIMIR / SALVAR PDF</button>
+    <div class="no-print" style="position: fixed; bottom: 30px; right: 30px; display:flex; align-items:center; gap:10px; background:#fff; padding:10px 15px; border-radius:50px; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
+        <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
+        </label>
+        <button onclick="window.print()" style="background: #06b6d4; color: #fff; border: none; padding: 12px 24px; border-radius: 50px; font-weight: 800; cursor: pointer;">🖨️ IMPRIMIR / SALVAR PDF</button>
     </div>
+
+    <script>
+    function toggleGeneric(isGeneric) {
+        if (isGeneric) {
+            document.body.classList.add('generic-pdf');
+        } else {
+            document.body.classList.remove('generic-pdf');
+        }
+        localStorage.setItem('grc_pdf_generic', isGeneric ? '1' : '0');
+    }
+    (function() {
+        const saved = localStorage.getItem('grc_pdf_generic');
+        const isGeneric = saved === null ? true : saved === '1';
+        const chk = document.getElementById('toggleGenericMode');
+        if (chk) chk.checked = isGeneric;
+        toggleGeneric(isGeneric);
+    })();
+    </script>
 </body>
 </html>

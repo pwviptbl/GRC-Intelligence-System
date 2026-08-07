@@ -33,17 +33,34 @@
         .evidence-list { margin-top: 8px; font-size: 10px; color: #0891b2; }
 
         .footer { position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+
+        @media print {
+            .no-print { display: none; }
+        }
+
+        body.generic-pdf .grc-branding,
+        body.generic-pdf .print-date,
+        body.generic-pdf .grc-footer {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
+    <div class="no-print" style="position: fixed; top: 20px; right: 20px; display:flex; align-items:center; gap:10px; z-index:9999;">
+        <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:8px 12px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
+        </label>
+        <button onclick="window.print()" style="background:#0891b2; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-weight:bold;">Imprimir / Salvar PDF</button>
+    </div>
+
     <div class="header">
         <h1>Dossiê de Conformidade e Evidências</h1>
-        <p>Sistema de Inteligência em GRC - {{ $empresa }}</p>
+        <p><span class="grc-branding">Sistema de Inteligência em GRC - </span>{{ $empresa }}</p>
     </div>
 
     <div class="summary-box">
         <table>
-            <tr>
+            <tr class="print-date">
                 <td class="label">Data de Geração:</td>
                 <td>{{ $data_geracao }}</td>
                 <td class="label">Software:</td>

@@ -44,16 +44,25 @@
         }
         
         .btn-print { background: #0891b2; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        body.generic-pdf .grc-branding,
+        body.generic-pdf .print-date,
+        body.generic-pdf .grc-footer {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
-    <div class="no-print" style="display:flex; justify-content:flex-end; margin-bottom:20px;">
+    <div class="no-print" style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:20px;">
+        <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:8px 12px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
+        </label>
         <button onclick="window.print()" class="btn-print">Imprimir Plano</button>
     </div>
 
     <div class="header">
-        <h1 class="title">Cronograma de Planos de Ação (GRC)</h1>
-        <div class="date">Relatório gerado em: {{ now()->format('d/m/Y H:i') }}</div>
+        <h1 class="title">Cronograma de Planos de Ação<span class="grc-branding"> (GRC)</span></h1>
+        <div class="date print-date">Relatório gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     @foreach($acoes as $a)
@@ -130,8 +139,26 @@
     </div>
     @endforeach
 
-    <div style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        GRC Intelligence System - Controle de Qualidade e Conformidade
+    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
+        <span class="grc-branding">GRC Intelligence System - </span>Controle de Qualidade e Conformidade
     </div>
+
+    <script>
+    function toggleGeneric(isGeneric) {
+        if (isGeneric) {
+            document.body.classList.add('generic-pdf');
+        } else {
+            document.body.classList.remove('generic-pdf');
+        }
+        localStorage.setItem('grc_pdf_generic', isGeneric ? '1' : '0');
+    }
+    (function() {
+        const saved = localStorage.getItem('grc_pdf_generic');
+        const isGeneric = saved === null ? true : saved === '1';
+        const chk = document.getElementById('toggleGenericMode');
+        if (chk) chk.checked = isGeneric;
+        toggleGeneric(isGeneric);
+    })();
+    </script>
 </body>
 </html>
