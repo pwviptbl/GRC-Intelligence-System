@@ -92,9 +92,7 @@
     </div>
     @endforeach
 
-    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        Documento gerado pelo GRC Intelligence System - Confidencial
-    </div>
+
 
     <script>
     function toggleGeneric(isGeneric) {
