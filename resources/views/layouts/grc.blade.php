@@ -176,12 +176,12 @@
         </a>
 
         @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-        <a href="{{ route('estrategia.index') }}" class="nav-btn" :class="{ 'active': view === 'estrategia' }">
+        <a href="{{ route('estrategia.index') }}" class="nav-btn" :class="{ 'active': view.includes('estrategia') }">
           <span class="icon" style="margin-right: 10px;">🚀</span> Consultor IA
         </a>
         @endif
 
-        <a href="{{ route('relatorios.index') }}" class="nav-btn" :class="{ 'active': view === 'relatorios' }">
+        <a href="{{ route('relatorios.index') }}" class="nav-btn" :class="{ 'active': view.includes('relatorios') }">
           <span class="icon" style="margin-right: 10px;">📊</span> Centro de Relatórios
         </a>
 
