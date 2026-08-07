@@ -55,7 +55,7 @@
 
     <div class="header">
         <h1>Dossiê de Conformidade e Evidências</h1>
-        <p><span class="grc-branding">Sistema de Inteligência em GRC - </span>{{ $empresa }}</p>
+        <p>{{ $empresa }}</p>
     </div>
 
     <div class="summary-box">
@@ -200,9 +200,7 @@
     </div>
     @endif
 
-    <div class="footer">
-        Este documento é confidencial e propriedade de {{ $empresa }}. Gerado automaticamente pelo GRC Intelligence System.
-    </div>
+
 
     <script>
         window.onload = function() { window.print(); }

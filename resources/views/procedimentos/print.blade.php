@@ -46,10 +46,7 @@
     </div>
     @endif
 
-    <div class="header">
-        <h1 class="title"><span class="grc-branding">GRC Intelligence System - </span>Procedimentos Operacionais</h1>
-        <div class="date print-date">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
+
 
     @foreach($procedimentos as $proc)
     <div class="procedimento">

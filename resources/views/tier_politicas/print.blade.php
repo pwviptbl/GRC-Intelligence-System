@@ -43,10 +43,7 @@
     </div>
     @endif
 
-    <div class="header">
-        <h1 class="title"><span class="grc-branding">GRC Intelligence - </span>Ações por Tier</h1>
-        <div class="date print-date">Extraído em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
+
 
     <div class="filters">
         <strong>Filtros aplicados:</strong>

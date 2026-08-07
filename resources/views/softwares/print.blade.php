@@ -32,7 +32,6 @@
 
     <div class="header">
         <h1>Inventário de Ativos de Software</h1>
-        <div class="print-date" style="font-size: 12px; color: #666;">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     <table>
@@ -68,9 +67,7 @@
         </tbody>
     </table>
 
-    <div class="footer grc-footer">
-        Documento Oficial de Ativos<span class="grc-branding"> - GRC Intelligence System</span>
-    </div>
+
 
     <script>
     function toggleGeneric(isGeneric) {

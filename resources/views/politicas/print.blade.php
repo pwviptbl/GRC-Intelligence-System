@@ -48,11 +48,6 @@
     </div>
     @endif
 
-    <div class="header">
-        <h1 class="title"><span class="grc-branding">GRC Intelligence System - </span>Políticas de Governança</h1>
-        <div class="date print-date">Relatório emitido em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
-
     @foreach($politicas as $pol)
     <div class="politica">
         <div class="pol-header">
@@ -69,10 +64,6 @@
         </div>
     </div>
     @endforeach
-
-    <div class="footer grc-footer">
-        Este documento é de uso restrito e confidencial do GRC Intelligence System.
-    </div>
 
     <script>
     function toggleGeneric(isGeneric) {

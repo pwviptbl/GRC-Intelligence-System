@@ -60,11 +60,6 @@
         <button onclick="window.print()" class="btn-print">Imprimir Plano</button>
     </div>
 
-    <div class="header">
-        <h1 class="title">Cronograma de Planos de Ação<span class="grc-branding"> (GRC)</span></h1>
-        <div class="date print-date">Relatório gerado em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
-
     @foreach($acoes as $a)
     <div class="acao-item">
         <div class="acao-header">
@@ -138,10 +133,6 @@
         @endif
     </div>
     @endforeach
-
-    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        <span class="grc-branding">GRC Intelligence System - </span>Controle de Qualidade e Conformidade
-    </div>
 
     <script>
     function toggleGeneric(isGeneric) {

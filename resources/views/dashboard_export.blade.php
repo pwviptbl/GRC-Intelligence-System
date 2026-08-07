@@ -47,11 +47,7 @@
     <div class="header">
         <div>
             <h1>Executive Scorecard</h1>
-            <p>{{ $company }} · <span class="grc-branding">Sistema de Inteligência em </span>Governança</p>
-        </div>
-        <div style="text-align: right">
-            <div class="grc-footer" style="font-size: 20px; font-weight: 800;">CONFIDENCIAL</div>
-            <div class="print-date" style="font-size: 12px; opacity: 0.8;">Gerado em: {{ $date }}</div>
+            <p>{{ $company }}</p>
         </div>
     </div>
 
@@ -130,14 +126,7 @@
         </div>
         @endif
 
-        <div class="grc-footer" style="margin-top: 50px; font-size: 12px; color: #64748b;">
-            <strong>Sobre este relatório:</strong> Este documento é uma síntese gerada para apoiar a tomada de decisão executiva.
-        </div>
-    </div>
 
-    <div class="footer grc-footer">
-        <span class="grc-branding">Gerado pelo GRC Intelligence System · </span>{{ $company }}
-    </div>
 
     <div class="no-print" style="position: fixed; bottom: 30px; right: 30px; display:flex; align-items:center; gap:10px; background:#fff; padding:10px 15px; border-radius:50px; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
         <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">

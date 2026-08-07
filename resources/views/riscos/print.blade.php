@@ -61,10 +61,7 @@
     </div>
     @endif
 
-    <div class="header">
-        <h1 class="title"><span class="grc-branding">GRC Intelligence - </span>Inventário de Riscos</h1>
-        <div class="date print-date">Extraído em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
+
 
     @foreach($riscos as $r)
     <div class="risco-item">

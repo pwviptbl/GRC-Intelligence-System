@@ -30,7 +30,6 @@
 
     <div class="header">
         <h1>Lista de Clientes Ativos</h1>
-        <div class="print-date" style="font-size: 12px; color: #666;">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     <table>
@@ -52,9 +51,7 @@
         </tbody>
     </table>
 
-    <div class="footer grc-footer">
-        Documento Oficial de Governança<span class="grc-branding"> - GRC Intelligence System</span>
-    </div>
+
 
     <script>
     function toggleGeneric(isGeneric) {

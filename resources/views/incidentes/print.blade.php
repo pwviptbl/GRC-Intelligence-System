@@ -54,10 +54,7 @@
     </div>
     @endif
 
-    <div class="header">
-        <h1 class="title"><span class="grc-branding">GRC Intelligence - </span>Relatório de Incidentes de Segurança</h1>
-        <div class="date print-date">Extraído em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
+
 
     @foreach($incidentes as $i)
     <div class="incidente-item">

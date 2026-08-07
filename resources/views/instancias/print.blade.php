@@ -31,7 +31,6 @@
 
     <div class="header">
         <h1>Mapeamento de Instâncias (Clientes vs Software)</h1>
-        <div class="print-date" style="font-size: 12px; color: #666;">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     <table>
@@ -55,9 +54,7 @@
         </tbody>
     </table>
 
-    <div class="footer grc-footer">
-        Relatório de Vinculação de Ativos<span class="grc-branding"> - GRC Intelligence System</span>
-    </div>
+
 
     <script>
     function toggleGeneric(isGeneric) {

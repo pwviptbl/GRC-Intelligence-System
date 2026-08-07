@@ -48,11 +48,6 @@
     </div>
     @endif
 
-    <div class="header">
-        <h1 class="title">Controle de Treinamentos e Capacitação</h1>
-        <div class="print-date" style="font-size: 11px; color: #666;">Relatório em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
-
     @foreach($treinamentos as $t)
     <div class="treinamento-block">
         <div class="t-header">
@@ -91,10 +86,6 @@
         </table>
     </div>
     @endforeach
-
-    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        <span class="grc-branding">GRC Intelligence System - </span>Gestão de Conscientização e Treinamento
-    </div>
 
     <script>
     function toggleGeneric(isGeneric) {
