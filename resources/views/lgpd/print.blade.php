@@ -26,16 +26,25 @@
             body { padding: 0; }
         }
         .btn-print { background: #0d9488; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        body.generic-pdf .grc-branding,
+        body.generic-pdf .print-date,
+        body.generic-pdf .grc-footer {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
-    <div class="no-print" style="position: fixed; top: 20px; right: 20px;">
+    <div class="no-print" style="position: fixed; top: 20px; right: 20px; display:flex; align-items:center; gap:10px;">
+        <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:8px 12px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
+        </label>
         <button onclick="window.print()" class="btn-print">Gerar PDF de Auditoria</button>
     </div>
 
     <div class="header">
         <h1 class="title">Checklist de Conformidade LGPD - Relatório Final</h1>
-        <div style="font-size: 11px; color: #666;">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
+        <div class="print-date" style="font-size: 11px; color: #666;">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     <div class="summary">
@@ -84,8 +93,26 @@
         </tbody>
     </table>
 
-    <div style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
+    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
         Documento gerado pelo Módulo de Conformidade LGPD - GRC Intelligence System
     </div>
+
+    <script>
+    function toggleGeneric(isGeneric) {
+        if (isGeneric) {
+            document.body.classList.add('generic-pdf');
+        } else {
+            document.body.classList.remove('generic-pdf');
+        }
+        localStorage.setItem('grc_pdf_generic', isGeneric ? '1' : '0');
+    }
+    (function() {
+        const saved = localStorage.getItem('grc_pdf_generic');
+        const isGeneric = saved === null ? true : saved === '1';
+        const chk = document.getElementById('toggleGenericMode');
+        if (chk) chk.checked = isGeneric;
+        toggleGeneric(isGeneric);
+    })();
+    </script>
 </body>
 </html>
