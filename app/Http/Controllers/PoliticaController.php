@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Politica;
 use App\Services\GeminiService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class PoliticaController extends Controller
@@ -99,9 +100,16 @@ class PoliticaController extends Controller
         return response()->json(['sugestoes' => $sugestoes]);
     }
 
-    public function print(Politica $politica)
+    public function print(Request $request, Politica $politica)
     {
         $politicas = collect([$politica]);
+
+        if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
+            $html = view('politicas.print', ['politicas' => $politicas, 'isPdfMode' => true])->render();
+            $safeTitle = \Str::slug($politica->titulo) ?: "politica_{$politica->id}";
+            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
+        }
+
         return view('politicas.print', compact('politicas'));
     }
 
@@ -109,6 +117,27 @@ class PoliticaController extends Controller
     {
         $politicas = Politica::latest()->get();
         return view('politicas.print', compact('politicas'));
+    }
+
+    public function exportZip()
+    {
+        $politicas = Politica::latest()->get();
+        $zipFileName = 'politicas_governanca_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($politicas as $index => $pol) {
+                $html = view('politicas.print', ['politicas' => collect([$pol]), 'isPdfMode' => true])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+                $safeTitle = \Str::slug($pol->titulo) ?: "politica_{$pol->id}";
+                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
     public function destroy(Politica $politica)

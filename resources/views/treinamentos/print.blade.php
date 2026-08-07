@@ -25,7 +25,7 @@
         .pendente { background: #fef9c3; color: #854d0e; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
         }
         .btn-print { background: #7c3aed; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -38,17 +38,15 @@
     </style>
 </head>
 <body>
+    @if(!($isPdfMode ?? false))
     <div class="no-print" style="position: fixed; top: 20px; right: 20px; display:flex; align-items:center; gap:10px;">
         <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:8px 12px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
             <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
         </label>
+        <a href="{{ route('treinamentos.export.zip') }}" style="background:#059669; color:white; text-decoration:none; padding:10px 18px; border-radius:6px; font-weight:bold; font-size:13px; display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (PDFs)</a>
         <button onclick="window.print()" class="btn-print">Imprimir Relatório / PDF</button>
     </div>
-
-    <div class="header">
-        <h1 class="title">Controle de Treinamentos e Capacitação</h1>
-        <div class="print-date" style="font-size: 11px; color: #666;">Relatório em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
+    @endif
 
     @foreach($treinamentos as $t)
     <div class="treinamento-block">
@@ -88,10 +86,6 @@
         </table>
     </div>
     @endforeach
-
-    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        <span class="grc-branding">GRC Intelligence System - </span>Gestão de Conscientização e Treinamento
-    </div>
 
     <script>
     function toggleGeneric(isGeneric) {

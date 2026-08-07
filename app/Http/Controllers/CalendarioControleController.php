@@ -10,6 +10,7 @@ use App\Models\Procedimento;
 use App\Models\Software;
 use App\Models\User;
 use App\Services\CalendarioControleService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -331,10 +332,45 @@ class CalendarioControleController extends Controller
                 'modulo' => $request->input('modulo'),
                 'categoria' => $request->input('categoria'),
                 'software_nome' => $request->filled('software_id')
-                    ? Software::find($request->software_id)?->nome
+                    ? Software::find($request->input('software_id'))?->nome
                     : null,
             ],
         ]);
+    }
+
+    public function exportZip(Request $request)
+    {
+        $eventos = $this->tableAvailable()
+            ? $this->filteredPrintQuery($request)->get()
+            : collect();
+
+        $zipFileName = 'central_controles_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($eventos as $index => $ev) {
+                $html = view('calendario_controles.print', [
+                    'eventos' => collect([$ev]),
+                    'isPdfMode' => true,
+                    'filters' => [
+                        'software_id' => null,
+                        'status' => null,
+                        'tier' => null,
+                        'modulo' => null,
+                        'categoria' => null,
+                        'software_nome' => null,
+                    ],
+                ])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+                $safeTitle = \Str::slug($ev->acao_controle_snapshot) ?: "controle_{$ev->id}";
+                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
     public function generate(Request $request)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Risco;
 use App\Services\GeminiService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class RiscoController extends Controller
@@ -86,9 +87,16 @@ class RiscoController extends Controller
         return response()->json(['plano_acao' => $plano]);
     }
 
-    public function print(Risco $risco)
+    public function print(Request $request, Risco $risco)
     {
         $riscos = collect([$risco]);
+
+        if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
+            $html = view('riscos.print', ['riscos' => $riscos, 'isPdfMode' => true])->render();
+            $safeTitle = \Str::slug($risco->titulo) ?: "risco_{$risco->id}";
+            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
+        }
+
         return view('riscos.print', compact('riscos'));
     }
 
@@ -118,6 +126,49 @@ class RiscoController extends Controller
 
         $riscos = $query->get();
         return view('riscos.print', compact('riscos'));
+    }
+
+    public function exportZip(Request $request)
+    {
+        $query = Risco::with(['software', 'cliente'])->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('probabilidade')) {
+            $query->where('probabilidade', $request->probabilidade);
+        }
+
+        if ($request->filled('impacto')) {
+            $query->where('impacto', $request->impacto);
+        }
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+
+        $riscos = $query->get();
+        $zipFileName = 'inventario_riscos_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($riscos as $index => $r) {
+                $html = view('riscos.print', ['riscos' => collect([$r]), 'isPdfMode' => true])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+                $safeTitle = \Str::slug($r->titulo) ?: "risco_{$r->id}";
+                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
     protected function calcularCriticidade($prob, $imp)

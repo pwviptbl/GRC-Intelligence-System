@@ -22,7 +22,7 @@
         .cat-row { background: #f0fdfa; font-weight: bold; font-size: 12px; color: #0d9488; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
         }
         .btn-print { background: #0d9488; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -44,7 +44,6 @@
 
     <div class="header">
         <h1 class="title">Checklist de Conformidade LGPD - Relatório Final</h1>
-        <div class="print-date" style="font-size: 11px; color: #666;">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     <div class="summary">
@@ -93,9 +92,7 @@
         </tbody>
     </table>
 
-    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        Documento gerado pelo Módulo de Conformidade LGPD - GRC Intelligence System
-    </div>
+
 
     <script>
     function toggleGeneric(isGeneric) {

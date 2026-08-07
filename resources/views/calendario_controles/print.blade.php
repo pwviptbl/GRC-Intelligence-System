@@ -24,6 +24,11 @@
         .status-atrasado { color: #991b1b; }
         .status-cancelado, .status-dispensado { color: #6b7280; }
         .btn-print { background: #06b6d4; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        @media print {
+            @page { margin: 12mm; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+            body { margin: 0; padding: 0; }
+        }
 
         body.generic-pdf .grc-branding,
         body.generic-pdf .print-date,
@@ -33,17 +38,17 @@
     </style>
 </head>
 <body>
+    @if(!($isPdfMode ?? false))
     <div class="no-print" style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:20px;">
         <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:8px 12px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
             <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
         </label>
+        <a href="{{ route('calendario_controles.export.zip', request()->query()) }}" style="background:#059669; color:white; text-decoration:none; padding:10px 18px; border-radius:6px; font-weight:bold; font-size:13px; display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (PDFs)</a>
         <button onclick="window.print()" class="btn-print">Imprimir Inventário</button>
     </div>
+    @endif
 
-    <div class="header">
-        <h1 class="title"><span class="grc-branding">GRC Intelligence - </span>Central de Controles</h1>
-        <div class="date print-date">Extraído em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
+
 
     <div class="filters">
         <strong>Filtros aplicados:</strong>

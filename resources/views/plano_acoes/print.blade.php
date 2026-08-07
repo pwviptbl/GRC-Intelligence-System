@@ -32,7 +32,7 @@
         
         @media print {
             @page { margin: 12mm; }
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { margin: 0; padding: 0; }
             .header { break-after: avoid-page; page-break-after: avoid; }
             .acao-item {
@@ -58,11 +58,6 @@
             <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
         </label>
         <button onclick="window.print()" class="btn-print">Imprimir Plano</button>
-    </div>
-
-    <div class="header">
-        <h1 class="title">Cronograma de Planos de Ação<span class="grc-branding"> (GRC)</span></h1>
-        <div class="date print-date">Relatório gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     @foreach($acoes as $a)
@@ -138,10 +133,6 @@
         @endif
     </div>
     @endforeach
-
-    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        <span class="grc-branding">GRC Intelligence System - </span>Controle de Qualidade e Conformidade
-    </div>
 
     <script>
     function toggleGeneric(isGeneric) {

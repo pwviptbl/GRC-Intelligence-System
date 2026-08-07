@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Treinamento;
 use App\Models\TreinamentoRegistro;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class TreinamentoController extends Controller
@@ -61,9 +62,16 @@ class TreinamentoController extends Controller
         return redirect()->back()->with('success', 'Treinamento atualizado!');
     }
 
-    public function print(Treinamento $treinamento)
+    public function print(Request $request, Treinamento $treinamento)
     {
         $treinamentos = collect([$treinamento->load('registros')]);
+
+        if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
+            $html = view('treinamentos.print', ['treinamentos' => $treinamentos, 'isPdfMode' => true])->render();
+            $safeTitle = \Str::slug($treinamento->titulo) ?: "treinamento_{$treinamento->id}";
+            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
+        }
+
         return view('treinamentos.print', compact('treinamentos'));
     }
 
@@ -71,6 +79,27 @@ class TreinamentoController extends Controller
     {
         $treinamentos = Treinamento::with('registros')->latest()->get();
         return view('treinamentos.print', compact('treinamentos'));
+    }
+
+    public function exportZip()
+    {
+        $treinamentos = Treinamento::with('registros')->latest()->get();
+        $zipFileName = 'controle_treinamentos_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($treinamentos as $index => $treino) {
+                $html = view('treinamentos.print', ['treinamentos' => collect([$treino]), 'isPdfMode' => true])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+                $safeTitle = \Str::slug($treino->titulo) ?: "treinamento_{$treino->id}";
+                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
     public function destroy(Treinamento $treinamento)

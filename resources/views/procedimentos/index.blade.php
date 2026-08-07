@@ -354,6 +354,9 @@
     <div class="procedures-header">
         <h3>📋 Registro de Procedimentos</h3>
         <div class="procedures-header-actions">
+            <a href="{{ route('procedimentos.export.zip') }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                📦 Baixar ZIP (Separados)
+            </a>
             <a href="{{ route('procedimentos.export.all') }}" target="_blank" class="btn-secondary procedures-header-button" style="background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1)">
                 <span>📄 Exportar Todos</span>
             </a>
@@ -453,7 +456,9 @@
                 </template>
             </div>
 
-            <div class="modal-actions" style="margin-top:30px">
+            <div class="modal-actions" style="margin-top:30px; display:flex; gap:10px; justify-content:flex-end; align-items:center">
+                <a :href="'/procedimentos/export/' + viewProc.id + '?pdf=1'" class="btn-save" style="background:#059669; color:white; text-decoration:none; padding:8px 16px; border-radius:6px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">📥 Baixar PDF Direct</a>
+                <a :href="'/procedimentos/export/' + viewProc.id" target="_blank" class="btn-secondary" style="font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 16px;">🖨️ Imprimir</a>
                 <button type="button" class="btn-cancel" @click="showViewModal = false">Fechar</button>
             </div>
         </div>

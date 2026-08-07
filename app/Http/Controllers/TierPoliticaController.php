@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TierPolitica;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -35,6 +36,34 @@ class TierPoliticaController extends Controller
                 'ativo' => $request->input('ativo'),
             ],
         ]);
+    }
+
+    public function exportZip(Request $request)
+    {
+        $tierPoliticas = $this->tableAvailable()
+            ? $this->filteredQuery($request)->get()
+            : collect();
+
+        $zipFileName = 'acoes_tier_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($tierPoliticas as $index => $policy) {
+                $html = view('tier_politicas.print', [
+                    'tierPoliticas' => collect([$policy]),
+                    'isPdfMode' => true,
+                    'filters' => ['tier' => null, 'bloqueio' => null, 'ativo' => null]
+                ])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+                $safeTitle = \Str::slug($policy->acao_controle) ?: "tier_{$policy->id}";
+                $filename = sprintf('%02d_tier%d_%s.pdf', $index + 1, $policy->tier, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
     public function store(Request $request)

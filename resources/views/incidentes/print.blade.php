@@ -29,7 +29,7 @@
         .content-box { padding: 0 15px 15px 15px; font-size: 13px; color: #444; text-align: justify; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
             .incidente-item { border: 1px solid #ddd; }
         }
@@ -44,17 +44,17 @@
     </style>
 </head>
 <body>
+    @if(!($isPdfMode ?? false))
     <div class="no-print" style="position: fixed; top: 20px; right: 20px; display:flex; align-items:center; gap:10px;">
         <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:8px 12px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
             <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
         </label>
+        <a href="{{ route('incidentes.export.zip') }}" style="background:#059669; color:white; text-decoration:none; padding:10px 18px; border-radius:6px; font-weight:bold; font-size:13px; display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (PDFs)</a>
         <button onclick="window.print()" class="btn-print">Gerar PDF / Imprimir</button>
     </div>
+    @endif
 
-    <div class="header">
-        <h1 class="title"><span class="grc-branding">GRC Intelligence - </span>Relatório de Incidentes de Segurança</h1>
-        <div class="date print-date">Extraído em: {{ now()->format('d/m/Y H:i') }}</div>
-    </div>
+
 
     @foreach($incidentes as $i)
     <div class="incidente-item">
@@ -92,9 +92,7 @@
     </div>
     @endforeach
 
-    <div class="grc-footer" style="font-size: 10px; color: #aaa; text-align: center; margin-top: 30px;">
-        Documento gerado pelo GRC Intelligence System - Confidencial
-    </div>
+
 
     <script>
     function toggleGeneric(isGeneric) {

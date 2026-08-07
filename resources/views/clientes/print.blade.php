@@ -11,7 +11,7 @@
         th { background: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; text-align: left; font-size: 13px; }
         td { border: 1px solid #dee2e6; padding: 12px; font-size: 13px; }
         .footer { position: fixed; bottom: 20px; width: 100%; text-align: center; font-size: 10px; color: #999; }
-        @media print { .no-print { display: none; } }
+        @media print { .no-print, .no-print * { display: none !important; visibility: hidden !important; } }
 
         body.generic-pdf .grc-branding,
         body.generic-pdf .print-date,
@@ -30,7 +30,6 @@
 
     <div class="header">
         <h1>Lista de Clientes Ativos</h1>
-        <div class="print-date" style="font-size: 12px; color: #666;">Gerado em: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     <table>
@@ -52,9 +51,7 @@
         </tbody>
     </table>
 
-    <div class="footer grc-footer">
-        Documento Oficial de Governança<span class="grc-branding"> - GRC Intelligence System</span>
-    </div>
+
 
     <script>
     function toggleGeneric(isGeneric) {

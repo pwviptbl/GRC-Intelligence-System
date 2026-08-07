@@ -296,8 +296,11 @@
     <div class="policies-header">
         <h3>📄 Políticas Corporativas</h3>
         <div class="policies-header-actions">
+            <a href="{{ route('politicas.export.zip') }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                📦 Baixar ZIP (Separados)
+            </a>
             <a href="{{ route('politicas.export.all') }}" target="_blank" class="btn-secondary policies-export-all">
-                <span>📄 Exportar Todas</span>
+                📄 Exportar Relatório (PDF)
             </a>
             @if(in_array(auth()->user()->role, ['admin', 'governanca', 'operacional']))
             <button class="btn-save" @click="getSuggestions()" style="font-size:11px; background:rgba(0,255,159,0.1); border:1px solid rgba(0,255,159,0.3); color:var(--green)">🤖 Sugestões IA</button>
@@ -329,7 +332,8 @@
                     <td data-label="Status"><span class="badge">{{ $p->status }}</span></td>
                     <td data-label="Ações">
                         <div class="policies-row-actions">
-                            <a href="{{ route('politicas.export', $p) }}" target="_blank" class="policies-icon-button" title="Exportar PDF">📄</a>
+                            <a href="{{ route('politicas.export', [$p, 'pdf' => 1]) }}" class="policies-icon-button" title="Baixar PDF Direto" style="text-decoration:none">📥 PDF</a>
+                            <a href="{{ route('politicas.export', $p) }}" target="_blank" class="policies-icon-button" title="Visualizar / Imprimir em Tela">🖨️</a>
                             <button @click="openView({{ $p->toJson() }})" class="policies-icon-button" title="Visualizar">👁️</button>
                             @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                             <button @click="openEdit({{ $p->toJson() }})" class="policies-icon-button" title="Editar">🖊️</button>
