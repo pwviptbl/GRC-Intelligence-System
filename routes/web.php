@@ -42,12 +42,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:admin,governanca,operacional,auditor')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-        Route::get('/estrategia', [EstrategiaController::class, 'index'])->name('estrategia.index');
-        Route::post('/estrategia/roadmap', [EstrategiaController::class, 'generateRoadmap'])->name('estrategia.roadmap');
         Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios.index');
         Route::get('/relatorios/dossie', [RelatorioController::class, 'gerarDossie'])->name('relatorios.dossie');
         Route::get('/dashboard/export/executive', [DashboardController::class, 'exportExecutive'])->name('dashboard.export');
         Route::get('/dashboard/ai-summary', [DashboardController::class, 'aiSummary'])->name('dashboard.ai_summary');
+    });
+
+    Route::middleware('role:admin,governanca')->group(function () {
+        Route::get('/estrategia', [EstrategiaController::class, 'index'])->name('estrategia.index');
+        Route::post('/estrategia/roadmap', [EstrategiaController::class, 'generateRoadmap'])->name('estrategia.roadmap');
+        Route::get('/chat', [ChatController::class, 'index'])->name('chat');
+        Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
+        Route::post('/chat/reset', [ChatController::class, 'reset'])->name('chat.reset');
     });
 
     // Gestão de Usuários (Apenas Admin)
@@ -106,21 +112,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
         Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
 
-        Route::resource('incidentes', IncidenteController::class);
+        Route::resource('incidentes', IncidenteController::class)->except(['store', 'update', 'destroy']);
         Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
         Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
-        Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->name('incidentes.add_evidence');
+        Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->middleware('role:admin,governanca,operacional')->name('incidentes.add_evidence');
         Route::get('/incidentes/evidencia/{evidencia}/download', [IncidenteController::class, 'downloadEvidence'])->name('incidentes.download_evidence');
-        Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->name('incidentes.remove_evidence');
+        Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->middleware('role:admin,governanca,operacional')->name('incidentes.remove_evidence');
 
-        Route::get('/plano_acoes', fn () => redirect()->route('calendario_controles.kanban'))->name('plano_acoes.index');
+
+    Route::middleware('role:admin,governanca')->group(function () {
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
-        Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
+        Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
+        Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
+        Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');
+        Route::post('/calendario_controles/plan-triaged', [CalendarioControleController::class, 'planTriaged'])->name('calendario_controles.plan_triaged');
+        Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->name('calendario_controles.discard_suggestions');
+        Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->name('calendario_controles.destroy');
+
         Route::get('/planejamento_semanal', [PlanejamentoSemanalController::class, 'index'])->name('planejamento_semanal.index');
-        Route::post('/planejamento_semanal/atribuir', [PlanejamentoSemanalController::class, 'assign'])->middleware('role:admin,governanca')->name('planejamento_semanal.assign');
-        Route::post('/planejamento_semanal/distribuir', [PlanejamentoSemanalController::class, 'autoAssign'])->middleware('role:admin,governanca')->name('planejamento_semanal.auto_assign');
-        Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->middleware('role:admin,governanca')->name('planejamento_semanal.close');
-        Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->middleware('role:admin,governanca')->name('planejamento_semanal.remove');
+        Route::post('/planejamento_semanal/atribuir', [PlanejamentoSemanalController::class, 'assign'])->name('planejamento_semanal.assign');
+        Route::post('/planejamento_semanal/distribuir', [PlanejamentoSemanalController::class, 'autoAssign'])->name('planejamento_semanal.auto_assign');
+        Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->name('planejamento_semanal.close');
+        Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->name('planejamento_semanal.remove');
+    });
+
+    Route::middleware('role:admin,governanca,operacional')->group(function () {
+        Route::get('/plano_acoes', fn () => redirect()->route('calendario_controles.kanban'))->name('plano_acoes.index');
+        Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
         Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->middleware('role:admin,governanca')->name('calendario_controles.store_manual');
         Route::post('/execucao_controles/lote/atribuir', [CalendarioControleController::class, 'bulkAssignExecutor'])->middleware('role:admin,governanca')->name('calendario_controles.bulk_assign_executor');
         Route::post('/execucao_controles/{calendario_controle}/notas', [CalendarioControleController::class, 'addNote'])->name('calendario_controles.add_note');
@@ -134,13 +152,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'removeStep'])->name('calendario_controles.remove_step');
         Route::delete('/execucao_controles/evidencias/{evidencia}', [CalendarioControleController::class, 'removeStepEvidence'])->name('calendario_controles.remove_step_evidence');
         Route::get('/execucao_controles/evidencias/{evidencia}/download', [CalendarioControleController::class, 'downloadStepEvidence'])->name('calendario_controles.download_step_evidence');
-        Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
-        Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->middleware('role:admin,governanca')->name('calendario_controles.generate');
-        Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->middleware('role:admin,governanca')->name('calendario_controles.approve_suggestions');
-        Route::post('/calendario_controles/plan-triaged', [CalendarioControleController::class, 'planTriaged'])->middleware('role:admin,governanca')->name('calendario_controles.plan_triaged');
-        Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->middleware('role:admin,governanca')->name('calendario_controles.discard_suggestions');
         Route::patch('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
-        Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->middleware('role:admin,governanca')->name('calendario_controles.destroy');
+    });
 
         Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
         Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');
@@ -151,9 +164,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/treinamentos/export/{treinamento}', [TreinamentoController::class, 'print'])->name('treinamentos.export');
         Route::patch('/treinamentos/registro/{registro}', [TreinamentoController::class, 'updateRegistro'])->name('treinamentos.update_registro');
 
-        Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-        Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
-        Route::post('/chat/reset', [ChatController::class, 'reset'])->name('chat.reset');
     });
 
     // 3. FERRAMENTAS DE IA

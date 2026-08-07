@@ -141,7 +141,9 @@
             <a href="{{ route('incidentes.export.all') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar Relatório</span>
             </a>
+            @if(auth()->user()->role !== 'auditor')
             <button class="btn-add" @click="openCreate()">+ Registrar Incidente</button>
+            @endif
         </div>
     </div>
 
@@ -167,12 +169,14 @@
                         <div style="display:flex;gap:12px;align-items:center">
                             <a href="{{ route('incidentes.export', $i) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
                             <button @click="openView({{ $i->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
+                            @if(auth()->user()->role !== 'auditor')
                             <button @click="openEvid({{ $i->id }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Anexar Provas/Evidências">✅</button>
                             <button @click="openEdit({{ $i->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>
                             <form action="{{ route('incidentes.destroy', $i) }}" method="POST" style="margin:0">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn-del" onclick="return confirm('Remover este incidente?')">🗑</button>
                             </form>
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -203,6 +207,7 @@
                 <div class="incident-mobile-actions">
                     <a href="{{ route('incidentes.export', $i) }}" target="_blank" rel="noopener" class="btn-del" title="Exportar PDF" aria-label="Exportar PDF">▤</a>
                     <button type="button" @click="openView(@js($i))" class="btn-del" title="Visualizar" aria-label="Visualizar" style="color:var(--cyan)">◉</button>
+                    @if(auth()->user()->role !== 'auditor')
                     <button type="button" @click="openEvid({{ $i->id }})" class="btn-del" title="Evidencias" aria-label="Evidencias" style="color:var(--green)">✓</button>
                     <button type="button" @click="openEdit(@js($i))" class="btn-del" title="Editar" aria-label="Editar" style="color:var(--yellow)">✎</button>
                     <form action="{{ route('incidentes.destroy', $i) }}" method="POST" style="margin:0" onsubmit="return confirm('Remover este incidente?')">
@@ -210,6 +215,7 @@
                         @method('DELETE')
                         <button type="submit" class="btn-del" title="Excluir" aria-label="Excluir">×</button>
                     </form>
+                    @endif
                 </div>
             </article>
         @empty
