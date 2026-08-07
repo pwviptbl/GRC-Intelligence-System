@@ -25,7 +25,7 @@
         .pendente { background: #fef9c3; color: #854d0e; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
         }
         .btn-print { background: #7c3aed; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }

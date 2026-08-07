@@ -23,7 +23,7 @@
         .footer { position: fixed; bottom: 30px; width: 100%; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
 
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
             .header { margin-top: 0; }
         }

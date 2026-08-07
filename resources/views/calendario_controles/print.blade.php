@@ -24,6 +24,11 @@
         .status-atrasado { color: #991b1b; }
         .status-cancelado, .status-dispensado { color: #6b7280; }
         .btn-print { background: #06b6d4; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        @media print {
+            @page { margin: 12mm; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+            body { margin: 0; padding: 0; }
+        }
 
         body.generic-pdf .grc-branding,
         body.generic-pdf .print-date,

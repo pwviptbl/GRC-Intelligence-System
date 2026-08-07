@@ -30,7 +30,7 @@
         
         @media print {
             @page { margin: 12mm; }
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { margin: 0; padding: 0; }
             .header { break-after: avoid-page; page-break-after: avoid; }
             .risco-item {

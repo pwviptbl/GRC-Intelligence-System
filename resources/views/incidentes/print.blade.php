@@ -29,7 +29,7 @@
         .content-box { padding: 0 15px 15px 15px; font-size: 13px; color: #444; text-align: justify; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
             .incidente-item { border: 1px solid #ddd; }
         }

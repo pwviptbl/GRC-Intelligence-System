@@ -21,7 +21,7 @@
         .sla { width: 80px; text-align: center; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
             .procedimento:last-child { page-break-after: auto; }
         }

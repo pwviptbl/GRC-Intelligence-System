@@ -13,7 +13,7 @@
         .tech-badge { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .classificacao { font-weight: bold; }
         .footer { position: fixed; bottom: 20px; width: 100%; text-align: center; font-size: 10px; color: #999; }
-        @media print { .no-print { display: none; } }
+        @media print { .no-print, .no-print * { display: none !important; visibility: hidden !important; } }
 
         body.generic-pdf .grc-branding,
         body.generic-pdf .print-date,

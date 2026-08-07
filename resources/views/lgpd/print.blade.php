@@ -22,7 +22,7 @@
         .cat-row { background: #f0fdfa; font-weight: bold; font-size: 12px; color: #0d9488; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             body { padding: 0; }
         }
         .btn-print { background: #0d9488; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }

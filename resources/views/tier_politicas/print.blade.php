@@ -19,7 +19,11 @@
         .tier-2 { color: #9a3412; }
         .tier-3 { color: #166534; }
         .status-disabled { color: #6b7280; background: #f3f4f6; }
-        .btn-print { background: #06b6d4; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        @media print {
+            @page { margin: 12mm; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+            body { margin: 0; padding: 0; }
+        }
 
         body.generic-pdf .grc-branding,
         body.generic-pdf .print-date,

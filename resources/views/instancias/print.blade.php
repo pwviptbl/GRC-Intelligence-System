@@ -12,7 +12,7 @@
         td { border: 1px solid #dee2e6; padding: 12px; font-size: 13px; }
         .branch-badge { background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 11px; }
         .footer { position: fixed; bottom: 20px; width: 100%; text-align: center; font-size: 10px; color: #999; }
-        @media print { .no-print { display: none; } }
+        @media print { .no-print, .no-print * { display: none !important; visibility: hidden !important; } }
 
         body.generic-pdf .grc-branding,
         body.generic-pdf .print-date,

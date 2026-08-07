@@ -32,7 +32,7 @@
         .footer { position: fixed; bottom: 30px; width: 100%; text-align: center; font-size: 10px; color: #94a3b8; }
         
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print * { display: none !important; visibility: hidden !important; }
             .header { -webkit-print-color-adjust: exact; }
         }
 
