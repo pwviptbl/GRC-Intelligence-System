@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Procedimento;
 use App\Services\GeminiService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class ProcedimentoController extends Controller
@@ -135,9 +136,16 @@ class ProcedimentoController extends Controller
         return response()->json(['sugestoes' => $sugestoes]);
     }
 
-    public function print(Procedimento $procedimento)
+    public function print(Request $request, Procedimento $procedimento)
     {
         $procedimentos = collect([$procedimento->load('etapas')]);
+
+        if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
+            $html = view('procedimentos.print', ['procedimentos' => $procedimentos, 'isPdfMode' => true])->render();
+            $safeTitle = \Str::slug($procedimento->titulo) ?: "procedimento_{$procedimento->id}";
+            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
+        }
+
         return view('procedimentos.print', compact('procedimentos'));
     }
 
@@ -156,10 +164,11 @@ class ProcedimentoController extends Controller
         $zip = new \ZipArchive();
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             foreach ($procedimentos as $index => $proc) {
-                $html = view('procedimentos.print', ['procedimentos' => collect([$proc])])->render();
+                $html = view('procedimentos.print', ['procedimentos' => collect([$proc]), 'isPdfMode' => true])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
                 $safeTitle = \Str::slug($proc->titulo) ?: "procedimento_{$proc->id}";
-                $filename = sprintf('%02d_%s.html', $index + 1, $safeTitle);
-                $zip->addFromString($filename, $html);
+                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
             }
             $zip->close();
         }

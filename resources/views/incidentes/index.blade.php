@@ -169,8 +169,9 @@
                     <td><span class="badge">{{ $i->status }}</span></td>
                     <td style="color:var(--text-3);font-size:12px">{{ $i->data_deteccao }}</td>
                     <td>
-                        <div style="display:flex;gap:12px;align-items:center">
-                            <a href="{{ route('incidentes.export', $i) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
+                        <div style="display:flex;gap:10px;align-items:center">
+                            <a href="{{ route('incidentes.export', [$i, 'pdf' => 1]) }}" style="text-decoration:none; font-size:12px; font-weight:bold; color:var(--green)" title="Baixar PDF Direto">📥 PDF</a>
+                            <a href="{{ route('incidentes.export', $i) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Visualizar / Imprimir">🖨️</a>
                             <button @click="openView({{ $i->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
                             @if(auth()->user()->role !== 'auditor')
                             <button @click="openEvid({{ $i->id }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Anexar Provas/Evidências">✅</button>

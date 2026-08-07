@@ -215,8 +215,9 @@
                     <td><span class="tech-badge">{{ $r->origem }}</span></td>
                     <td><span class="badge">{{ $r->status }}</span></td>
                     <td>
-                        <div style="display:flex;gap:12px;align-items:center">
-                            <a href="{{ route('riscos.export', $r) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Exportar PDF">📄</a>
+                        <div style="display:flex;gap:10px;align-items:center">
+                            <a href="{{ route('riscos.export', [$r, 'pdf' => 1]) }}" style="text-decoration:none; font-size:12px; font-weight:bold; color:var(--green)" title="Baixar PDF Direto">📥 PDF</a>
+                            <a href="{{ route('riscos.export', $r) }}" target="_blank" style="text-decoration:none; font-size:14px" title="Visualizar / Imprimir">🖨️</a>
                             <button @click="openView({{ $r->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Visualizar">👁️</button>
                             @if($canManageRisks)
                             <button @click="openEdit({{ $r->toJson() }})" style="background:none;border:none;cursor:pointer;font-size:14px" title="Editar">🖊️</button>

@@ -36,13 +36,15 @@
     </style>
 </head>
 <body>
+    @if(!($isPdfMode ?? false))
     <div class="no-print" style="position: fixed; top: 20px; right: 20px; display:flex; align-items:center; gap:10px;">
         <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:8px 12px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
             <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
         </label>
-        <a href="{{ route('procedimentos.export.zip') }}" style="background:#059669; color:white; text-decoration:none; padding:10px 18px; border-radius:5px; font-weight:bold; font-size:13px; display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (Separados)</a>
+        <a href="{{ route('procedimentos.export.zip') }}" style="background:#059669; color:white; text-decoration:none; padding:10px 18px; border-radius:5px; font-weight:bold; font-size:13px; display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (PDFs)</a>
         <button onclick="window.print()" class="btn-print">Imprimir / Salvar como PDF</button>
     </div>
+    @endif
 
     <div class="header">
         <h1 class="title"><span class="grc-branding">GRC Intelligence System - </span>Procedimentos Operacionais</h1>

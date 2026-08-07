@@ -332,7 +332,8 @@
                     <td data-label="Status"><span class="badge">{{ $p->status }}</span></td>
                     <td data-label="Ações">
                         <div class="policies-row-actions">
-                            <a href="{{ route('politicas.export', $p) }}" target="_blank" class="policies-icon-button" title="Exportar PDF">📄</a>
+                            <a href="{{ route('politicas.export', [$p, 'pdf' => 1]) }}" class="policies-icon-button" title="Baixar PDF Direto" style="text-decoration:none">📥 PDF</a>
+                            <a href="{{ route('politicas.export', $p) }}" target="_blank" class="policies-icon-button" title="Visualizar / Imprimir em Tela">🖨️</a>
                             <button @click="openView({{ $p->toJson() }})" class="policies-icon-button" title="Visualizar">👁️</button>
                             @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                             <button @click="openEdit({{ $p->toJson() }})" class="policies-icon-button" title="Editar">🖊️</button>

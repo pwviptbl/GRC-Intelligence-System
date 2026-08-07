@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TierPolitica;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -51,11 +52,13 @@ class TierPoliticaController extends Controller
             foreach ($tierPoliticas as $index => $policy) {
                 $html = view('tier_politicas.print', [
                     'tierPoliticas' => collect([$policy]),
+                    'isPdfMode' => true,
                     'filters' => ['tier' => null, 'bloqueio' => null, 'ativo' => null]
                 ])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
                 $safeTitle = \Str::slug($policy->acao_controle) ?: "tier_{$policy->id}";
-                $filename = sprintf('%02d_tier%d_%s.html', $index + 1, $policy->tier, $safeTitle);
-                $zip->addFromString($filename, $html);
+                $filename = sprintf('%02d_tier%d_%s.pdf', $index + 1, $policy->tier, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
             }
             $zip->close();
         }

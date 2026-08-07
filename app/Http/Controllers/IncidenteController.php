@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Incidente;
 use App\Models\IncidenteEvidencia;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -74,9 +75,16 @@ class IncidenteController extends Controller
         return redirect()->back()->with('success', 'Incidente atualizado com sucesso!');
     }
 
-    public function print(Incidente $incidente)
+    public function print(Request $request, Incidente $incidente)
     {
         $incidentes = collect([$incidente]);
+
+        if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
+            $html = view('incidentes.print', ['incidentes' => $incidentes, 'isPdfMode' => true])->render();
+            $safeTitle = \Str::slug($incidente->titulo) ?: "incidente_{$incidente->id}";
+            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
+        }
+
         return view('incidentes.print', compact('incidentes'));
     }
 
@@ -95,10 +103,11 @@ class IncidenteController extends Controller
         $zip = new \ZipArchive();
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             foreach ($incidentes as $index => $inc) {
-                $html = view('incidentes.print', ['incidentes' => collect([$inc])])->render();
+                $html = view('incidentes.print', ['incidentes' => collect([$inc]), 'isPdfMode' => true])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
                 $safeTitle = \Str::slug($inc->titulo) ?: "incidente_{$inc->id}";
-                $filename = sprintf('%02d_incidente_%d_%s.html', $index + 1, $inc->id, $safeTitle);
-                $zip->addFromString($filename, $html);
+                $filename = sprintf('%02d_incidente_%d_%s.pdf', $index + 1, $inc->id, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
             }
             $zip->close();
         }

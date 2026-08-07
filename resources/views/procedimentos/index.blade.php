@@ -456,7 +456,9 @@
                 </template>
             </div>
 
-            <div class="modal-actions" style="margin-top:30px">
+            <div class="modal-actions" style="margin-top:30px; display:flex; gap:10px; justify-content:flex-end; align-items:center">
+                <a :href="'/procedimentos/export/' + viewProc.id + '?pdf=1'" class="btn-save" style="background:#059669; color:white; text-decoration:none; padding:8px 16px; border-radius:6px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">📥 Baixar PDF Direct</a>
+                <a :href="'/procedimentos/export/' + viewProc.id" target="_blank" class="btn-secondary" style="font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:8px 16px;">🖨️ Imprimir</a>
                 <button type="button" class="btn-cancel" @click="showViewModal = false">Fechar</button>
             </div>
         </div>

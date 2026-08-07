@@ -10,6 +10,7 @@ use App\Models\Procedimento;
 use App\Models\Software;
 use App\Models\User;
 use App\Services\CalendarioControleService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -351,6 +352,7 @@ class CalendarioControleController extends Controller
             foreach ($eventos as $index => $ev) {
                 $html = view('calendario_controles.print', [
                     'eventos' => collect([$ev]),
+                    'isPdfMode' => true,
                     'filters' => [
                         'software_id' => null,
                         'status' => null,
@@ -360,9 +362,10 @@ class CalendarioControleController extends Controller
                         'software_nome' => null,
                     ],
                 ])->render();
+                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
                 $safeTitle = \Str::slug($ev->acao_controle_snapshot) ?: "controle_{$ev->id}";
-                $filename = sprintf('%02d_%s.html', $index + 1, $safeTitle);
-                $zip->addFromString($filename, $html);
+                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $pdfContent);
             }
             $zip->close();
         }

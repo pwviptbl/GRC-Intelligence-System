@@ -351,8 +351,9 @@
                     <h3 style="font-size:16px;color:var(--text-1);font-weight:600">{{ $treino->titulo }}</h3>
                     <p style="font-size:12px;color:var(--text-3);margin-top:4px">{{ $treino->descricao }}</p>
                 </div>
-                <div class="training-card-actions">
-                    <a href="{{ route('treinamentos.export', $treino) }}" target="_blank" class="training-icon-action" title="Exportar PDF">📄</a>
+                <div class="training-card-actions" style="display:flex; gap:8px; align-items:center;">
+                    <a href="{{ route('treinamentos.export', [$treino, 'pdf' => 1]) }}" class="training-icon-action" style="text-decoration:none; font-weight:bold; color:var(--green);" title="Baixar PDF Direto">📥 PDF</a>
+                    <a href="{{ route('treinamentos.export', $treino) }}" target="_blank" class="training-icon-action" title="Visualizar / Imprimir">🖨️</a>
                     <button @click="openEdit({{ $treino->toJson() }})" class="training-icon-action" title="Editar">🖊️</button>
                     <form action="{{ route('treinamentos.destroy', $treino) }}" method="POST" style="margin:0" onsubmit="return confirm('Excluir este treinamento?')">
                         @csrf @method('DELETE')
