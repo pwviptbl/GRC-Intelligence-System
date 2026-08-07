@@ -354,6 +354,9 @@
     <div class="procedures-header">
         <h3>📋 Registro de Procedimentos</h3>
         <div class="procedures-header-actions">
+            <a href="{{ route('procedimentos.export.zip') }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                📦 Baixar ZIP (Separados)
+            </a>
             <a href="{{ route('procedimentos.export.all') }}" target="_blank" class="btn-secondary procedures-header-button" style="background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1)">
                 <span>📄 Exportar Todos</span>
             </a>

@@ -331,10 +331,43 @@ class CalendarioControleController extends Controller
                 'modulo' => $request->input('modulo'),
                 'categoria' => $request->input('categoria'),
                 'software_nome' => $request->filled('software_id')
-                    ? Software::find($request->software_id)?->nome
+                    ? Software::find($request->input('software_id'))?->nome
                     : null,
             ],
         ]);
+    }
+
+    public function exportZip(Request $request)
+    {
+        $eventos = $this->tableAvailable()
+            ? $this->filteredPrintQuery($request)->get()
+            : collect();
+
+        $zipFileName = 'central_controles_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($eventos as $index => $ev) {
+                $html = view('calendario_controles.print', [
+                    'eventos' => collect([$ev]),
+                    'filters' => [
+                        'software_id' => null,
+                        'status' => null,
+                        'tier' => null,
+                        'modulo' => null,
+                        'categoria' => null,
+                        'software_nome' => null,
+                    ],
+                ])->render();
+                $safeTitle = \Str::slug($ev->acao_controle_snapshot) ?: "controle_{$ev->id}";
+                $filename = sprintf('%02d_%s.html', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $html);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
     public function generate(Request $request)

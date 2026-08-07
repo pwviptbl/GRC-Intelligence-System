@@ -120,6 +120,48 @@ class RiscoController extends Controller
         return view('riscos.print', compact('riscos'));
     }
 
+    public function exportZip(Request $request)
+    {
+        $query = Risco::with(['software', 'cliente'])->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('probabilidade')) {
+            $query->where('probabilidade', $request->probabilidade);
+        }
+
+        if ($request->filled('impacto')) {
+            $query->where('impacto', $request->impacto);
+        }
+
+        if ($request->filled('software_id')) {
+            $query->where('software_id', $request->software_id);
+        }
+
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+
+        $riscos = $query->get();
+        $zipFileName = 'inventario_riscos_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($riscos as $index => $r) {
+                $html = view('riscos.print', ['riscos' => collect([$r])])->render();
+                $safeTitle = \Str::slug($r->titulo) ?: "risco_{$r->id}";
+                $filename = sprintf('%02d_%s.html', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $html);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
     protected function calcularCriticidade($prob, $imp)
     {
         $matriz = [

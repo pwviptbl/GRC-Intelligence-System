@@ -111,6 +111,26 @@ class PoliticaController extends Controller
         return view('politicas.print', compact('politicas'));
     }
 
+    public function exportZip()
+    {
+        $politicas = Politica::latest()->get();
+        $zipFileName = 'politicas_governanca_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($politicas as $index => $pol) {
+                $html = view('politicas.print', ['politicas' => collect([$pol])])->render();
+                $safeTitle = \Str::slug($pol->titulo) ?: "politica_{$pol->id}";
+                $filename = sprintf('%02d_%s.html', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $html);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
     public function destroy(Politica $politica)
     {
         $politica->delete();

@@ -73,6 +73,26 @@ class TreinamentoController extends Controller
         return view('treinamentos.print', compact('treinamentos'));
     }
 
+    public function exportZip()
+    {
+        $treinamentos = Treinamento::with('registros')->latest()->get();
+        $zipFileName = 'controle_treinamentos_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($treinamentos as $index => $treino) {
+                $html = view('treinamentos.print', ['treinamentos' => collect([$treino])])->render();
+                $safeTitle = \Str::slug($treino->titulo) ?: "treinamento_{$treino->id}";
+                $filename = sprintf('%02d_%s.html', $index + 1, $safeTitle);
+                $zip->addFromString($filename, $html);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
     public function destroy(Treinamento $treinamento)
     {
         $treinamento->delete();

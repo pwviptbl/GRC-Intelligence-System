@@ -42,6 +42,7 @@
         <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:10px 14px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
             <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
         </label>
+        <a href="{{ route('politicas.export.zip') }}" style="background:#059669; color:white; text-decoration:none; padding:12px 20px; border-radius:6px; font-weight:bold; font-size:14px; box-shadow:0 4px 6px rgba(0,0,0,0.1); display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (Separados)</a>
         <button onclick="window.print()" class="btn-print">🖨️ Gerar PDF / Imprimir</button>
     </div>
 

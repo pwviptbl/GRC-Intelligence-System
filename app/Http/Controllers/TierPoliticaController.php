@@ -37,6 +37,32 @@ class TierPoliticaController extends Controller
         ]);
     }
 
+    public function exportZip(Request $request)
+    {
+        $tierPoliticas = $this->tableAvailable()
+            ? $this->filteredQuery($request)->get()
+            : collect();
+
+        $zipFileName = 'acoes_tier_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($tierPoliticas as $index => $policy) {
+                $html = view('tier_politicas.print', [
+                    'tierPoliticas' => collect([$policy]),
+                    'filters' => ['tier' => null, 'bloqueio' => null, 'ativo' => null]
+                ])->render();
+                $safeTitle = \Str::slug($policy->acao_controle) ?: "tier_{$policy->id}";
+                $filename = sprintf('%02d_tier%d_%s.html', $index + 1, $policy->tier, $safeTitle);
+                $zip->addFromString($filename, $html);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
     public function store(Request $request)
     {
         if (! $this->tableAvailable()) {

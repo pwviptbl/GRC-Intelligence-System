@@ -77,6 +77,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/softwares', [SoftwareController::class, 'index'])->name('softwares.index');
         Route::get('/softwares/export', [SoftwareController::class, 'print'])->name('softwares.export');
         Route::get('/tier_politicas', [TierPoliticaController::class, 'index'])->name('tier_politicas.index');
+        Route::get('/tier_politicas/export/zip', [TierPoliticaController::class, 'exportZip'])->name('tier_politicas.export.zip');
         Route::get('/tier_politicas/export/all', [TierPoliticaController::class, 'printAll'])->name('tier_politicas.export.all');
         Route::get('/atividades', [AtividadeController::class, 'index'])->name('atividades.index');
         Route::get('/cobertura-modulos', [AtividadeController::class, 'moduleCoverage'])->name('atividades.module_coverage');
@@ -88,9 +89,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
 
         Route::get('/politicas', [PoliticaController::class, 'index'])->name('politicas.index');
+        Route::get('/politicas/export/zip', [PoliticaController::class, 'exportZip'])->name('politicas.export.zip');
         Route::get('/politicas/export/all', [PoliticaController::class, 'printAll'])->name('politicas.export.all');
         Route::get('/politicas/export/{politica}', [PoliticaController::class, 'print'])->name('politicas.export');
         Route::get('/procedimentos', [ProcedimentoController::class, 'index'])->name('procedimentos.index');
+        Route::get('/procedimentos/export/zip', [ProcedimentoController::class, 'exportZip'])->name('procedimentos.export.zip');
         Route::get('/procedimentos/export/all', [ProcedimentoController::class, 'printAll'])->name('procedimentos.export.all');
         Route::get('/procedimentos/export/{procedimento}', [ProcedimentoController::class, 'print'])->name('procedimentos.export');
     });
@@ -109,10 +112,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 2. MÓDULOS OPERACIONAIS
     Route::middleware('role:admin,governanca,operacional,auditor')->group(function () {
         Route::resource('riscos', RiscoController::class);
+        Route::get('/riscos/export/zip', [RiscoController::class, 'exportZip'])->name('riscos.export.zip');
         Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
         Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
 
         Route::resource('incidentes', IncidenteController::class);
+        Route::get('/incidentes/export/zip', [IncidenteController::class, 'exportZip'])->name('incidentes.export.zip');
         Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
         Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
         Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->name('incidentes.add_evidence');
@@ -122,6 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:admin,governanca')->group(function () {
         Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
+        Route::get('/calendario_controles/export/zip', [CalendarioControleController::class, 'exportZip'])->name('calendario_controles.export.zip');
         Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
         Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
         Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');
@@ -160,6 +166,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/lgpd/{item}', [LgpdController::class, 'update'])->name('lgpd.update');
 
         Route::resource('treinamentos', TreinamentoController::class);
+        Route::get('/treinamentos/export/zip', [TreinamentoController::class, 'exportZip'])->name('treinamentos.export.zip');
         Route::get('/treinamentos/export/all', [TreinamentoController::class, 'printAll'])->name('treinamentos.export.all');
         Route::get('/treinamentos/export/{treinamento}', [TreinamentoController::class, 'print'])->name('treinamentos.export');
         Route::patch('/treinamentos/registro/{registro}', [TreinamentoController::class, 'updateRegistro'])->name('treinamentos.update_registro');

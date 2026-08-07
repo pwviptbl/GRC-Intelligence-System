@@ -327,6 +327,9 @@
     <div class="training-header">
         <h3>🎓 Catálogo de Treinamentos</h3>
         <div class="training-header-actions">
+            <a href="{{ route('treinamentos.export.zip') }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                📦 Baixar ZIP (Separados)
+            </a>
             <a href="{{ route('treinamentos.export.all') }}" target="_blank" class="btn-secondary training-export-all">
                 <span>📄 Exportar Todos</span>
             </a>

@@ -86,6 +86,26 @@ class IncidenteController extends Controller
         return view('incidentes.print', compact('incidentes'));
     }
 
+    public function exportZip()
+    {
+        $incidentes = Incidente::latest()->get();
+        $zipFileName = 'relatorio_incidentes_' . now()->format('Ymd_His') . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($incidentes as $index => $inc) {
+                $html = view('incidentes.print', ['incidentes' => collect([$inc])])->render();
+                $safeTitle = \Str::slug($inc->titulo) ?: "incidente_{$inc->id}";
+                $filename = sprintf('%02d_incidente_%d_%s.html', $index + 1, $inc->id, $safeTitle);
+                $zip->addFromString($filename, $html);
+            }
+            $zip->close();
+        }
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
     public function destroy(Incidente $incidente)
     {
         $paths = $incidente->evidencias()->pluck('arquivo_caminho')->filter()->toArray();
