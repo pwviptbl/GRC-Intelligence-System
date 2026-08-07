@@ -116,13 +116,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
         Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
 
-        Route::resource('incidentes', IncidenteController::class);
+        Route::resource('incidentes', IncidenteController::class)->except(['store', 'update', 'destroy']);
         Route::get('/incidentes/export/zip', [IncidenteController::class, 'exportZip'])->name('incidentes.export.zip');
         Route::get('/incidentes/export/all', [IncidenteController::class, 'printAll'])->name('incidentes.export.all');
         Route::get('/incidentes/export/{incidente}', [IncidenteController::class, 'print'])->name('incidentes.export');
-        Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->name('incidentes.add_evidence');
+        Route::post('/incidentes/{incidente}/evidencia', [IncidenteController::class, 'addEvidence'])->middleware('role:admin,governanca,operacional')->name('incidentes.add_evidence');
         Route::get('/incidentes/evidencia/{evidencia}/download', [IncidenteController::class, 'downloadEvidence'])->name('incidentes.download_evidence');
-        Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->name('incidentes.remove_evidence');
+        Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->middleware('role:admin,governanca,operacional')->name('incidentes.remove_evidence');
 
 
     Route::middleware('role:admin,governanca')->group(function () {
