@@ -325,6 +325,7 @@ class McpController extends Controller
             statusCode: 200,
             context: [
                 'tool'              => $name,
+                'arguments'         => $arguments,
                 'auth_mode'         => config('mcp.auth_mode', 'bearer'),
                 'token_fingerprint' => $this->tokenFingerprint,
                 'oauth_subject'     => null, // não armazenamos sub para privacidade
