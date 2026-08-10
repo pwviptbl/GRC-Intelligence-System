@@ -138,7 +138,7 @@
     menuAtivosAberto: false,
     menuGovernancaAberto: false,
     menuRiscosAberto: false,
-    view: '{{ request()->route()->getName() ?? 'dashboard' }}'
+    view: '{{ request()->route()?->getName() ?? 'dashboard' }}'
   }">
 
     <button
