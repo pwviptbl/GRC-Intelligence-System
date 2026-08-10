@@ -104,10 +104,32 @@
                             @endif
                         </td>
                         <td data-label="Detalhes">
-                            @if(is_array($args) && !empty($args))
+                            @if(is_array($ctx['before'] ?? null) && is_array($ctx['after'] ?? null))
+                                <div style="font-size:10px; color:var(--yellow); font-weight:700; margin-bottom:3px">🔄 Alteração (Antes ➔ Depois)</div>
+                                <div class="audit-args">
+                                    @foreach($ctx['after'] as $k => $v)
+                                        @if(array_key_exists($k, $ctx['before']) && $ctx['before'][$k] !== $v && !in_array($k, ['created_at', 'updated_at']))
+                                            <span class="audit-arg-tag" style="border-color:rgba(255,215,64,0.4); background:rgba(255,215,64,0.08)">
+                                                <strong>{{ $k }}:</strong> <s style="opacity:0.6; color:var(--red)">{{ is_array($ctx['before'][$k]) ? json_encode($ctx['before'][$k], JSON_UNESCAPED_UNICODE) : (string)$ctx['before'][$k] }}</s> ➔ <span style="color:var(--green)">{{ is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string)$v }}</span>
+                                            </span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @elseif(is_array($ctx['after'] ?? null))
+                                <div style="font-size:10px; color:var(--green); font-weight:700; margin-bottom:3px">➕ Registro Criado</div>
+                                <div class="audit-args">
+                                    @foreach($ctx['after'] as $k => $v)
+                                        @if(!in_array($k, ['created_at', 'updated_at']) && !is_null($v))
+                                            <span class="audit-arg-tag">
+                                                <strong>{{ $k }}:</strong> {{ is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string)$v }}
+                                            </span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @elseif(is_array($args) && !empty($args))
                                 <div class="audit-args">
                                     @foreach($args as $k => $v)
-                                        @if($k !== 'confirm')
+                                        @if($k !== 'confirm' && !is_null($v))
                                             <span class="audit-arg-tag">
                                                 <strong>{{ $k }}:</strong> {{ is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string)$v }}
                                             </span>
@@ -116,7 +138,7 @@
                                 </div>
                             @elseif(!empty($ctx))
                                 <div class="audit-args">
-                                    @foreach(Illuminate\Support\Arr::except($ctx, ['auth_mode', 'token_fingerprint', 'oauth_subject']) as $k => $v)
+                                    @foreach(Illuminate\Support\Arr::except($ctx, ['auth_mode', 'token_fingerprint', 'oauth_subject', 'tool', 'ok']) as $k => $v)
                                         <span class="audit-arg-tag">
                                             <strong>{{ $k }}:</strong> {{ is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string)$v }}
                                         </span>
@@ -169,9 +191,26 @@
                 <div><span style="color: var(--text-3)">Rota:</span> <span style="font-family: var(--mono); color: var(--text-2)" x-text="inspectEvent.route_name || '-'"></span></div>
             </div>
 
+            <!-- Se houver comparação antes/depois -->
+            <template x-if="inspectEvent.context && inspectEvent.context.before">
+                <div style="margin-top: 18px;">
+                    <h4 style="font-size: 11px; color: var(--yellow); text-transform: uppercase; margin-bottom: 8px; letter-spacing:0.5px">🔄 Comparativo: Estado Anterior (Antes) vs Novo Estado (Depois)</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <div style="font-size: 10px; color: var(--red); font-weight: bold; margin-bottom: 4px;">⚠️ ESTADO ANTERIOR (ANTES):</div>
+                            <pre style="background: rgba(255,83,112,0.05); border: 1px solid rgba(255,83,112,0.2); padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 11px; color: var(--red); max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin:0" x-text="JSON.stringify(inspectEvent.context.before, null, 2)"></pre>
+                        </div>
+                        <div>
+                            <div style="font-size: 10px; color: var(--green); font-weight: bold; margin-bottom: 4px;">✅ NOVO ESTADO (DEPOIS):</div>
+                            <pre style="background: rgba(0,255,159,0.05); border: 1px solid rgba(0,255,159,0.2); padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 11px; color: var(--green); max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin:0" x-text="JSON.stringify(inspectEvent.context.after || inspectEvent.context.arguments, null, 2)"></pre>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
             <div style="margin-top: 18px;">
-                <h4 style="font-size: 11px; color: var(--cyan); text-transform: uppercase; margin-bottom: 8px; letter-spacing:0.5px">Contexto & Parâmetros Executados</h4>
-                <pre style="background: var(--bg-base); border: 1px solid var(--border); padding: 14px; border-radius: 6px; font-family: var(--mono); font-size: 11px; color: var(--green); max-height: 280px; overflow-y: auto; white-space: pre-wrap; margin:0" x-text="JSON.stringify(inspectEvent.context, null, 2)"></pre>
+                <h4 style="font-size: 11px; color: var(--cyan); text-transform: uppercase; margin-bottom: 8px; letter-spacing:0.5px">Contexto Completo da Requisição & Payload</h4>
+                <pre style="background: var(--bg-base); border: 1px solid var(--border); padding: 14px; border-radius: 6px; font-family: var(--mono); font-size: 11px; color: var(--green); max-height: 240px; overflow-y: auto; white-space: pre-wrap; margin:0" x-text="JSON.stringify(inspectEvent.context, null, 2)"></pre>
             </div>
 
             <div class="modal-actions" style="margin-top: 20px; display: flex; justify-content: flex-end;">
