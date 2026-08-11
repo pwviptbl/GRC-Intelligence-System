@@ -316,6 +316,15 @@ class McpController extends Controller
 
         $arguments = $payload['params']['arguments'] ?? [];
         $confirmed = is_array($arguments) && in_array($arguments['confirm'] ?? false, [true, 1, '1', 'true', 'TRUE'], true);
+
+        $resultData = null;
+        if (is_array($message) && isset($message['result']['content'][0]['text'])) {
+            $decoded = json_decode($message['result']['content'][0]['text'], true);
+            if (is_array($decoded)) {
+                $resultData = $decoded;
+            }
+        }
+
         $audit->record(
             $confirmed ? 'mcp.write_confirmed' : 'mcp.write_preview',
             'mcp',
@@ -325,6 +334,9 @@ class McpController extends Controller
             statusCode: 200,
             context: [
                 'tool'              => $name,
+                'arguments'         => $arguments,
+                'before'            => $resultData['before'] ?? null,
+                'after'             => $resultData['after'] ?? $resultData['created'] ?? $resultData['data'] ?? null,
                 'auth_mode'         => config('mcp.auth_mode', 'bearer'),
                 'token_fingerprint' => $this->tokenFingerprint,
                 'oauth_subject'     => null, // não armazenamos sub para privacidade

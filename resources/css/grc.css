@@ -815,3 +815,14 @@
     .markdown-body strong { color: var(--cyan); font-weight: 600; }
     .markdown-body code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--yellow); }
     .markdown-body blockquote { border-left: 4px solid rgba(255,255,255,0.2); padding: 10px 20px; margin: 0 0 16px 0; background: rgba(255,255,255,0.02); font-style: italic; }
+
+    /* ── PAGINATION (Laravel Tailwind Override) ── */
+    nav[role="navigation"] { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-top:20px; padding:12px 16px; background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text-2); }
+    nav[role="navigation"] svg { width:16px !important; height:16px !important; max-width:16px !important; max-height:16px !important; fill:currentColor; display:inline-block; vertical-align:middle; flex-shrink:0; }
+    nav[role="navigation"] p { margin:0; font-size:12px; color:var(--text-3); }
+    nav[role="navigation"] p span { color:var(--cyan); font-weight:600; }
+    nav[role="navigation"] .inline-flex, nav[role="navigation"] .flex { display:inline-flex; align-items:center; gap:4px; }
+    nav[role="navigation"] a, nav[role="navigation"] span[aria-current="page"] > span, nav[role="navigation"] span[aria-disabled="true"] > span { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 10px; border-radius:6px; background:var(--bg-base); border:1px solid var(--border); color:var(--text-1); text-decoration:none; font-size:12px; font-weight:500; transition:all 0.15s; }
+    nav[role="navigation"] a:hover { border-color:var(--cyan); color:var(--cyan); background:rgba(0,229,255,0.1); }
+    nav[role="navigation"] span[aria-current="page"] > span { background:rgba(0,229,255,0.15); border-color:var(--cyan); color:var(--cyan); font-weight:700; }
+    nav[role="navigation"] span[aria-disabled="true"] > span { opacity:0.35; cursor:not-allowed; background:transparent; }

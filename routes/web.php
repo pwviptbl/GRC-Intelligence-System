@@ -158,7 +158,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'removeStep'])->name('calendario_controles.remove_step');
         Route::delete('/execucao_controles/evidencias/{evidencia}', [CalendarioControleController::class, 'removeStepEvidence'])->name('calendario_controles.remove_step_evidence');
         Route::get('/execucao_controles/evidencias/{evidencia}/download', [CalendarioControleController::class, 'downloadStepEvidence'])->name('calendario_controles.download_step_evidence');
-        Route::patch('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
+        Route::post('/incidentes', [IncidenteController::class, 'store'])->name('incidentes.store');
+        Route::patch('/incidentes/{incidente}', [IncidenteController::class, 'update'])->name('incidentes.update');
+        Route::delete('/incidentes/{incidente}', [IncidenteController::class, 'destroy'])->name('incidentes.destroy');
     });
 
         Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
