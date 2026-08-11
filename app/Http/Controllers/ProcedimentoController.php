@@ -158,20 +158,22 @@ class ProcedimentoController extends Controller
     public function exportZip()
     {
         $procedimentos = Procedimento::with('etapas')->latest()->get();
-        $zipFileName = 'procedimentos_operacionais_' . now()->format('Ymd_His') . '.zip';
+        $zipFileName = 'procedimentos_operacionais_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 
         $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-            foreach ($procedimentos as $index => $proc) {
-                $html = view('procedimentos.print', ['procedimentos' => collect([$proc]), 'isPdfMode' => true])->render();
-                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
-                $safeTitle = \Str::slug($proc->titulo) ?: "procedimento_{$proc->id}";
-                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
-                $zip->addFromString($filename, $pdfContent);
-            }
-            $zip->close();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
+
+        foreach ($procedimentos as $index => $proc) {
+            $html = view('procedimentos.print', ['procedimentos' => collect([$proc]), 'isPdfMode' => true])->render();
+            $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+            $safeTitle = \Str::slug($proc->titulo) ?: "procedimento_{$proc->id}";
+            $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+            $zip->addFromString($filename, $pdfContent);
+        }
+        $zip->close();
 
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }

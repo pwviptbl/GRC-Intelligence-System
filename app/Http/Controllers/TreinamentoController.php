@@ -84,20 +84,22 @@ class TreinamentoController extends Controller
     public function exportZip()
     {
         $treinamentos = Treinamento::with('registros')->latest()->get();
-        $zipFileName = 'controle_treinamentos_' . now()->format('Ymd_His') . '.zip';
+        $zipFileName = 'controle_treinamentos_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 
         $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-            foreach ($treinamentos as $index => $treino) {
-                $html = view('treinamentos.print', ['treinamentos' => collect([$treino]), 'isPdfMode' => true])->render();
-                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
-                $safeTitle = \Str::slug($treino->titulo) ?: "treinamento_{$treino->id}";
-                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
-                $zip->addFromString($filename, $pdfContent);
-            }
-            $zip->close();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
+
+        foreach ($treinamentos as $index => $treino) {
+            $html = view('treinamentos.print', ['treinamentos' => collect([$treino]), 'isPdfMode' => true])->render();
+            $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+            $safeTitle = \Str::slug($treino->titulo) ?: "treinamento_{$treino->id}";
+            $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+            $zip->addFromString($filename, $pdfContent);
+        }
+        $zip->close();
 
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }

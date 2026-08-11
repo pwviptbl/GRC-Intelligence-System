@@ -97,20 +97,22 @@ class IncidenteController extends Controller
     public function exportZip()
     {
         $incidentes = Incidente::latest()->get();
-        $zipFileName = 'relatorio_incidentes_' . now()->format('Ymd_His') . '.zip';
+        $zipFileName = 'relatorio_incidentes_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 
         $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-            foreach ($incidentes as $index => $inc) {
-                $html = view('incidentes.print', ['incidentes' => collect([$inc]), 'isPdfMode' => true])->render();
-                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
-                $safeTitle = \Str::slug($inc->titulo) ?: "incidente_{$inc->id}";
-                $filename = sprintf('%02d_incidente_%d_%s.pdf', $index + 1, $inc->id, $safeTitle);
-                $zip->addFromString($filename, $pdfContent);
-            }
-            $zip->close();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
+
+        foreach ($incidentes as $index => $inc) {
+            $html = view('incidentes.print', ['incidentes' => collect([$inc]), 'isPdfMode' => true])->render();
+            $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+            $safeTitle = \Str::slug($inc->titulo) ?: "incidente_{$inc->id}";
+            $filename = sprintf('%02d_incidente_%d_%s.pdf', $index + 1, $inc->id, $safeTitle);
+            $zip->addFromString($filename, $pdfContent);
+        }
+        $zip->close();
 
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
