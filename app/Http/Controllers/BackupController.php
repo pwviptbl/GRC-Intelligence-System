@@ -50,6 +50,16 @@ class BackupController extends Controller
         try {
             $zipName = $this->generateBackup('manual');
 
+            app(\App\Services\AuditLogService::class)->record(
+                'backup.create',
+                'web',
+                request(),
+                targetType: 'Backup',
+                targetId: $zipName,
+                statusCode: 200,
+                context: ['arquivo' => $zipName, 'origem' => 'manual']
+            );
+
             return redirect()->route('backups.index')
                 ->with('success', 'Backup gerado com sucesso: ' . $zipName);
         } catch (\Throwable $e) {
@@ -121,6 +131,16 @@ class BackupController extends Controller
             abort(404);
         }
 
+        app(\App\Services\AuditLogService::class)->record(
+            'backup.download',
+            'web',
+            request(),
+            targetType: 'Backup',
+            targetId: $safeName,
+            statusCode: 200,
+            context: ['arquivo' => $safeName]
+        );
+
         return Storage::disk('local')->download($relativePath, $safeName);
     }
 
@@ -147,6 +167,16 @@ class BackupController extends Controller
 
         $disk->delete($this->metadataPath($safeName));
 
+        app(\App\Services\AuditLogService::class)->record(
+            'backup.delete',
+            'web',
+            request(),
+            targetType: 'Backup',
+            targetId: $safeName,
+            statusCode: 200,
+            context: ['arquivo' => $safeName]
+        );
+
         return redirect()->route('backups.index')
             ->with('success', 'Backup excluído com sucesso: ' . $safeName);
     }
@@ -157,6 +187,16 @@ class BackupController extends Controller
         $metadata = $this->readMetadata($safeName);
         $metadata['protected'] = !(bool) ($metadata['protected'] ?? false);
         $this->writeMetadata($safeName, $metadata);
+
+        app(\App\Services\AuditLogService::class)->record(
+            'backup.toggle_protection',
+            'web',
+            request(),
+            targetType: 'Backup',
+            targetId: $safeName,
+            statusCode: 200,
+            context: ['arquivo' => $safeName, 'protegido' => $metadata['protected']]
+        );
 
         return redirect()->route('backups.index')->with(
             'success',
@@ -253,6 +293,19 @@ class BackupController extends Controller
             if (File::isDirectory($privateFilesPath)) {
                 $this->restorePrivateFiles($privateFilesPath, storage_path('app/private'));
             }
+
+            app(\App\Services\AuditLogService::class)->record(
+                'backup.restore',
+                'web',
+                $request,
+                targetType: 'Backup',
+                targetId: $request->file('backup_file')?->getClientOriginalName() ?? 'backup.zip',
+                statusCode: 200,
+                context: [
+                    'arquivo_enviado' => $request->file('backup_file')?->getClientOriginalName(),
+                    'restaurado_em' => now()->toIso8601String(),
+                ]
+            );
 
             return redirect()->route('backups.index')
                 ->with('success', 'Backup restaurado com sucesso.');
