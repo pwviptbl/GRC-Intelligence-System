@@ -44,24 +44,32 @@ class TierPoliticaController extends Controller
             ? $this->filteredQuery($request)->get()
             : collect();
 
-        $zipFileName = 'acoes_tier_' . now()->format('Ymd_His') . '.zip';
+        $zipFileName = 'acoes_tier_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 
         $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-            foreach ($tierPoliticas as $index => $policy) {
-                $html = view('tier_politicas.print', [
-                    'tierPoliticas' => collect([$policy]),
-                    'isPdfMode' => true,
-                    'filters' => ['tier' => null, 'bloqueio' => null, 'ativo' => null]
-                ])->render();
-                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
-                $safeTitle = \Str::slug($policy->acao_controle) ?: "tier_{$policy->id}";
-                $filename = sprintf('%02d_tier%d_%s.pdf', $index + 1, $policy->tier, $safeTitle);
-                $zip->addFromString($filename, $pdfContent);
-            }
-            $zip->close();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
+
+        $filters = [
+            'tier' => $request->input('tier'),
+            'bloqueio' => $request->input('bloqueio'),
+            'ativo' => $request->input('ativo'),
+        ];
+
+        foreach ($tierPoliticas as $index => $policy) {
+            $html = view('tier_politicas.print', [
+                'tierPoliticas' => collect([$policy]),
+                'isPdfMode' => true,
+                'filters' => $filters,
+            ])->render();
+            $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+            $safeTitle = \Str::slug($policy->acao_controle) ?: "tier_{$policy->id}";
+            $filename = sprintf('%02d_tier%d_%s.pdf', $index + 1, $policy->tier, $safeTitle);
+            $zip->addFromString($filename, $pdfContent);
+        }
+        $zip->close();
 
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }

@@ -344,31 +344,35 @@ class CalendarioControleController extends Controller
             ? $this->filteredPrintQuery($request)->get()
             : collect();
 
-        $zipFileName = 'central_controles_' . now()->format('Ymd_His') . '.zip';
+        $zipFileName = 'central_controles_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 
         $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-            foreach ($eventos as $index => $ev) {
-                $html = view('calendario_controles.print', [
-                    'eventos' => collect([$ev]),
-                    'isPdfMode' => true,
-                    'filters' => [
-                        'software_id' => null,
-                        'status' => null,
-                        'tier' => null,
-                        'modulo' => null,
-                        'categoria' => null,
-                        'software_nome' => null,
-                    ],
-                ])->render();
-                $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
-                $safeTitle = \Str::slug($ev->acao_controle_snapshot) ?: "controle_{$ev->id}";
-                $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
-                $zip->addFromString($filename, $pdfContent);
-            }
-            $zip->close();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
+
+        $filters = [
+            'software_id' => $request->input('software_id'),
+            'status' => $request->input('status'),
+            'tier' => $request->input('tier'),
+            'modulo' => $request->input('modulo'),
+            'categoria' => $request->input('categoria'),
+            'software_nome' => $request->filled('software_id') ? Software::find($request->software_id)?->nome : null,
+        ];
+
+        foreach ($eventos as $index => $ev) {
+            $html = view('calendario_controles.print', [
+                'eventos' => collect([$ev]),
+                'isPdfMode' => true,
+                'filters' => $filters,
+            ])->render();
+            $pdfContent = Pdf::loadHTML($html)->setPaper('a4', 'portrait')->output();
+            $safeTitle = \Str::slug($ev->acao_controle_snapshot) ?: "controle_{$ev->id}";
+            $filename = sprintf('%02d_%s.pdf', $index + 1, $safeTitle);
+            $zip->addFromString($filename, $pdfContent);
+        }
+        $zip->close();
 
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
