@@ -43,8 +43,17 @@
         <label style="font-size:12px; font-weight:600; color:#333; cursor:pointer; background:#f4f4f5; padding:10px 14px; border-radius:6px; border:1px solid #d4d4d8; display:inline-flex; align-items:center; gap:6px;">
             <input type="checkbox" id="toggleGenericMode" onchange="toggleGeneric(this.checked)"> 📄 PDF Genérico (OneDrive)
         </label>
-        <a href="{{ route('politicas.export.zip') }}" style="background:#059669; color:white; text-decoration:none; padding:12px 20px; border-radius:6px; font-weight:bold; font-size:14px; box-shadow:0 4px 6px rgba(0,0,0,0.1); display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (PDFs)</a>
+        <a href="{{ route('politicas.export.zip', request()->query()) }}" style="background:#059669; color:white; text-decoration:none; padding:12px 20px; border-radius:6px; font-weight:bold; font-size:14px; box-shadow:0 4px 6px rgba(0,0,0,0.1); display:inline-flex; align-items:center; gap:6px;">📦 Baixar Pacote ZIP (PDFs)</a>
         <button onclick="window.print()" class="btn-print">🖨️ Gerar PDF / Imprimir</button>
+    </div>
+    @endif
+
+    @if(!empty($filters ?? []))
+    <div class="filters-summary" style="margin-bottom: 20px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; color: #475569;">
+        <strong>Filtros aplicados:</strong>
+        @foreach($filters as $k => $v)
+            <span style="margin-left: 10px; background: #e2e8f0; padding: 2px 6px; border-radius: 4px;"><strong>{{ ucfirst($k) }}:</strong> {{ $v }}</span>
+        @endforeach
     </div>
     @endif
 

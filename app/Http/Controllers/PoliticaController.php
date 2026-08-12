@@ -9,10 +9,38 @@ use Illuminate\Http\Request;
 
 class PoliticaController extends Controller
 {
-    public function index()
+    protected function filteredQuery(Request $request)
     {
-        $politicas = Politica::latest()->get();
-        return view('politicas.index', compact('politicas'));
+        $query = Politica::query();
+
+        if ($request->filled('busca')) {
+            $busca = $request->input('busca');
+            $query->where(function ($q) use ($busca) {
+                $q->where('titulo', 'like', "%{$busca}%")
+                  ->orWhere('conteudo', 'like', "%{$busca}%");
+            });
+        }
+
+        if ($request->filled('categoria')) {
+            $query->where('categoria', $request->input('categoria'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        return $query->latest();
+    }
+
+    public function index(Request $request)
+    {
+        $query = $this->filteredQuery($request);
+        $politicas = $query->get();
+
+        $categorias = Politica::whereNotNull('categoria')->where('categoria', '!=', '')->distinct()->pluck('categoria')->sort()->values();
+        $statuses = Politica::whereNotNull('status')->where('status', '!=', '')->distinct()->pluck('status')->sort()->values();
+
+        return view('politicas.index', compact('politicas', 'categorias', 'statuses'));
     }
 
     public function store(Request $request)
@@ -113,15 +141,26 @@ class PoliticaController extends Controller
         return view('politicas.print', compact('politicas'));
     }
 
-    public function printAll()
+    public function printAll(Request $request)
     {
-        $politicas = Politica::latest()->get();
-        return view('politicas.print', compact('politicas'));
+        $politicas = $this->filteredQuery($request)->get();
+        $filters = array_filter([
+            'busca' => $request->input('busca'),
+            'categoria' => $request->input('categoria'),
+            'status' => $request->input('status'),
+        ]);
+
+        if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
+            $html = view('politicas.print', ['politicas' => $politicas, 'isPdfMode' => true, 'filters' => $filters])->render();
+            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("relatorio_politicas.pdf");
+        }
+
+        return view('politicas.print', compact('politicas', 'filters'));
     }
 
-    public function exportZip()
+    public function exportZip(Request $request)
     {
-        $politicas = Politica::latest()->get();
+        $politicas = $this->filteredQuery($request)->get();
         $zipFileName = 'politicas_governanca_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 

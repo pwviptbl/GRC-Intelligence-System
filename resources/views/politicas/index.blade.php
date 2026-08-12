@@ -296,10 +296,10 @@
     <div class="policies-header">
         <h3>📄 Políticas Corporativas</h3>
         <div class="policies-header-actions">
-            <a href="{{ route('politicas.export.zip') }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+            <a href="{{ route('politicas.export.zip', request()->query()) }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
                 📦 Baixar ZIP (Separados)
             </a>
-            <a href="{{ route('politicas.export.all') }}" target="_blank" class="btn-secondary policies-export-all">
+            <a href="{{ route('politicas.export.all', request()->query()) }}" target="_blank" class="btn-secondary policies-export-all">
                 📄 Exportar Relatório (PDF)
             </a>
             @if(in_array(auth()->user()->role, ['admin', 'governanca', 'operacional']))
@@ -310,6 +310,33 @@
             <button class="btn-add" @click="openCreate()">+ Nova Política</button>
             @endif
         </div>
+    </div>
+
+    <!-- Barra de Filtros por Nome/Título, Categoria e Status -->
+    <div class="filter-card" style="background:var(--bg-surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:20px;">
+        <form class="filter-form" method="GET" action="{{ route('politicas.index') }}" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            <input type="text" name="busca" class="form-input" style="background:var(--bg-base); border:1px solid var(--border); color:var(--text-1); padding:8px 12px; border-radius:6px; font-size:13px; flex:1; min-width:180px;" placeholder="🔍 Buscar por título ou conteúdo..." value="{{ request('busca') }}">
+            
+            <select name="categoria" class="form-input" style="background:var(--bg-base); border:1px solid var(--border); color:var(--text-1); padding:8px 12px; border-radius:6px; font-size:13px; max-width:220px;">
+                <option value="">Todas as Categorias</option>
+                @foreach($categorias as $cat)
+                    <option value="{{ $cat }}" @selected(request('categoria') === $cat)>{{ $cat }}</option>
+                @endforeach
+            </select>
+
+            <select name="status" class="form-input" style="background:var(--bg-base); border:1px solid var(--border); color:var(--text-1); padding:8px 12px; border-radius:6px; font-size:13px; max-width:180px;">
+                <option value="">Todos os Status</option>
+                @foreach($statuses as $st)
+                    <option value="{{ $st }}" @selected(request('status') === $st)>{{ ucfirst($st) }}</option>
+                @endforeach
+            </select>
+
+            <button type="submit" class="btn-save" style="padding:8px 18px; font-size:12px;">🔍 Filtrar</button>
+
+            @if(request()->anyFilled(['busca', 'categoria', 'status']))
+                <a href="{{ route('politicas.index') }}" class="btn-cancel" style="padding:8px 14px; text-decoration:none; display:inline-flex; align-items:center; font-size:12px;">Limpar</a>
+            @endif
+        </form>
     </div>
 
     <div class="table-card">
