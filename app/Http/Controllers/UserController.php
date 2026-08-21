@@ -22,14 +22,28 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->filled('email')) {
+            $request->merge([
+                'email' => strtolower(trim(\Illuminate\Support\Str::ascii((string) $request->email))),
+            ]);
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', Rules\Password::min(8)->letters()->numbers()->symbols()],
+            'email' => ['required', 'string', 'lowercase', 'email:rfc', 'max:255', 'unique:'.User::class],
+            'password' => ['required', Rules\Password::min(8)->letters()->numbers()],
             'role' => ['required', 'in:admin,governanca,operacional,auditor'],
             'nivel_operacional' => ['nullable', 'in:junior,pleno,especialista'],
             'capacidade_semanal_pontos' => ['required', 'integer', 'min:1', 'max:40'],
             'areas_atuacao' => ['nullable', 'string', 'max:2000'],
+        ], [
+            'name.required' => 'O nome completo é obrigatório.',
+            'email.required' => 'O endereço de e-mail é obrigatório.',
+            'email.email' => 'Por favor, informe um endereço de e-mail válido.',
+            'email.unique' => 'Este endereço de e-mail já está cadastrado no sistema.',
+            'password.required' => 'A senha é obrigatória.',
+            'password.min' => 'A senha deve conter no mínimo 8 caracteres.',
+            'role.required' => 'Selecione um perfil de acesso.',
         ]);
 
         User::create([

@@ -59,6 +59,23 @@
         <button class="btn-add" @click="openCreate()">+ Novo Usuário</button>
     </div>
 
+    @if (session('success'))
+        <div style="margin-bottom: 15px; padding: 10px 14px; background: rgba(0,255,159,0.1); border: 1px solid rgba(0,255,159,0.3); border-radius: 8px; color: var(--green); font-size: 12px; display: flex; align-items: center; gap: 8px;">
+            <span>✅</span> <span>{{ session('success') }}</span>
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div style="margin-bottom: 15px; padding: 12px 14px; background: rgba(255,83,112,0.1); border: 1px solid rgba(255,83,112,0.3); border-radius: 8px; color: var(--red); font-size: 12px;">
+            <strong style="display: flex; align-items: center; gap: 6px;">⚠️ Não foi possível salvar o usuário:</strong>
+            <ul style="margin: 6px 0 0 18px; padding: 0;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="table-card">
         <table class="data-table users-table">
             <thead>
@@ -139,8 +156,20 @@
                 </div>
 
                 <div class="form-group" style="margin-top:10px">
-                    <label>E-mail</label>
-                    <input type="email" name="email" x-model="form.email" class="form-input" :disabled="editMode" required />
+                    <label>E-mail Corporativo</label>
+                    <input 
+                        type="text" 
+                        name="email" 
+                        x-model="form.email" 
+                        @input="form.email = form.email.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '')"
+                        class="form-input" 
+                        :disabled="editMode" 
+                        placeholder="ex: joao.martins@dbseller.com.br"
+                        required 
+                    />
+                    <span style="font-size:10px; color:var(--text-3); margin-top:3px; display:block;">
+                        * E-mails não possuem acentos (letras acentuadas como ã/é são ajustadas automaticamente).
+                    </span>
                 </div>
 
                 <div class="users-operational-grid">
