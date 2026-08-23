@@ -37,7 +37,14 @@
     showModuleModal: false,
     editModule: false,
     moduleAction: '{{ route('atividades.modules.store') }}',
+    allActivities: {{ Js::from($availableActivities) }},
     moduleForm: { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] },
+    filteredActivities() {
+        if (!this.moduleForm.software_id) {
+            return this.allActivities.filter(a => !a.software_id);
+        }
+        return this.allActivities.filter(a => !a.software_id || String(a.software_id) === String(this.moduleForm.software_id));
+    },
     openNewModule() {
         this.editModule = false;
         this.moduleAction = '{{ route('atividades.modules.store') }}';
@@ -128,18 +135,19 @@
                 <div class="form-group">
                     <label style="display:flex; justify-content:space-between; align-items:center;">
                         <span>Atividades de Controle que cobrem este módulo</span>
-                        <span style="font-size:10px; color:var(--text-3); font-weight:normal;">Selecione as ações de segurança aplicadas</span>
+                        <span style="font-size:10px; color:var(--text-3); font-weight:normal;">Exibindo ações globais e do software</span>
                     </label>
-                    <div style="max-height:170px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px; background:rgba(0,0,0,0.18); display:grid; gap:5px;">
-                        @forelse($availableActivities as $act)
+                    <div style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px; background:rgba(0,0,0,0.18); display:grid; gap:5px;">
+                        <template x-for="act in filteredActivities()" :key="act.id">
                             <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; color:var(--text-2); padding:3px 6px; border-radius:4px;">
-                                <input type="checkbox" name="atividade_ids[]" value="{{ $act->id }}" :checked="moduleForm.atividade_ids.includes({{ $act->id }})">
-                                <span style="font-weight:600; color:var(--text-1)">{{ $act->atividade }}</span>
-                                <span style="font-size:10px; color:var(--text-3)">(a cada {{ $act->recorrencia_meses }} meses · Tier {{ $act->tier_minimo }}+)</span>
+                                <input type="checkbox" name="atividade_ids[]" :value="act.id" :checked="moduleForm.atividade_ids.includes(act.id)">
+                                <span style="font-weight:600; color:var(--text-1)" x-text="act.atividade"></span>
+                                <span style="font-size:10px; color:var(--text-3)" x-text="`(a cada ${act.recorrencia_meses} meses · Tier ${act.tier_minimo}+ ${act.software_id ? '· Específica' : '· Global'})`"></span>
                             </label>
-                        @empty
-                            <div style="font-size:11px; color:var(--text-3); padding:4px;">Nenhuma atividade cadastrada no catálogo.</div>
-                        @endforelse
+                        </template>
+                        <div x-show="filteredActivities().length === 0" style="font-size:11px; color:var(--text-3); padding:4px;">
+                            Nenhuma atividade disponível para este software ou global.
+                        </div>
                     </div>
                 </div>
 
