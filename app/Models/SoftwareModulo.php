@@ -26,4 +26,10 @@ class SoftwareModulo extends Model
     {
         return $this->belongsTo(Software::class);
     }
+
+    public function atividades()
+    {
+        return $this->belongsToMany(Atividade::class, 'software_modulo_atividades', 'software_modulo_id', 'atividade_id')
+            ->withTimestamps();
+    }
 }

@@ -50,6 +50,12 @@ class Atividade extends Model
         return $this->belongsTo(TierPolitica::class, 'tier_politica_id');
     }
 
+    public function softwareModulos()
+    {
+        return $this->belongsToMany(SoftwareModulo::class, 'software_modulo_atividades', 'atividade_id', 'software_modulo_id')
+            ->withTimestamps();
+    }
+
     public function getScopeLabelAttribute(): string
     {
         $parts = array_values(array_filter([

@@ -50,12 +50,19 @@ class AtividadeController extends Controller
             'softwares' => Software::query()->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'selectedSoftwareId' => $softwareId,
             'coverage' => app(ActivityCatalogCoverageService::class)->moduleCoverage($softwareId),
+            'availableActivities' => Atividade::query()
+                ->where('ativo', true)
+                ->orderBy('atividade')
+                ->get(['id', 'atividade', 'recorrencia_meses', 'tier_minimo', 'software_id']),
         ]);
     }
 
     public function storeModule(Request $request)
     {
-        SoftwareModulo::create($this->validatedModuleData($request));
+        $module = SoftwareModulo::create($this->validatedModuleData($request));
+        if ($request->has('atividade_ids')) {
+            $module->atividades()->sync($request->input('atividade_ids', []));
+        }
 
         return redirect()->back()->with('success', 'Módulo cadastrado com sucesso.');
     }
@@ -63,6 +70,9 @@ class AtividadeController extends Controller
     public function updateModule(Request $request, SoftwareModulo $softwareModulo)
     {
         $softwareModulo->update($this->validatedModuleData($request));
+        if ($request->has('atividade_ids')) {
+            $softwareModulo->atividades()->sync($request->input('atividade_ids', []));
+        }
 
         return redirect()->back()->with('success', 'Módulo atualizado com sucesso.');
     }
@@ -152,6 +162,8 @@ class AtividadeController extends Controller
             'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string', 'max:2000'],
             'ativo' => ['required', 'boolean'],
+            'atividade_ids' => ['nullable', 'array'],
+            'atividade_ids.*' => ['integer', 'exists:atividades,id'],
         ]);
     }
 

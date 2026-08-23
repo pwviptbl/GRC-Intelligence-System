@@ -37,25 +37,33 @@
     showModuleModal: false,
     editModule: false,
     moduleAction: '{{ route('atividades.modules.store') }}',
-    moduleForm: { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1' },
+    moduleForm: { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] },
     openNewModule() {
         this.editModule = false;
         this.moduleAction = '{{ route('atividades.modules.store') }}';
-        this.moduleForm = { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1' };
+        this.moduleForm = { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] };
         this.showModuleModal = true;
     },
     openEditModule(encoded) {
         const module = JSON.parse(atob(encoded));
         this.editModule = true;
         this.moduleAction = `/cobertura-modulos/${module.id}`;
-        this.moduleForm = { id: module.id, software_id: module.software_id, area: module.area || '', nome: module.modulo, descricao: module.descricao || '', ativo: module.ativo ? '1' : '0' };
+        this.moduleForm = { 
+            id: module.id, 
+            software_id: module.software_id, 
+            area: module.area || '', 
+            nome: module.modulo, 
+            descricao: module.descricao || '', 
+            ativo: module.ativo ? '1' : '0',
+            atividade_ids: module.activity_ids || []
+        };
         this.showModuleModal = true;
     }
 }">
     @if(session('success'))<div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(0,255,159,.35); background:rgba(0,255,159,.08); color:#d7ffef; font-size:13px">{{ session('success') }}</div>@endif
     @if($errors->any())<div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,83,112,.35); background:rgba(255,83,112,.08); color:#ffd7de; font-size:13px">{{ $errors->first() }}</div>@endif
     <div class="table-header">
-        <h3>Inventário de Módulos</h3>
+        <h3>Inventário e Cobertura de Módulos</h3>
         @if($canManageModules)<button type="button" class="btn-add" @click="openNewModule()">+ Novo módulo</button>@endif
     </div>
     <form method="GET" class="module-coverage-filter">
@@ -84,9 +92,9 @@
                         <div><div class="module-coverage-name">{{ $module['modulo'] }}</div><div class="module-coverage-software">{{ $module['software'] }}{{ $module['origem'] ? ' · ' . $module['origem'] : '' }}</div></div>
                         <div class="module-coverage-activities">
                             @forelse($module['activities'] as $activity)
-                                <div>{{ $activity['atividade'] }} · repetir após {{ $activity['recorrencia_meses'] }} meses</div>
+                                <div><span style="color:var(--text-1); font-weight:500;">{{ $activity['atividade'] }}</span> <span style="color:var(--text-3); font-size:10px;">· a cada {{ $activity['recorrencia_meses'] }} meses</span></div>
                             @empty
-                                <div>Nenhuma atividade específica aprovada.</div>
+                                <div style="color:var(--text-3)">Nenhuma atividade específica vinculada.</div>
                             @endforelse
                         </div>
                         <div>
@@ -94,7 +102,7 @@
                         </div>
                         @if($canManageModules)
                             <div class="module-coverage-actions">
-                                <button type="button" class="btn-del" style="color:var(--yellow)" @click="openEditModule('{{ base64_encode(json_encode($module)) }}')" title="Editar módulo">✎</button>
+                                <button type="button" class="btn-del" style="color:var(--yellow)" @click="openEditModule('{{ base64_encode(json_encode($module)) }}')" title="Editar módulo e cobertura">✎</button>
                                 <form action="{{ route('atividades.modules.destroy', $module['id']) }}" method="POST" onsubmit="return confirm('Remover este módulo do inventário?')">@csrf @method('DELETE')<button class="btn-del" title="Excluir módulo">×</button></form>
                             </div>
                         @endif
@@ -108,14 +116,33 @@
 
     <div class="modal-overlay" x-show="showModuleModal" style="display:none" x-transition>
         <div class="modal module-coverage-modal" @click.away="showModuleModal = false">
-            <h3 x-text="editModule ? 'Editar Módulo' : 'Novo Módulo'"></h3>
+            <h3 x-text="editModule ? 'Editar Módulo e Cobertura' : 'Novo Módulo'"></h3>
             <form :action="moduleAction" method="POST">
                 @csrf
                 <template x-if="editModule"><input type="hidden" name="_method" value="PATCH"></template>
                 <div class="form-group"><label>Software</label><select name="software_id" x-model="moduleForm.software_id" class="form-select" required><option value="">Selecione...</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
                 <div class="form-group"><label>Área</label><input name="area" x-model="moduleForm.area" class="form-input" placeholder="Opcional: Financeiro, Tributário, Saúde..."></div>
                 <div class="form-group"><label>Módulo</label><input name="nome" x-model="moduleForm.nome" class="form-input" required maxlength="255" placeholder="Ex.: Tesouraria"></div>
-                <div class="form-group"><label>Descrição</label><textarea name="descricao" x-model="moduleForm.descricao" class="form-textarea" rows="3" maxlength="2000" placeholder="Contexto opcional para o agente."></textarea></div>
+                <div class="form-group"><label>Descrição</label><textarea name="descricao" x-model="moduleForm.descricao" class="form-textarea" rows="2" maxlength="2000" placeholder="Contexto opcional para o agente."></textarea></div>
+                
+                <div class="form-group">
+                    <label style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>Atividades de Controle que cobrem este módulo</span>
+                        <span style="font-size:10px; color:var(--text-3); font-weight:normal;">Selecione as ações de segurança aplicadas</span>
+                    </label>
+                    <div style="max-height:170px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px; background:rgba(0,0,0,0.18); display:grid; gap:5px;">
+                        @forelse($availableActivities as $act)
+                            <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; color:var(--text-2); padding:3px 6px; border-radius:4px;">
+                                <input type="checkbox" name="atividade_ids[]" value="{{ $act->id }}" :checked="moduleForm.atividade_ids.includes({{ $act->id }})">
+                                <span style="font-weight:600; color:var(--text-1)">{{ $act->atividade }}</span>
+                                <span style="font-size:10px; color:var(--text-3)">(a cada {{ $act->recorrencia_meses }} meses · Tier {{ $act->tier_minimo }}+)</span>
+                            </label>
+                        @empty
+                            <div style="font-size:11px; color:var(--text-3); padding:4px;">Nenhuma atividade cadastrada no catálogo.</div>
+                        @endforelse
+                    </div>
+                </div>
+
                 <div class="form-group"><label>Status</label><select name="ativo" x-model="moduleForm.ativo" class="form-select"><option value="1">Ativo</option><option value="0">Desativado</option></select></div>
                 <div class="modal-actions"><button type="button" class="btn-cancel" @click="showModuleModal = false">Cancelar</button><button class="btn-save" x-text="editModule ? 'Salvar módulo' : 'Cadastrar módulo'"></button></div>
             </form>

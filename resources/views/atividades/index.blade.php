@@ -455,25 +455,22 @@
                     <div class="form-group">
                         <label>Software</label>
                         <select name="software_id" x-model="form.software_id" class="form-select">
-                            <option value="">Global</option>
+                            <option value="">Global (qualquer software)</option>
                             @foreach($softwares as $software)
                                 <option value="{{ $software->id }}">{{ $software->nome }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Modulo</label>
-                        <input type="text" name="modulo" x-model="form.modulo" class="form-input" placeholder="Opcional" />
-                    </div>
-                    <div class="form-group">
                         <label>Categoria</label>
-                        <input type="text" name="categoria" x-model="form.categoria" class="form-input" list="activity-categories" placeholder="Livre e opcional" />
+                        <input type="text" name="categoria" x-model="form.categoria" class="form-input" list="activity-categories" placeholder="Opcional: Testes, Auditoria, Infra..." />
                         <datalist id="activity-categories">@foreach($categoryOptions as $category)<option value="{{ $category }}">@endforeach</datalist>
                     </div>
                     <div class="form-group">
-                        <label>Rotina</label>
+                        <label>Rotina / Escopo adicional</label>
                         <input type="text" name="rotina" x-model="form.rotina" class="form-input" placeholder="Opcional" />
                     </div>
+                    <input type="hidden" name="modulo" x-model="form.modulo" />
                 </div>
 
                 <div class="activity-form-grid details">

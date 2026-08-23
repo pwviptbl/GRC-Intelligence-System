@@ -37,23 +37,19 @@ class ActivityCatalogCoverageService
         }
 
         $modules = SoftwareModulo::query()
-            ->with('software:id,nome')
+            ->with([
+                'software:id,nome',
+                'atividades:id,atividade,recorrencia_meses,tier_politica_id,tier_minimo',
+            ])
             ->where('ativo', true)
             ->when($softwareId, fn ($query) => $query->where('software_id', $softwareId))
             ->orderBy('software_id')
             ->orderBy('area')
             ->orderBy('nome')
             ->get();
-        $activities = Atividade::query()
-            ->where('ativo', true)
-            ->whereNotNull('software_id')
-            ->whereNotNull('modulo')
-            ->get(['id', 'software_id', 'modulo', 'atividade', 'tier_politica_id', 'recorrencia_meses']);
 
-        $coverage = $modules->map(function (SoftwareModulo $module) use ($activities) {
-            $moduleName = $this->normalizedName($module->nome);
-            $matched = $activities->filter(fn (Atividade $activity) => $activity->software_id === $module->software_id
-                && $this->normalizedName((string) $activity->modulo) === $moduleName);
+        $coverage = $modules->map(function (SoftwareModulo $module) {
+            $activities = $module->atividades;
 
             return [
                 'id' => $module->id,
@@ -64,14 +60,15 @@ class ActivityCatalogCoverageService
                 'descricao' => $module->descricao,
                 'origem' => $module->origem,
                 'ativo' => $module->ativo,
-                'activity_count' => $matched->count(),
-                'activities' => $matched->map(fn (Atividade $activity) => [
+                'activity_count' => $activities->count(),
+                'activity_ids' => $activities->pluck('id')->all(),
+                'activities' => $activities->map(fn (Atividade $activity) => [
                     'id' => $activity->id,
                     'atividade' => $activity->atividade,
                     'recorrencia_meses' => $activity->recorrencia_meses,
                     'tier_politica_id' => $activity->tier_politica_id,
                 ])->values()->all(),
-                'status' => $matched->isEmpty() ? 'sem_atividade' : 'coberto',
+                'status' => $activities->isEmpty() ? 'sem_atividade' : 'coberto',
             ];
         });
 
