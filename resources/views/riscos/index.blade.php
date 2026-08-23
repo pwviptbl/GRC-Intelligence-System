@@ -15,6 +15,7 @@
     .risk-edit-grid,
     .risk-pair-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
     .risk-pair-grid { gap:10px; margin-top:10px; }
+    .tech-tags-list { display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
 
     @media (max-width: 1180px) {
         .risks-filter-grid { grid-template-columns:repeat(3, minmax(0, 1fr)); }
@@ -212,7 +213,19 @@
                 <tr>
                     <td><span class="badge" :style="criticidadeStyle($r->criticidade)">{{ $r->criticidade }}</span></td>
                     <td style="font-weight:500;color:var(--text-1)">{{ $r->titulo }}</td>
-                    <td><span class="tech-badge">{{ $r->origem }}</span></td>
+                    <td>
+                        @if($r->origem)
+                            <div class="tech-tags-list">
+                                @foreach(preg_split('/[,;\/|]+/', $r->origem) as $origemItem)
+                                    @if(trim($origemItem) !== '')
+                                        <span class="tech-badge">{{ trim($origemItem) }}</span>
+                                    @endif
+                                @endforeach
+                            </div>
+                        @else
+                            <span style="color:var(--text-3)">—</span>
+                        @endif
+                    </td>
                     <td><span class="badge">{{ $r->status }}</span></td>
                     <td>
                         <div style="display:flex;gap:10px;align-items:center">
@@ -245,7 +258,15 @@
                 </div>
                 <div class="risk-mobile-title">{{ $r->titulo }}</div>
                 <div class="risk-mobile-meta">
-                    <span class="tech-badge">{{ $r->origem }}</span>
+                    @if($r->origem)
+                        <div class="tech-tags-list">
+                            @foreach(preg_split('/[,;\/|]+/', $r->origem) as $origemItem)
+                                @if(trim($origemItem) !== '')
+                                    <span class="tech-badge">{{ trim($origemItem) }}</span>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
                     <span>Prob. {{ $r->probabilidade }}</span>
                     <span>Impacto {{ $r->impacto }}</span>
                 </div>
