@@ -10,6 +10,9 @@
     .softwares-mobile-list { display:none; }
     .software-modal { width:min(780px, 94vw); max-width:780px; }
     .software-rating-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .tech-tags-list { display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+    .row-disabled td { opacity:0.52; }
+    .row-disabled:hover td { opacity:0.85; }
 
     @media (max-width: 760px) {
         .softwares-desktop-table { display:none; }
@@ -183,7 +186,6 @@
                     <th>#</th>
                     <th>Nome</th>
                     <th>Tecnologia</th>
-                    <th>Status</th>
                     <th>Classificação</th>
                     <th>Exposição</th>
                     <th>Dados</th>
@@ -197,17 +199,27 @@
             </thead>
             <tbody>
                 @forelse($softwares as $s)
-                <tr>
+                <tr class="{{ $s->ativo ? '' : 'row-disabled' }}">
                     <td style="color:var(--text-3);font-family:var(--mono);font-size:11px">{{ $s->id }}</td>
-                    <td style="font-weight:500;color:var(--text-1)">{{ $s->nome }}</td>
+                    <td style="font-weight:500;color:var(--text-1)">
+                        {{ $s->nome }}
+                        @if(!$s->ativo)
+                            <span style="font-size:10px; color:var(--text-3); margin-left:4px;">(Desativado)</span>
+                        @endif
+                    </td>
                     <td>
                         @if($s->tecnologia)
-                            <span class="tech-badge">{{ $s->tecnologia }}</span>
+                            <div class="tech-tags-list">
+                                @foreach(preg_split('/[,;\/|]+/', $s->tecnologia) as $techItem)
+                                    @if(trim($techItem) !== '')
+                                        <span class="tech-badge">{{ trim($techItem) }}</span>
+                                    @endif
+                                @endforeach
+                            </div>
                         @else
                             <span style="color:var(--text-3)">—</span>
                         @endif
                     </td>
-                    <td><span class="badge" :style="statusStyle({{ $s->ativo ? 'true' : 'false' }})">{{ $s->ativo_label }}</span></td>
                     <td>
                         <span class="badge" :style="classificationStyle('{{ $s->classificacao_nivel }}')">{{ $s->classificacao_label }}</span>
                     </td>
@@ -217,7 +229,9 @@
                     <td style="font-size:12px; color:var(--text-2)">{{ $s->autenticacao_label }}</td>
                     <td>
                         @if($s->git_url)
-                            <a href="{{ $s->git_url }}" target="_blank" style="color:var(--cyan-dim);font-size:12px">{{ $s->git_url }}</a>
+                            <a href="{{ $s->git_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-size:12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none;" title="{{ $s->git_url }}">
+                                <span>🔗</span> <span style="text-decoration:underline;">Repositório</span>
+                            </a>
                         @else
                             <span style="color:var(--text-3)">—</span>
                         @endif
@@ -242,7 +256,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ $canManageSoftware ? 11 : 10 }}">
+                    <td colspan="{{ $canManageSoftware ? 10 : 9 }}">
                         <div class="empty-state">
                             <div class="empty-icon">💾</div>
                             <p>Nenhum software cadastrado ainda.</p>
@@ -259,10 +273,26 @@
             <article class="software-mobile-card {{ $s->ativo ? '' : 'disabled' }}">
                 <div class="software-mobile-head">
                     <div style="min-width:0">
-                        <div class="software-mobile-name">{{ $s->nome }}</div>
-                        <div class="software-mobile-tech">{{ $s->tecnologia ?: 'Tecnologia nao informada' }}</div>
+                        <div class="software-mobile-name">
+                            {{ $s->nome }}
+                            @if(!$s->ativo)
+                                <span style="font-size:10px; color:var(--text-3); font-weight:normal;"> (Desativado)</span>
+                            @endif
+                        </div>
+                        <div class="software-mobile-tech" style="margin-top:6px;">
+                            @if($s->tecnologia)
+                                <div class="tech-tags-list">
+                                    @foreach(preg_split('/[,;\/|]+/', $s->tecnologia) as $techItem)
+                                        @if(trim($techItem) !== '')
+                                            <span class="tech-badge">{{ trim($techItem) }}</span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @else
+                                <span>Tecnologia não informada</span>
+                            @endif
+                        </div>
                     </div>
-                    <span class="badge" :style="statusStyle({{ $s->ativo ? 'true' : 'false' }})">{{ $s->ativo_label }}</span>
                 </div>
                 <div class="software-mobile-meta">
                     <span class="badge" :style="classificationStyle('{{ $s->classificacao_nivel }}')">{{ $s->classificacao_label }}</span>
@@ -274,7 +304,9 @@
                     <div class="software-mobile-rating"><small>Autenticacao</small><span>{{ $s->autenticacao_label }}</span></div>
                 </div>
                 @if($s->git_url)
-                    <a href="{{ $s->git_url }}" target="_blank" rel="noopener" class="software-mobile-repo">{{ $s->git_url }}</a>
+                    <a href="{{ $s->git_url }}" target="_blank" rel="noopener" class="software-mobile-repo" style="display:inline-flex; align-items:center; gap:5px; text-decoration:none;">
+                        <span>🔗</span> <span style="text-decoration:underline;">Acessar Repositório</span>
+                    </a>
                 @endif
                 @if($canManageSoftware)
                     <div class="software-mobile-actions">
