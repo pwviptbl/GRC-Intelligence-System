@@ -13,41 +13,76 @@
         align-items: end;
     }
     .execution-board {
-        display: grid;
-        grid-template-columns: repeat(6, minmax(250px, 1fr));
-        gap: 12px;
-        padding-bottom: 8px;
+        display: flex;
+        gap: 14px;
         overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 14px;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
     }
     .execution-column {
-        min-width: 0;
+        flex: 0 0 310px;
+        width: 310px;
+        min-width: 310px;
+        max-width: 310px;
         background: rgba(255,255,255,.018);
         border: 1px solid rgba(255,255,255,.07);
         border-radius: 8px;
         overflow: hidden;
+        scroll-snap-align: start;
+        display: flex;
+        flex-direction: column;
     }
     .execution-column-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        min-height: 46px;
+        gap: 8px;
+        min-height: 48px;
         padding: 10px 12px;
         border-bottom: 1px solid rgba(255,255,255,.07);
+        background: rgba(255,255,255,.015);
     }
     .execution-column-title {
         color: var(--text-1);
         font-size: 12px;
         font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .execution-column-count {
-        min-width: 24px;
-        padding: 3px 7px;
+        min-width: 22px;
+        padding: 2px 6px;
         border: 1px solid rgba(255,255,255,.1);
-        border-radius: 12px;
+        border-radius: 10px;
         color: var(--text-2);
         text-align: center;
         font: 600 11px var(--mono);
+        flex-shrink: 0;
+    }
+    .execution-column-nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 3px 6px;
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 5px;
+        color: var(--text-2);
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .15s ease;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .execution-column-nav-btn:hover {
+        background: var(--bg-hover);
+        color: var(--cyan);
+        border-color: var(--cyan-dim);
     }
     .execution-column-body {
         display: flex;
@@ -600,6 +635,12 @@
             });
             item.ordem = position + 1;
         }
+    },
+    scrollToColumn(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        }
     }
 }">
     @if ($errors->any())
@@ -1025,12 +1066,13 @@
     @php
         $boardColumns = [
             'planejado' => ['label' => 'Planejado', 'statuses' => ['planejado', 'pendente'], 'color' => 'var(--yellow)'],
-            'em_execucao' => ['label' => 'Em Execucao', 'statuses' => ['em_execucao'], 'color' => 'var(--cyan)'],
-            'em_revisao' => ['label' => 'Em Revisao', 'statuses' => ['em_revisao'], 'color' => '#b9a6ff'],
+            'em_execucao' => ['label' => 'Em Execução', 'statuses' => ['em_execucao'], 'color' => 'var(--cyan)'],
+            'em_revisao' => ['label' => 'Em Revisão', 'statuses' => ['em_revisao'], 'color' => '#b9a6ff'],
             'bloqueado' => ['label' => 'Bloqueado', 'statuses' => ['bloqueado'], 'color' => '#ff9632'],
             'atrasado' => ['label' => 'Atrasado', 'statuses' => ['atrasado'], 'color' => 'var(--red)'],
-            'concluido' => ['label' => 'Concluido', 'statuses' => ['concluido'], 'color' => 'var(--green)'],
+            'concluido' => ['label' => 'Concluído', 'statuses' => ['concluido'], 'color' => 'var(--green)'],
         ];
+        $boardKeys = array_keys($boardColumns);
     @endphp
 
     @if($canManageQueue)
@@ -1048,17 +1090,70 @@
         </form>
     @endif
 
-    <div class="execution-board" aria-label="Kanban de execucao">
+    <!-- Barra de navegação rápida por etapas do Kanban -->
+    <div class="kanban-column-nav-bar" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; align-items:center; scrollbar-width:thin;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; margin-right:4px;">Colunas:</span>
+            @foreach($boardColumns as $cKey => $c)
+                @php $cnt = $eventos->whereIn('status', $c['statuses'])->count(); @endphp
+                <button type="button" 
+                        @click="scrollToColumn('execution-column-{{ $cKey }}')"
+                        class="kanban-chip"
+                        style="cursor:pointer; display:inline-flex; align-items:center; gap:6px; padding:5px 10px; font-size:11px; text-decoration:none; border-radius:6px;">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{{ $c['color'] }}"></span>
+                    <span>{{ $c['label'] }}</span>
+                    <span style="opacity:0.75; font-size:10px; font-family:var(--mono)">({{ $cnt }})</span>
+                </button>
+            @endforeach
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" @click="$refs.executionBoard.scrollBy({ left: -320, behavior: 'smooth' })" class="btn-secondary" style="padding:6px 12px; border-radius:6px; font-size:11px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="Rolar para esquerda">
+                ◀
+            </button>
+            <button type="button" @click="$refs.executionBoard.scrollBy({ left: 320, behavior: 'smooth' })" class="btn-secondary" style="padding:6px 12px; border-radius:6px; font-size:11px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="Rolar para direita">
+                ▶
+            </button>
+        </div>
+    </div>
+
+    <div class="execution-board" x-ref="executionBoard" aria-label="Kanban de execucao">
         @foreach($boardColumns as $columnKey => $column)
-            @php($columnEvents = $eventos->whereIn('status', $column['statuses']))
-            <section class="execution-column" aria-labelledby="execution-column-{{ $columnKey }}">
-                <header class="execution-column-header" style="border-top:2px solid {{ $column['color'] }};">
-                    <span id="execution-column-{{ $columnKey }}" class="execution-column-title">{{ $column['label'] }}</span>
-                    <span class="execution-column-count">{{ $columnEvents->count() }}</span>
+            @php
+                $currentIndex = array_search($columnKey, $boardKeys, true);
+                $prevKey = $currentIndex > 0 ? $boardKeys[$currentIndex - 1] : null;
+                $nextKey = $currentIndex < count($boardKeys) - 1 ? $boardKeys[$currentIndex + 1] : null;
+                $prevColumn = $prevKey ? $boardColumns[$prevKey] : null;
+                $nextColumn = $nextKey ? $boardColumns[$nextKey] : null;
+                $columnEvents = $eventos->whereIn('status', $column['statuses']);
+            @endphp
+            <section class="execution-column" id="execution-column-{{ $columnKey }}" aria-labelledby="execution-column-title-{{ $columnKey }}">
+                <header class="execution-column-header" style="border-top:3px solid {{ $column['color'] }};">
+                    <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                        <span id="execution-column-title-{{ $columnKey }}" class="execution-column-title">{{ $column['label'] }}</span>
+                        <span class="execution-column-count">{{ $columnEvents->count() }}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        @if($prevColumn)
+                            <button type="button" 
+                                    class="execution-column-nav-btn" 
+                                    @click="scrollToColumn('execution-column-{{ $prevKey }}')" 
+                                    title="Ir para {{ $prevColumn['label'] }}">
+                                ‹‹
+                            </button>
+                        @endif
+                        @if($nextColumn)
+                            <button type="button" 
+                                    class="execution-column-nav-btn" 
+                                    @click="scrollToColumn('execution-column-{{ $nextKey }}')" 
+                                    title="Avançar para {{ $nextColumn['label'] }}">
+                                <span>{{ $nextColumn['label'] }}</span> ››
+                            </button>
+                        @endif
+                    </div>
                 </header>
                 <div class="execution-column-body">
                     @forelse($columnEvents as $evento)
-                        @php($canWorkEvent = $canManageQueue || (auth()->user()->role === 'operacional' && in_array(auth()->id(), [$evento->executor_id, $evento->revisor_id], true)))
+                        @php $canWorkEvent = $canManageQueue || (auth()->user()->role === 'operacional' && in_array(auth()->id(), [$evento->executor_id, $evento->revisor_id], true)); @endphp
                         @if($canManageQueue)
                             <label class="kanban-card-select"><input type="checkbox" name="event_ids[]" value="{{ $evento->id }}" form="kanban-bulk-form" x-model="selectedEventIds"> Selecionar</label>
                         @endif
