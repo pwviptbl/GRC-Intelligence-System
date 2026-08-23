@@ -12,13 +12,18 @@
     .module-coverage-card .label { color:var(--text-3); font-size:10px; text-transform:uppercase; }
     .module-coverage-card .value { margin-top:6px; color:var(--text-1); font-size:22px; font-weight:700; }
     .module-coverage-list { display:grid; gap:8px; }
-    .module-coverage-item { display:grid; grid-template-columns:minmax(180px,.8fr) minmax(180px,1fr) auto; gap:14px; align-items:center; padding:12px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.02); }
+    .module-coverage-item { display:grid; grid-template-columns:minmax(180px,.8fr) minmax(200px,1.2fr) auto auto; gap:14px; align-items:center; padding:12px 14px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.02); }
     .module-coverage-name { color:var(--text-1); font-size:13px; font-weight:700; }
     .module-coverage-software { margin-top:4px; color:var(--text-3); font-size:10px; }
     .module-coverage-activities { color:var(--text-2); font-size:11px; line-height:1.5; }
-    .module-coverage-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+    .module-coverage-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
     .module-coverage-modal { width:min(620px, calc(100vw - 48px)); max-width:620px; }
-    @media (max-width:760px) { .module-coverage-filter { align-items:stretch; flex-direction:column; } .module-coverage-summary { grid-template-columns:1fr 1fr; } .module-coverage-item { grid-template-columns:1fr; gap:7px; } }
+    @media (max-width:760px) { 
+        .module-coverage-filter { align-items:stretch; flex-direction:column; } 
+        .module-coverage-summary { grid-template-columns:1fr 1fr; } 
+        .module-coverage-item { grid-template-columns:1fr; gap:10px; } 
+        .module-coverage-actions { justify-content:flex-start; margin-top:4px; }
+    }
 </style>
 
 @php
@@ -84,9 +89,11 @@
                                 <div>Nenhuma atividade específica aprovada.</div>
                             @endforelse
                         </div>
-                        <span class="badge" style="{{ $module['status'] === 'coberto' ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)' }}">{{ $module['status'] === 'coberto' ? 'Coberto' : 'A decidir' }}</span>
+                        <div>
+                            <span class="badge" style="{{ $module['status'] === 'coberto' ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)' }}">{{ $module['status'] === 'coberto' ? 'Coberto' : 'A decidir' }}</span>
+                        </div>
                         @if($canManageModules)
-                            <div class="module-coverage-actions" style="grid-column:1 / -1">
+                            <div class="module-coverage-actions">
                                 <button type="button" class="btn-del" style="color:var(--yellow)" @click="openEditModule('{{ base64_encode(json_encode($module)) }}')" title="Editar módulo">✎</button>
                                 <form action="{{ route('atividades.modules.destroy', $module['id']) }}" method="POST" onsubmit="return confirm('Remover este módulo do inventário?')">@csrf @method('DELETE')<button class="btn-del" title="Excluir módulo">×</button></form>
                             </div>
