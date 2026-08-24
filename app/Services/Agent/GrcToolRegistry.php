@@ -211,6 +211,7 @@ class GrcToolRegistry
                                 'nome' => ['type' => 'string'],
                                 'descricao' => ['type' => 'string'],
                                 'ativo' => ['type' => 'boolean'],
+                                'atividade_ids' => ['type' => 'array', 'items' => ['type' => 'integer']],
                             ],
                             'required' => ['nome'],
                             'additionalProperties' => false,
@@ -235,6 +236,16 @@ class GrcToolRegistry
                     'activity_ids' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 100, 'items' => ['type' => 'integer']],
                 ],
                 ['tier_policy_id', 'activity_ids']
+            ),
+            $this->tool(
+                'assign_activities_to_module',
+                'Vincula ate 50 atividades de controle a um modulo de software para cobri-lo no inventario de modulos.',
+                self::RISK_WRITE,
+                [
+                    'module_id' => ['type' => 'integer'],
+                    'activity_ids' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 50, 'items' => ['type' => 'integer']],
+                ],
+                ['module_id', 'activity_ids']
             ),
             $this->tool(
                 'create_risk',
@@ -428,6 +439,7 @@ class GrcToolRegistry
                 'upsert_software_modules_batch' => $this->upsertSoftwareModulesBatch($payload, $dryRun),
                 'update_activity' => $this->updateActivity($payload, $dryRun),
                 'assign_activities_to_tier_policy' => $this->assignActivitiesToTierPolicy($payload, $dryRun),
+                'assign_activities_to_module' => $this->assignActivitiesToModule($payload, $dryRun),
                 'create_risk' => $this->createRisk($payload, $dryRun),
                 'update_risk' => $this->updateRisk($payload, $dryRun),
                 'update_risk_status' => $this->updateRiskStatus($payload, $dryRun),
@@ -865,6 +877,8 @@ class GrcToolRegistry
                     'nome' => ['required', 'string', 'max:255'],
                     'descricao' => ['nullable', 'string', 'max:2000'],
                     'ativo' => ['nullable', 'boolean'],
+                    'atividade_ids' => ['nullable', 'array'],
+                    'atividade_ids.*' => ['integer', 'exists:atividades,id'],
                 ]);
             } catch (ToolValidationException $exception) {
                 throw new ToolValidationException(["modules.$index" => $exception->errors()]);
@@ -881,12 +895,16 @@ class GrcToolRegistry
                 'descricao' => $module['descricao'] ?? null,
                 'origem' => $data['origem'] ?? null,
                 'ativo' => $module['ativo'] ?? true,
+                'atividade_ids' => $module['atividade_ids'] ?? null,
             ];
         }
 
         $result = ['requested' => count($modules), 'created' => 0, 'updated' => 0, 'unchanged' => 0, 'items' => []];
         $execute = function () use (&$result, $modules, $data, $dryRun): void {
             foreach ($modules as $module) {
+                $activityIds = $module['atividade_ids'];
+                unset($module['atividade_ids']);
+
                 $existing = SoftwareModulo::query()
                     ->where('software_id', $data['software_id'])
                     ->whereRaw('LOWER(nome) = ?', [mb_strtolower($module['nome'])])
@@ -896,13 +914,16 @@ class GrcToolRegistry
                     $result['created']++;
                     $result['items'][] = ['nome' => $module['nome'], 'action' => $dryRun ? 'would_create' : 'created'];
                     if (! $dryRun) {
-                        SoftwareModulo::create(array_merge(['software_id' => $data['software_id']], $module));
+                        $createdModule = SoftwareModulo::create(array_merge(['software_id' => $data['software_id']], $module));
+                        if (! empty($activityIds)) {
+                            $createdModule->atividades()->sync($activityIds);
+                        }
                     }
                     continue;
                 }
 
                 $changes = array_diff_assoc($module, $existing->only(array_keys($module)));
-                if ($changes === []) {
+                if ($changes === [] && $activityIds === null) {
                     $result['unchanged']++;
                     $result['items'][] = ['id' => $existing->id, 'nome' => $existing->nome, 'action' => 'unchanged'];
                     continue;
@@ -911,7 +932,12 @@ class GrcToolRegistry
                 $result['updated']++;
                 $result['items'][] = ['id' => $existing->id, 'nome' => $existing->nome, 'action' => $dryRun ? 'would_update' : 'updated'];
                 if (! $dryRun) {
-                    $existing->update($changes);
+                    if ($changes !== []) {
+                        $existing->update($changes);
+                    }
+                    if ($activityIds !== null) {
+                        $existing->atividades()->sync($activityIds);
+                    }
                 }
             }
         };
@@ -1084,6 +1110,51 @@ class GrcToolRegistry
             'requested' => count($ids),
             $dryRun ? 'would_update' : 'updated' => $changes->pluck('id')->values()->all(),
             'unchanged' => $activities->keys()->diff($changes->pluck('id'))->values()->all(),
+        ];
+    }
+
+    protected function assignActivitiesToModule(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'module_id' => ['required', 'integer', 'exists:software_modulos,id'],
+            'activity_ids' => ['required', 'array', 'min:1', 'max:50'],
+        ]);
+
+        $ids = array_values(array_unique(array_map(function ($id) {
+            if (filter_var($id, FILTER_VALIDATE_INT) === false) {
+                throw new ToolValidationException(['activity_ids' => ['Todos os IDs de atividades devem ser inteiros.']]);
+            }
+
+            return (int) $id;
+        }, $data['activity_ids'])));
+
+        $activities = Atividade::query()->whereKey($ids)->get()->keyBy('id');
+        $missing = array_values(array_diff($ids, $activities->keys()->all()));
+        if ($missing !== []) {
+            throw new ToolValidationException(['activity_ids' => ['Atividades nao encontradas: '.implode(', ', $missing).'.']]);
+        }
+
+        $module = SoftwareModulo::query()->with('software:id,nome')->findOrFail($data['module_id']);
+
+        if ($dryRun) {
+            return [
+                'would_assign' => [
+                    'module_id' => $module->id,
+                    'module_name' => $module->nome,
+                    'software' => $module->software?->nome,
+                    'activity_ids' => $ids,
+                ],
+            ];
+        }
+
+        $module->atividades()->syncWithoutDetaching($ids);
+
+        return [
+            'module_id' => $module->id,
+            'module_name' => $module->nome,
+            'software' => $module->software?->nome,
+            'assigned_activity_ids' => $ids,
+            'total_activities_covering' => $module->atividades()->count(),
         ];
     }
 
