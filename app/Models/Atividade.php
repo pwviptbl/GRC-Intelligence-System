@@ -58,13 +58,30 @@ class Atividade extends Model
 
     public function getScopeLabelAttribute(): string
     {
+        $modulos = $this->relationLoaded('softwareModulos')
+            ? $this->softwareModulos->pluck('nome')->filter()->all()
+            : [];
+
+        if (! empty($modulos)) {
+            $modulosList = implode(', ', array_slice($modulos, 0, 2));
+            if (count($modulos) > 2) {
+                $modulosList .= ' (+'.(count($modulos) - 2).')';
+            }
+            $parts = array_values(array_filter([
+                $modulosList,
+                $this->categoria,
+                $this->rotina,
+            ]));
+
+            return implode(' > ', $parts);
+        }
+
         $parts = array_values(array_filter([
-            $this->modulo,
             $this->categoria,
             $this->rotina,
         ]));
 
-        return $parts === [] ? 'Atividade global' : implode(' > ', $parts);
+        return $parts === [] ? 'Geral' : implode(' > ', $parts);
     }
 
     public function getSoftwareLabelAttribute(): string

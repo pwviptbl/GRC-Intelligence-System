@@ -9,6 +9,7 @@ use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
 use App\Services\ActivityRecurrenceService;
 use App\Services\ActivityCatalogCoverageService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -136,7 +137,6 @@ class AtividadeController extends Controller
             'software_id' => 'nullable|integer|exists:software,id',
             'tier_politica_id' => 'nullable|integer|exists:tier_politicas,id',
             'atividade' => 'required|string|max:255',
-            'modulo' => 'nullable|string|max:255',
             'categoria' => 'nullable|string|max:255',
             'rotina' => 'nullable|string|max:255',
             'esforco' => 'required|in:'.implode(',', ControleEvento::EFFORT_OPTIONS),
@@ -146,6 +146,8 @@ class AtividadeController extends Controller
             'observacoes' => 'nullable|string|max:1000',
             'ativo' => 'required|boolean',
         ]);
+
+        $data['modulo'] = null;
 
         if (! empty($data['tier_politica_id'])) {
             $data['tier_minimo'] = TierPolitica::query()->findOrFail($data['tier_politica_id'])->tier;
@@ -191,10 +193,14 @@ class AtividadeController extends Controller
         return $candidate;
     }
 
-    protected function filteredQuery(Request $request)
+    protected function filteredQuery(Request $request): Builder
     {
         $query = Atividade::query()
-            ->with(['software:id,nome', 'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo'])
+            ->with([
+                'software:id,nome',
+                'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo',
+                'softwareModulos:id,nome,software_id',
+            ])
             ->orderByRaw('CASE WHEN software_id IS NULL THEN 0 ELSE 1 END DESC')
             ->orderBy('tier_minimo')
             ->orderBy('atividade');
@@ -225,8 +231,8 @@ class AtividadeController extends Controller
             $term = '%'.$request->search.'%';
             $query->where(function ($subQuery) use ($term) {
                 $subQuery->where('atividade', 'like', $term)
-                    ->orWhere('modulo', 'like', $term)
-                    ->orWhere('rotina', 'like', $term);
+                    ->orWhere('rotina', 'like', $term)
+                    ->orWhereHas('softwareModulos', fn ($mq) => $mq->where('nome', 'like', $term));
             });
         }
 

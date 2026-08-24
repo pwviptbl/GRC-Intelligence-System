@@ -103,7 +103,6 @@
         software_id: '',
         tier_politica_id: '',
         atividade: '',
-        modulo: '',
         categoria: '',
         rotina: '',
         esforco: 'M',
@@ -121,7 +120,6 @@
             software_id: '',
             tier_politica_id: '',
             atividade: '',
-            modulo: '',
             categoria: '',
             rotina: '',
             esforco: 'M',
@@ -142,10 +140,14 @@
 
         this.editMode = true;
         this.form = {
-            ...activity,
+            id: activity.id,
             software_id: activity.software_id ?? '',
             tier_politica_id: activity.tier_politica_id ?? '',
+            atividade: activity.atividade ?? '',
             categoria: activity.categoria ?? '',
+            rotina: activity.rotina ?? '',
+            esforco: activity.esforco ?? 'M',
+            tier_minimo: activity.tier_minimo ?? '3',
             tipo_demanda: activity.tipo_demanda ?? '',
             recorrencia_meses: activity.recorrencia_meses ?? 12,
             observacoes: activity.observacoes ?? '',
@@ -470,7 +472,6 @@
                         <label>Rotina / Escopo adicional</label>
                         <input type="text" name="rotina" x-model="form.rotina" class="form-input" placeholder="Opcional" />
                     </div>
-                    <input type="hidden" name="modulo" x-model="form.modulo" />
                 </div>
 
                 <div class="activity-form-grid details">
