@@ -248,6 +248,47 @@ class GrcToolRegistry
                 ['module_id', 'activity_ids']
             ),
             $this->tool(
+                'create_software',
+                'Cadastra um novo software no inventario GRC com dados de tecnologia, repositorio git e classificacao de criticidade.',
+                self::RISK_WRITE,
+                [
+                    'nome' => ['type' => 'string'],
+                    'tecnologia' => ['type' => 'string'],
+                    'git_url' => ['type' => 'string'],
+                    'ativo' => ['type' => 'boolean'],
+                    'exposicao_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'exposicao_detalhe' => ['type' => 'string'],
+                    'dados_sensibilidade_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'dados_sensibilidade_detalhe' => ['type' => 'string'],
+                    'criticidade_operacional_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'criticidade_operacional_detalhe' => ['type' => 'string'],
+                    'autenticacao_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'autenticacao_detalhe' => ['type' => 'string'],
+                ],
+                ['nome']
+            ),
+            $this->tool(
+                'update_software',
+                'Atualiza os dados cadastrais e niveis de criticidade de um software existente.',
+                self::RISK_WRITE,
+                [
+                    'software_id' => ['type' => 'integer'],
+                    'nome' => ['type' => 'string'],
+                    'tecnologia' => ['type' => 'string'],
+                    'git_url' => ['type' => 'string'],
+                    'ativo' => ['type' => 'boolean'],
+                    'exposicao_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'exposicao_detalhe' => ['type' => 'string'],
+                    'dados_sensibilidade_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'dados_sensibilidade_detalhe' => ['type' => 'string'],
+                    'criticidade_operacional_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'criticidade_operacional_detalhe' => ['type' => 'string'],
+                    'autenticacao_nivel' => ['type' => 'integer', 'enum' => [1, 2, 3]],
+                    'autenticacao_detalhe' => ['type' => 'string'],
+                ],
+                ['software_id']
+            ),
+            $this->tool(
                 'create_risk',
                 'Cria um risco no inventario GRC.',
                 self::RISK_WRITE,
@@ -440,6 +481,8 @@ class GrcToolRegistry
                 'update_activity' => $this->updateActivity($payload, $dryRun),
                 'assign_activities_to_tier_policy' => $this->assignActivitiesToTierPolicy($payload, $dryRun),
                 'assign_activities_to_module' => $this->assignActivitiesToModule($payload, $dryRun),
+                'create_software' => $this->createSoftware($payload, $dryRun),
+                'update_software' => $this->updateSoftware($payload, $dryRun),
                 'create_risk' => $this->createRisk($payload, $dryRun),
                 'update_risk' => $this->updateRisk($payload, $dryRun),
                 'update_risk_status' => $this->updateRiskStatus($payload, $dryRun),
@@ -699,10 +742,101 @@ class GrcToolRegistry
             'id' => $software->id,
             'nome' => $software->nome,
             'tecnologia' => $software->tecnologia,
+            'git_url' => $software->git_url,
             'ativo' => $software->ativo,
             'classificacao' => $software->classificacao_label,
             'tier_sugerido' => $software->tier_sugerido,
         ])->all();
+    }
+
+    protected function softwarePayload(Software $software): array
+    {
+        return [
+            'id' => $software->id,
+            'nome' => $software->nome,
+            'tecnologia' => $software->tecnologia,
+            'git_url' => $software->git_url,
+            'ativo' => $software->ativo,
+            'exposicao_nivel' => $software->exposicao_nivel,
+            'exposicao_label' => $software->exposicao_label,
+            'dados_sensibilidade_nivel' => $software->dados_sensibilidade_nivel,
+            'dados_sensibilidade_label' => $software->dados_sensibilidade_label,
+            'criticidade_operacional_nivel' => $software->criticidade_operacional_nivel,
+            'criticidade_operacional_label' => $software->criticidade_operacional_label,
+            'autenticacao_nivel' => $software->autenticacao_nivel,
+            'autenticacao_label' => $software->autenticacao_label,
+            'classificacao_pontuacao' => $software->classificacao_pontuacao,
+            'classificacao_nivel' => $software->classificacao_nivel,
+            'classificacao_label' => $software->classificacao_label,
+            'tier_sugerido' => $software->tier_sugerido,
+            'tier_sugerido_label' => $software->tier_sugerido_label,
+        ];
+    }
+
+    protected function createSoftware(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'nome' => ['required', 'string', 'max:255', 'unique:software,nome'],
+            'tecnologia' => ['nullable', 'string', 'max:255'],
+            'git_url' => ['nullable', 'string', 'max:255'],
+            'ativo' => ['nullable', 'boolean'],
+            'exposicao_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'exposicao_detalhe' => ['nullable', 'string', 'max:255'],
+            'dados_sensibilidade_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'dados_sensibilidade_detalhe' => ['nullable', 'string', 'max:255'],
+            'criticidade_operacional_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'criticidade_operacional_detalhe' => ['nullable', 'string', 'max:255'],
+            'autenticacao_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'autenticacao_detalhe' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $data['ativo'] = $data['ativo'] ?? true;
+
+        if ($dryRun) {
+            return ['would_create' => $data];
+        }
+
+        $software = Software::create($data);
+
+        return $this->softwarePayload($software->refresh());
+    }
+
+    protected function updateSoftware(array $payload, bool $dryRun): array
+    {
+        $data = $this->validate($payload, [
+            'software_id' => ['required', 'integer', 'exists:software,id'],
+            'nome' => ['nullable', 'string', 'max:255'],
+            'tecnologia' => ['nullable', 'string', 'max:255'],
+            'git_url' => ['nullable', 'string', 'max:255'],
+            'ativo' => ['nullable', 'boolean'],
+            'exposicao_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'exposicao_detalhe' => ['nullable', 'string', 'max:255'],
+            'dados_sensibilidade_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'dados_sensibilidade_detalhe' => ['nullable', 'string', 'max:255'],
+            'criticidade_operacional_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'criticidade_operacional_detalhe' => ['nullable', 'string', 'max:255'],
+            'autenticacao_nivel' => ['nullable', 'integer', 'in:1,2,3'],
+            'autenticacao_detalhe' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $software = Software::query()->findOrFail($data['software_id']);
+        unset($data['software_id']);
+
+        if (isset($data['nome']) && $data['nome'] !== $software->nome) {
+            if (Software::query()->where('nome', $data['nome'])->where('id', '!=', $software->id)->exists()) {
+                throw new ToolValidationException(['nome' => ['Ja existe outro software cadastrado com este nome.']]);
+            }
+        }
+
+        $this->requireChanges($data);
+
+        if ($dryRun) {
+            return ['would_update' => ['id' => $software->id, 'changes' => $data]];
+        }
+
+        $software->update($data);
+
+        return $this->softwarePayload($software->refresh());
     }
 
     protected function listControlCalendar(array $payload): array
