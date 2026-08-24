@@ -6,6 +6,7 @@ use App\Models\Atividade;
 use App\Models\ControleEvento;
 use App\Models\Risco;
 use App\Models\Software;
+use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -45,15 +46,14 @@ class CalendarioControleService
                 }
 
                 $risk = $this->resolveRelevantRisk($software);
-                $activities = $this->resolveApplicableActivities($software, $tier);
                 $policies = TierPolitica::query()
                     ->where('tier', $tier)
                     ->where('ativo', true)
                     ->orderBy('id')
                     ->get();
 
-                if ($activities->isNotEmpty() && $policies->isEmpty()) {
-                    $messages[] = "Software {$software->nome} ignorado: ha atividades cadastradas, mas falta politica ativa para o Tier {$tier}.";
+                if ($policies->isEmpty()) {
+                    $messages[] = "Software {$software->nome} ignorado: nao ha politicas ativas para o Tier {$tier}.";
                     $skipped++;
 
                     continue;
@@ -62,10 +62,20 @@ class CalendarioControleService
                 $baselinePolicy = $policies->first();
                 $coveredPolicyIds = [];
 
-                if ($activities->isNotEmpty()) {
+                // 1. Módulos mapeados no inventário que possuem atividades de cobertura
+                $modules = SoftwareModulo::query()
+                    ->where('software_id', $software->id)
+                    ->where('ativo', true)
+                    ->with(['atividades' => function ($query) use ($tier) {
+                        $query->where('ativo', true)
+                            ->where('tier_minimo', '>=', $tier)
+                            ->with('tierPolitica');
+                    }])
+                    ->get();
 
-                    foreach ($activities as $activity) {
-                        if (! $this->activityIsDue($software, $activity)) {
+                foreach ($modules as $module) {
+                    foreach ($module->atividades as $activity) {
+                        if (! $this->activityIsDueForModule($software, $activity, $module->nome)) {
                             $skipped++;
 
                             continue;
@@ -73,6 +83,7 @@ class CalendarioControleService
 
                         $neverTested = ! ControleEvento::query()
                             ->where('software_id', $software->id)
+                            ->where('modulo', $module->nome)
                             ->where('atividade_id', $activity->id)
                             ->where('status', 'concluido')
                             ->exists();
@@ -89,6 +100,9 @@ class CalendarioControleService
                             'software' => $software,
                             'policy' => $activityPolicy,
                             'activity' => $activity,
+                            'modulo' => $module->nome,
+                            'categoria' => $activity->categoria,
+                            'rotina' => $activity->rotina,
                             'risk' => null,
                             'tier' => $tier,
                             'never_tested' => $neverTested,
@@ -97,13 +111,55 @@ class CalendarioControleService
                     }
                 }
 
-                if ($policies->isEmpty()) {
-                    $messages[] = "Software {$software->nome} ignorado: nao ha atividades cadastradas nem acoes para o Tier {$tier}.";
-                    $skipped++;
+                // 2. Atividades Standalone / Globais (que não estão vinculadas aos módulos deste software)
+                $standaloneActivities = Atividade::query()
+                    ->with('tierPolitica')
+                    ->where('ativo', true)
+                    ->where('tier_minimo', '>=', $tier)
+                    ->where(function ($query) use ($software) {
+                        $query->where('software_id', $software->id)
+                            ->orWhereNull('software_id');
+                    })
+                    ->whereDoesntHave('softwareModulos', fn ($mq) => $mq->where('software_id', $software->id))
+                    ->get();
 
-                    continue;
+                foreach ($standaloneActivities as $activity) {
+                    if (! $this->activityIsDueForModule($software, $activity, null)) {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    $neverTested = ! ControleEvento::query()
+                        ->where('software_id', $software->id)
+                        ->whereNull('modulo')
+                        ->where('atividade_id', $activity->id)
+                        ->where('status', 'concluido')
+                        ->exists();
+
+                    $activityPolicy = $activity->tierPolitica?->ativo
+                        ? $activity->tierPolitica
+                        : $baselinePolicy;
+
+                    if ($activity->tierPolitica?->ativo && $activityPolicy) {
+                        $coveredPolicyIds[$activityPolicy->id] = true;
+                    }
+
+                    $candidates[] = [
+                        'software' => $software,
+                        'policy' => $activityPolicy,
+                        'activity' => $activity,
+                        'modulo' => null,
+                        'categoria' => $activity->categoria,
+                        'rotina' => $activity->rotina,
+                        'risk' => null,
+                        'tier' => $tier,
+                        'never_tested' => $neverTested,
+                        'weight' => $this->priorityWeight($tier, null, $neverTested),
+                    ];
                 }
 
+                // 3. Políticas de Tier não cobertas
                 foreach ($policies as $policy) {
                     if (isset($coveredPolicyIds[$policy->id])) {
                         continue;
@@ -119,9 +175,9 @@ class CalendarioControleService
                         continue;
                     }
 
-                    // BUG #2 FIX: detectar se o software nunca teve esta ação concluída
                     $neverTested = ! ControleEvento::query()
                         ->where('software_id', $software->id)
+                        ->whereNull('modulo')
                         ->where('tier_politica_id', $policy->id)
                         ->where('status', 'concluido')
                         ->exists();
@@ -130,6 +186,9 @@ class CalendarioControleService
                         'software' => $software,
                         'policy' => $policy,
                         'activity' => null,
+                        'modulo' => null,
+                        'categoria' => null,
+                        'rotina' => null,
                         'risk' => $risk,
                         'tier' => $tier,
                         'never_tested' => $neverTested,
@@ -138,7 +197,7 @@ class CalendarioControleService
                 }
             }
 
-            // BUG #3 FIX: sorting com hierarquia correta — Tier domina, risco é secundário DENTRO do tier
+            // Sorting com hierarquia correta — Tier domina, nunca testado primeiro, peso calculado
             $candidates = collect($candidates)
                 ->sort(function (array $left, array $right) {
                     // 1º: Tier (1=crítico antes de 2=médio antes de 3=baixo)
@@ -159,8 +218,9 @@ class CalendarioControleService
                         return $weightCmp;
                     }
 
-                    // 4º: Nome e policy como desempate estável
+                    // 4º: Nome do software, módulo e policy como desempate estável
                     return strcmp($left['software']->nome, $right['software']->nome)
+                        ?: strcmp((string) ($left['modulo'] ?? ''), (string) ($right['modulo'] ?? ''))
                         ?: ($left['policy']->id <=> $right['policy']->id);
                 })
                 ->values();
@@ -178,9 +238,10 @@ class CalendarioControleService
                 $risk = $candidate['risk'];
                 $tier = $candidate['tier'];
                 $neverTested = $candidate['never_tested'];
+                $modulo = $candidate['modulo'] ?? null;
+                $categoria = $candidate['categoria'] ?? null;
+                $rotina = $candidate['rotina'] ?? null;
 
-                // BUG #4 FIX: counter separado por tier+frequência para que
-                // Tier 1 ocupe as datas mais próximas, Tier 2 as seguintes, etc.
                 $frequencySource = $this->resolveFrequencySource($activity, $policy);
                 $frequencyKey = $this->frequencyKey($frequencySource);
                 $counterKey = "t{$tier}:{$frequencyKey}";
@@ -189,7 +250,7 @@ class CalendarioControleService
 
                 $schedule = $this->buildScheduleWindow($frequencySource, $sequence);
 
-                $existing = $this->resolveExistingEvent($software, $policy, $activity, $schedule['periodo_referencia']);
+                $existing = $this->resolveExistingEvent($software, $policy, $activity, $modulo, $schedule['periodo_referencia']);
 
                 if ($existing) {
                     if (in_array($existing->status, ['dispensado', 'cancelado'], true)) {
@@ -202,16 +263,16 @@ class CalendarioControleService
                             'sla_correcao_snapshot' => null,
                             'bloqueio_automatico_snapshot' => $policy->bloqueio_automatico,
                             'responsavel_planejado' => $policy->responsavel,
-                            'modulo' => $activity?->modulo,
-                            'categoria' => $activity?->categoria,
-                            'rotina' => $activity?->rotina,
+                            'modulo' => $modulo,
+                            'categoria' => $categoria,
+                            'rotina' => $rotina,
                             'esforco' => $activity?->esforco ?: $this->defaultEffortForFrequency($frequencySource),
                             'tipo_demanda' => $activity?->tipo_demanda,
                             'score_impacto' => null,
                             'score_exposicao' => null,
                             'score_confianca' => null,
                             'triagem_observacoes' => null,
-                            'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity),
+                            'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity, $modulo),
                             'origem' => $activity ? 'atividade+tier' : ($risk ? 'tier+risk' : 'tier'),
                             'data_prevista' => $schedule['data_prevista'],
                             'data_limite' => null,
@@ -243,12 +304,12 @@ class CalendarioControleService
                     'sla_correcao_snapshot' => null,
                     'bloqueio_automatico_snapshot' => $policy->bloqueio_automatico,
                     'responsavel_planejado' => $policy->responsavel,
-                    'modulo' => $activity?->modulo,
-                    'categoria' => $activity?->categoria,
-                    'rotina' => $activity?->rotina,
+                    'modulo' => $modulo,
+                    'categoria' => $categoria,
+                    'rotina' => $rotina,
                     'esforco' => $activity?->esforco ?: $this->defaultEffortForFrequency($frequencySource),
                     'tipo_demanda' => $activity?->tipo_demanda,
-                    'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity),
+                    'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity, $modulo),
                     'origem' => $activity ? 'atividade+tier' : ($risk ? 'tier+risk' : 'tier'),
                     'periodo_referencia' => $schedule['periodo_referencia'],
                     'data_prevista' => $schedule['data_prevista'],
@@ -446,21 +507,29 @@ class CalendarioControleService
         return $tierWeight + $virginBoost + $riskWeight;
     }
 
-    protected function buildGenerationNotes(Software $software, ?Risco $risk, bool $neverTested = false, ?Atividade $activity = null): string
+    protected function buildGenerationNotes(Software $software, ?Risco $risk, bool $neverTested = false, ?Atividade $activity = null, ?string $modulo = null): string
     {
         $notes = [
             "Classificacao do software: {$software->classificacao_label}",
         ];
 
+        if ($modulo) {
+            $notes[] = 'Módulo alvo: '.$modulo;
+        }
+
         if ($activity) {
             $notes[] = 'Atividade aplicada: '.$activity->atividade;
-            $notes[] = 'Escopo sugerido: '.$activity->scope_label;
+            if ($modulo) {
+                $notes[] = "Escopo: Módulo {$modulo}".($activity->rotina ? " > {$activity->rotina}" : '');
+            } else {
+                $notes[] = 'Escopo sugerido: '.$activity->scope_label;
+            }
         } else {
             $notes[] = 'Escopo ainda nao detalhado em modulo/categoria/rotina.';
         }
 
         if ($neverTested) {
-            $notes[] = '⚠️ PRIMEIRA EXECUCAO — este software nunca teve esta acao concluida anteriormente.';
+            $notes[] = '⚠️ PRIMEIRA EXECUCAO — este '.($modulo ? 'módulo' : 'software').' nunca teve esta acao concluida anteriormente.';
         }
 
         if ($risk) {
@@ -470,28 +539,17 @@ class CalendarioControleService
         return implode("\n", $notes);
     }
 
-    protected function resolveApplicableActivities(Software $software, int $tier)
-    {
-        return Atividade::query()
-            ->with('tierPolitica')
-            ->where('ativo', true)
-            ->where('tier_minimo', '>=', $tier)
-            ->where(function ($query) use ($tier) {
-                $query->whereNull('tier_politica_id')
-                    ->orWhereHas('tierPolitica', fn ($policy) => $policy->where('tier', $tier)->where('ativo', true));
-            })
-            ->where('software_id', $software->id)
-            ->orderByRaw("CASE WHEN rotina IS NULL OR rotina = '' THEN 1 ELSE 0 END")
-            ->orderByRaw("CASE WHEN modulo IS NULL OR modulo = '' THEN 1 ELSE 0 END")
-            ->orderBy('atividade')
-            ->get();
-    }
-
-    protected function resolveExistingEvent(Software $software, TierPolitica $policy, ?Atividade $activity, string $periodoReferencia): ?ControleEvento
+    protected function resolveExistingEvent(Software $software, TierPolitica $policy, ?Atividade $activity, ?string $modulo, string $periodoReferencia): ?ControleEvento
     {
         $query = ControleEvento::query()
             ->where('software_id', $software->id)
             ->where('periodo_referencia', $periodoReferencia);
+
+        if ($modulo) {
+            $query->where('modulo', $modulo);
+        } else {
+            $query->whereNull('modulo');
+        }
 
         if ($activity) {
             $query->where('atividade_id', $activity->id);
@@ -502,18 +560,18 @@ class CalendarioControleService
         return $query->first();
     }
 
-    protected function activityIsDue(Software $software, Atividade $activity): bool
+    protected function activityIsDueForModule(Software $software, Atividade $activity, ?string $modulo): bool
     {
         $sameScope = ControleEvento::query()
             ->where('software_id', $software->id)
+            ->when(
+                $modulo !== null && $modulo !== '',
+                fn ($q) => $q->where('modulo', $modulo),
+                fn ($q) => $q->whereNull('modulo')
+            )
             ->where(function ($query) use ($activity) {
                 $query->where('atividade_id', $activity->id)
-                    ->orWhere(function ($fallback) use ($activity) {
-                        $fallback->where('acao_controle_snapshot', $activity->atividade)
-                            ->where($this->nullableScopeCondition('modulo', $activity->modulo))
-                            ->where($this->nullableScopeCondition('categoria', $activity->categoria))
-                            ->where($this->nullableScopeCondition('rotina', $activity->rotina));
-                    });
+                    ->orWhere('acao_controle_snapshot', $activity->atividade);
             });
 
         if ((clone $sameScope)->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])->exists()) {
@@ -529,9 +587,16 @@ class CalendarioControleService
             return true;
         }
 
+        $recorrenciaMeses = max(1, (int) $activity->recorrencia_meses);
+
         return Carbon::parse($lastCompletion)
-            ->addMonthsNoOverflow(max(1, (int) $activity->recorrencia_meses))
+            ->addMonthsNoOverflow($recorrenciaMeses)
             ->isPast();
+    }
+
+    protected function activityIsDue(Software $software, Atividade $activity): bool
+    {
+        return $this->activityIsDueForModule($software, $activity, $activity->modulo);
     }
 
     protected function nullableScopeCondition(string $column, ?string $value): \Closure
