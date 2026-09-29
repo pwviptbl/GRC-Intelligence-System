@@ -290,20 +290,25 @@ class GrcToolRegistry
             ),
             $this->tool(
                 'create_risk',
-                'Cria um risco no inventario GRC.',
+                'Cria um risco ou vulnerabilidade no inventario GRC.',
                 self::RISK_WRITE,
                 [
                     'titulo' => ['type' => 'string'],
                     'descricao' => ['type' => 'string'],
                     'probabilidade' => ['type' => 'string', 'enum' => ['Alta', 'Media', 'Baixa']],
                     'impacto' => ['type' => 'string', 'enum' => ['Alto', 'Medio', 'Baixo']],
+                    'cvss_score' => ['type' => 'number', 'minimum' => 0, 'maximum' => 10],
+                    'cve_id' => ['type' => 'string'],
                     'responsavel' => ['type' => 'string'],
                     'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
                     'origem' => ['type' => 'string'],
                     'ativo_afetado' => ['type' => 'string'],
                     'plano_acao' => ['type' => 'string'],
                     'software_id' => ['type' => 'integer'],
+                    'software_modulo_id' => ['type' => 'integer'],
+                    'atividade_id' => ['type' => 'integer'],
                     'cliente_id' => ['type' => 'integer'],
+                    'data_limite_correcao' => ['type' => 'string'],
                 ],
                 ['titulo', 'descricao']
             ),
@@ -920,11 +925,16 @@ class GrcToolRegistry
             'ativo_afetado' => ['nullable', 'string', 'max:255'],
             'probabilidade' => ['nullable', 'in:Alta,Media,Baixa,Média'],
             'impacto' => ['nullable', 'in:Alto,Medio,Baixo,Médio'],
+            'cvss_score' => ['nullable', 'numeric', 'min:0', 'max:10'],
+            'cve_id' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
             'plano_acao' => ['nullable', 'string'],
             'responsavel' => ['nullable', 'string', 'max:255'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
+            'software_modulo_id' => ['nullable', 'integer', 'exists:software_modulos,id'],
+            'atividade_id' => ['nullable', 'integer', 'exists:atividades,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
+            'data_limite_correcao' => ['nullable', 'date'],
         ]);
 
         $probabilidade = $data['probabilidade'] ?? 'Alta';
@@ -944,11 +954,18 @@ class GrcToolRegistry
         $data['criticidade'] = $data['severidade'] ?? $this->calculateRiskCriticality($data['probabilidade'], $data['impacto']);
         unset($data['categoria'], $data['severidade']);
 
+        // Auto SLA calculation
+        $slaDias = Risco::DEFAULT_SLA_DAYS[$data['criticidade']] ?? 90;
+        $data['sla_dias'] = $slaDias;
+        if (empty($data['data_limite_correcao'])) {
+            $data['data_limite_correcao'] = now()->addDays($slaDias)->toDateString();
+        }
+
         if ($dryRun) {
             return ['would_create' => $data];
         }
 
-        return $this->riskPayload(Risco::create($data)->load(['software:id,nome', 'cliente:id,nome']));
+        return $this->riskPayload(Risco::create($data)->load(['software:id,nome', 'modulo:id,nome', 'cliente:id,nome']));
     }
 
     protected function createActivity(array $payload, bool $dryRun): array
@@ -1638,6 +1655,11 @@ class GrcToolRegistry
             'procedimento_ref' => ['type' => 'string'],
             'plano_acao' => ['type' => 'string'],
             'software_id' => ['type' => 'integer'],
+            'software_modulo_id' => ['type' => 'integer'],
+            'atividade_id' => ['type' => 'integer'],
+            'cvss_score' => ['type' => 'number', 'minimum' => 0, 'maximum' => 10],
+            'cve_id' => ['type' => 'string'],
+            'data_limite_correcao' => ['type' => 'string'],
             'tier_politica_id' => ['type' => 'integer'],
             'cliente_id' => ['type' => 'integer'],
         ];
@@ -2118,12 +2140,19 @@ class GrcToolRegistry
             'id' => $risco->id,
             'titulo' => $risco->titulo,
             'criticidade' => $risco->criticidade,
+            'cvss_score' => $risco->cvss_score ? (float) $risco->cvss_score : null,
+            'cve_id' => $risco->cve_id,
             'probabilidade' => $risco->probabilidade,
             'impacto' => $risco->impacto,
             'status' => $risco->status,
+            'origem' => $risco->origem,
             'responsavel' => $risco->responsavel,
             'software' => $risco->software?->nome,
+            'modulo' => $risco->modulo?->nome,
             'cliente' => $risco->cliente?->nome,
+            'sla_dias' => $risco->sla_dias,
+            'data_limite_correcao' => optional($risco->data_limite_correcao)->toDateString(),
+            'sla_status' => $risco->sla_status,
             'updated_at' => optional($risco->updated_at)->toDateTimeString(),
         ];
     }

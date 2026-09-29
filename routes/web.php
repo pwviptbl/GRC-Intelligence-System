@@ -109,6 +109,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 2. MÓDULOS OPERACIONAIS
     Route::middleware('role:admin,governanca,operacional,auditor')->group(function () {
         Route::resource('riscos', RiscoController::class);
+        Route::patch('/riscos/{risco}/status', [RiscoController::class, 'updateStatus'])->name('riscos.update_status');
         Route::get('/riscos/export/zip', [RiscoController::class, 'exportZip'])->name('riscos.export.zip');
         Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
         Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
