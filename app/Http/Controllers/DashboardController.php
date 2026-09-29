@@ -12,6 +12,7 @@ use App\Models\Incidente;
 use App\Models\ControleEvento;
 use App\Models\LgpdItem;
 use App\Models\User;
+use App\Services\AlertService;
 use App\Services\GeminiService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -192,8 +193,10 @@ class DashboardController extends Controller
             'sistemas' => $sistemasCoverage,
         ];
 
+        $alertas = app(AlertService::class)->getAlertSummary();
+
         return view('dashboard', compact(
-            'ativos', 'governanca', 'riscos', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_riscos', 'ultimos_incidentes', 'operacional', 'cobertura'
+            'ativos', 'governanca', 'riscos', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_riscos', 'ultimos_incidentes', 'operacional', 'cobertura', 'alertas'
         ));
     }
 

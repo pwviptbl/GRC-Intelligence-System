@@ -282,6 +282,54 @@
         transform: translateY(-1px);
     }
 
+    .dashboard-alerts-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .dashboard-alert-card {
+        padding: 14px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg-surface);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: transform .15s, border-color .15s;
+    }
+
+    .dashboard-alert-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .dashboard-alert-card.severity-danger {
+        border-color: rgba(255,83,112,.35);
+        background: rgba(255,83,112,.03);
+    }
+
+    .dashboard-alert-card.severity-warning {
+        border-color: rgba(255,215,64,.35);
+        background: rgba(255,215,64,.03);
+    }
+
+    .dashboard-alert-card.severity-info {
+        border-color: rgba(6,182,212,.35);
+        background: rgba(6,182,212,.03);
+    }
+
+    @media (max-width: 900px) {
+        .dashboard-alerts-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 600px) {
+        .dashboard-alerts-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
     @media (max-width: 860px) {
         .dashboard-grid {
             grid-template-columns: minmax(0, 1fr);
@@ -353,6 +401,50 @@
             <span>📄 Exportar Relatório Executivo</span>
         </a>
     </div>
+
+    <!-- Painel Atenção Necessária (Alertas Proativos de GRC e SLA) -->
+    @if(isset($alertas) && $alertas['badge_count'] > 0)
+    <div class="dashboard-alerts-panel" style="margin-bottom:25px;border:1px solid {{ $alertas['has_critical'] ? 'rgba(255,83,112,0.35)' : 'rgba(255,215,64,0.35)' }};border-radius:10px;background:{{ $alertas['has_critical'] ? 'rgba(255,83,112,0.04)' : 'rgba(255,215,64,0.04)' }};padding:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:24px">{{ $alertas['has_critical'] ? '🚨' : '⚠️' }}</span>
+                <div>
+                    <h4 style="margin:0;color:var(--text-1);font-size:14px;font-weight:700">Atenção Necessária — Alertas e SLAs do Ecossistema</h4>
+                    <p style="margin:2px 0 0;font-size:11px;color:var(--text-3)">Existem {{ $alertas['total_items'] }} item(ns) exigindo acompanhamento prioritário da equipe</p>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px">
+                @if($alertas['danger_count'] > 0)
+                    <span class="badge" style="background:rgba(255,83,112,0.15);color:var(--red);border-color:rgba(255,83,112,0.4)">{{ $alertas['danger_count'] }} Crítico(s)</span>
+                @endif
+                @if($alertas['warning_count'] > 0)
+                    <span class="badge" style="background:rgba(255,215,64,0.15);color:var(--yellow);border-color:rgba(255,215,64,0.4)">{{ $alertas['warning_count'] }} Em Atenção</span>
+                @endif
+            </div>
+        </div>
+
+        <div class="dashboard-alerts-grid">
+            @foreach($alertas['alerts'] as $alert)
+            <div class="dashboard-alert-card severity-{{ $alert['severity'] }}">
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span>{{ $alert['icon'] }}</span>
+                            <span class="alert-badge badge-{{ $alert['severity'] }}">{{ $alert['category'] }}</span>
+                        </div>
+                        <span class="alert-counter text-{{ $alert['severity'] }}" style="font-weight:700;font-size:13px">{{ $alert['count'] }}</span>
+                    </div>
+                    <strong style="display:block;margin-top:8px;color:var(--text-1);font-size:13px">{{ $alert['title'] }}</strong>
+                    <p style="margin:4px 0 12px;color:var(--text-2);font-size:11px;line-height:1.4">{{ $alert['description'] }}</p>
+                </div>
+                <div style="text-align:right">
+                    <a href="{{ $alert['action_url'] }}" class="alert-action-link">{{ $alert['action_label'] }} ➔</a>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
     <div class="dashboard-operational-header">
         <h4>Operação da Semana</h4>

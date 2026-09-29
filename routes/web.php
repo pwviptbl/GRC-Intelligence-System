@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AlertController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AuditoriaController;
@@ -45,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/relatorios/dossie', [RelatorioController::class, 'gerarDossie'])->name('relatorios.dossie');
         Route::get('/dashboard/export/executive', [DashboardController::class, 'exportExecutive'])->name('dashboard.export');
         Route::get('/dashboard/ai-summary', [DashboardController::class, 'aiSummary'])->name('dashboard.ai_summary');
+        Route::get('/alertas/resumo', [AlertController::class, 'summary'])->name('alertas.summary');
     });
 
     Route::middleware('role:admin,governanca')->group(function () {

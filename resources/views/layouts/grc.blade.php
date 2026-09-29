@@ -70,7 +70,30 @@
       border-top: 1px solid #1e3258 !important;
       box-sizing: border-box;
     }
-    .topbar { background: var(--bg-surface); padding: 20px; border-bottom: 1px solid var(--border); }
+    .topbar { background: var(--bg-surface); padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; position: relative; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .btn-topbar-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: var(--text-1); cursor: pointer; transition: border-color .15s, background .15s; }
+    .btn-topbar-bell:hover { border-color: var(--border-glow); background: var(--bg-hover); }
+    .btn-topbar-bell.has-danger { border-color: rgba(255,83,112,.4); background: rgba(255,83,112,.08); }
+    .btn-topbar-bell.has-warning { border-color: rgba(255,215,64,.4); background: rgba(255,215,64,.08); }
+    .bell-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; font: 700 10px/18px var(--mono); color: #fff; text-align: center; box-shadow: 0 0 6px rgba(0,0,0,.4); }
+    .alerts-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: min(380px, calc(100vw - 32px)); max-height: 480px; border: 1px solid var(--border-glow); border-radius: 10px; background: var(--bg-surface); box-shadow: 0 10px 30px rgba(0,0,0,.6); z-index: 1000; display: flex; flex-direction: column; overflow: hidden; }
+    .alerts-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); }
+    .alerts-body { max-height: 380px; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .alert-item { padding: 10px 12px; border-radius: 7px; border: 1px solid var(--border); background: rgba(255,255,255,.02); transition: background .15s; text-align: left; }
+    .alert-item:hover { background: var(--bg-hover); }
+    .alert-item.severity-danger { border-color: rgba(255,83,112,.3); background: rgba(255,83,112,.03); }
+    .alert-item.severity-warning { border-color: rgba(255,215,64,.3); background: rgba(255,215,64,.03); }
+    .alert-item.severity-info { border-color: rgba(6,182,212,.3); background: rgba(6,182,212,.03); }
+    .alert-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+    .badge-danger { background: rgba(255,83,112,.15); color: var(--red); }
+    .badge-warning { background: rgba(255,215,64,.15); color: var(--yellow); }
+    .badge-info { background: rgba(6,182,212,.15); color: var(--cyan); }
+    .text-danger { color: var(--red); }
+    .text-warning { color: var(--yellow); }
+    .text-info { color: var(--cyan); }
+    .alert-action-link { display: inline-block; font-size: 11px; font-weight: 600; color: var(--cyan); text-decoration: none; }
+    .alert-action-link:hover { text-decoration: underline; }
     .mobile-menu-btn,
     .sidebar-close,
     .sidebar-backdrop { display: none; }
@@ -297,14 +320,89 @@
 
     <main class="main">
       <div class="topbar">
-        <button type="button" class="mobile-menu-btn" @click="sidebarOpen = true" aria-label="Abrir menu" title="Abrir menu">☰</button>
-        <div class="topbar-title">
-          <h2>@yield('title', 'Dashboard')</h2>
-          <p>@yield('description', 'Visão Geral do Sistema')</p>
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
+          <button type="button" class="mobile-menu-btn" @click="sidebarOpen = true" aria-label="Abrir menu" title="Abrir menu">☰</button>
+          <div class="topbar-title">
+            <h2>@yield('title', 'Dashboard')</h2>
+            <p>@yield('description', 'Visão Geral do Sistema')</p>
+          </div>
         </div>
-        @hasSection('badge')
-          <span class="badge">@yield('badge')</span>
-        @endif
+
+        <div class="topbar-right">
+          @hasSection('badge')
+            <span class="badge">@yield('badge')</span>
+          @endif
+
+          <!-- Central de Notificações e Alertas In-App -->
+          <div class="topbar-alerts" x-data="{
+              open: false,
+              loading: false,
+              data: { badge_count: 0, danger_count: 0, warning_count: 0, total_items: 0, alerts: [] },
+              async loadAlerts() {
+                  try {
+                      this.loading = true;
+                      const res = await fetch('{{ route('alertas.summary') }}');
+                      this.data = await res.json();
+                  } catch(e) {
+                      console.error('Erro ao buscar alertas:', e);
+                  } finally {
+                      this.loading = false;
+                  }
+              },
+              init() {
+                  this.loadAlerts();
+              }
+          }" x-on:click.outside="open = false" style="position:relative">
+              <button type="button" x-on:click="open = !open" class="btn-topbar-bell" :class="{ 'has-danger': data.danger_count > 0, 'has-warning': data.warning_count > 0 }" aria-label="Alertas e Notificações" title="Alertas de Segurança e SLA">
+                  <span style="font-size:17px">🔔</span>
+                  <template x-if="data.badge_count > 0">
+                      <span class="bell-badge" :style="data.danger_count > 0 ? 'background:var(--red)' : 'background:var(--yellow)'" x-text="data.badge_count"></span>
+                  </template>
+              </button>
+
+              <!-- Dropdown de Notificações -->
+              <div x-show="open" x-transition class="alerts-dropdown" style="display:none">
+                  <div class="alerts-header">
+                      <div>
+                          <strong style="color:var(--text-1);font-size:13px;display:flex;align-items:center;gap:6px">
+                              <span>🔔 Alertas e Notificações</span>
+                          </strong>
+                          <div style="font-size:11px;color:var(--text-3);margin-top:2px" x-text="data.badge_count > 0 ? data.total_items + ' pendência(s) em ' + data.badge_count + ' alerta(s)' : 'Tudo em conformidade'"></div>
+                      </div>
+                      <button type="button" x-on:click.stop="loadAlerts()" style="background:transparent;border:0;color:var(--cyan);font-size:12px;cursor:pointer;padding:4px" title="Atualizar">
+                          <span :style="loading ? 'display:inline-block;animation:spin 1s linear infinite' : ''">🔄</span>
+                      </button>
+                  </div>
+                  
+                  <div class="alerts-body">
+                      <template x-if="data.alerts.length === 0">
+                          <div style="padding:28px 16px;text-align:center;color:var(--text-3);font-size:12px">
+                              <div style="font-size:26px;margin-bottom:8px">🛡️</div>
+                              <strong style="color:var(--text-1);display:block;margin-bottom:4px">Tudo sob controle!</strong>
+                              Nenhum alerta crítico ou SLA vencido no momento.
+                          </div>
+                      </template>
+
+                      <template x-for="alert in data.alerts" :key="alert.id">
+                          <div class="alert-item" :class="'severity-' + alert.severity">
+                              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                                  <div style="display:flex;align-items:center;gap:6px">
+                                      <span x-text="alert.icon"></span>
+                                      <span class="alert-badge" :class="'badge-' + alert.severity" x-text="alert.category"></span>
+                                  </div>
+                                  <span class="alert-counter" :class="'text-' + alert.severity" style="font-weight:700;font-size:11px" x-text="alert.count"></span>
+                              </div>
+                              <div style="margin-top:5px;font-weight:600;font-size:12px;color:var(--text-1)" x-text="alert.title"></div>
+                              <div style="font-size:11px;color:var(--text-2);margin-top:3px;line-height:1.4" x-text="alert.description"></div>
+                              <div style="margin-top:6px;text-align:right">
+                                  <a :href="alert.action_url" class="alert-action-link" x-text="alert.action_label + ' ➔'"></a>
+                              </div>
+                          </div>
+                      </template>
+                  </div>
+              </div>
+          </div>
+        </div>
       </div>
 
       <div class="content view active app-content">
