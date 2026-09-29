@@ -1,8 +1,8 @@
 @extends('layouts.grc')
 
-@section('title', 'Politica de Tiers')
-@section('description', 'Matriz operacional de controles por tier')
-@section('badge', $tierPoliticas->count() . ' Ações Configuradas')
+@section('title', 'Níveis de Criticidade')
+@section('description', 'Matriz operacional de controles por nível de criticidade')
+@section('badge', $tierPoliticas->count() . ' Controles Configurados')
 
 @section('content')
 <style>
@@ -185,7 +185,7 @@
     <div style="background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:20px">
         <form action="{{ route('tier_politicas.index') }}" method="GET" class="tiers-filter-grid">
             <div class="form-group" style="margin-bottom:0">
-                <label>Filtro por Tier</label>
+                <label>Filtro por Nível de Criticidade</label>
                 <select name="tier" class="form-select">
                     <option value="">Todos</option>
                     <option value="1" {{ request('tier') === '1' ? 'selected' : '' }}>Tier 1 - Crítico</option>
@@ -202,25 +202,25 @@
                 </select>
             </div>
             <div class="form-group" style="margin-bottom:0">
-                <label>Status da Ação</label>
+                <label>Status do Controle</label>
                 <select name="ativo" class="form-select">
                     <option value="">Todos</option>
-                    <option value="1" {{ request('ativo') === '1' ? 'selected' : '' }}>Ativas</option>
-                    <option value="0" {{ request('ativo') === '0' ? 'selected' : '' }}>Desabilitadas</option>
+                    <option value="1" {{ request('ativo') === '1' ? 'selected' : '' }}>Ativos</option>
+                    <option value="0" {{ request('ativo') === '0' ? 'selected' : '' }}>Desabilitados</option>
                 </select>
             </div>
             <button type="submit" class="btn-secondary" style="height:42px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600;">Filtrar</button>
         </form>
-        <div style="font-size:12px; font-weight:700; color:var(--text-2); margin-bottom:10px">Estrutura operacional por acao</div>
+        <div style="font-size:12px; font-weight:700; color:var(--text-2); margin-bottom:10px">Estrutura operacional por controle</div>
         <div class="tiers-guide-grid">
-            <div><strong style="color:var(--text-1)">Acao</strong><br>Cada linha representa um controle dentro do tier.</div>
+            <div><strong style="color:var(--text-1)">Controle</strong><br>Cada linha representa uma ação de segurança dentro do nível.</div>
             <div><strong style="color:var(--text-1)">Frequencia</strong><br>Quando o controle deve ocorrer, como a cada commit, mensal ou anual.</div>
             <div><strong style="color:var(--text-1)">Bloqueio</strong><br>Define o rigor da esteira para a regra.</div>
         </div>
     </div>
 
     <div class="table-header">
-        <h3>Acoes Operacionais por Tier</h3>
+        <h3>Controles Operacionais por Nível de Criticidade</h3>
         <div class="tiers-header-actions" style="display:flex; gap:10px;">
             <a href="{{ route('tier_politicas.export.zip', request()->query()) }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
                 📦 Baixar ZIP (Separados)
@@ -229,10 +229,10 @@
                 <span>📄 Exportar PDF</span>
             </a>
             <a href="{{ route('softwares.index') }}" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
-                <span>💾 Ver Softwares</span>
+                <span>💾 Ver Sistemas</span>
             </a>
             @if($canManageTiers)
-            <button class="btn-add" @click="openCreate()">+ Nova Acao</button>
+            <button class="btn-add" @click="openCreate()">+ Novo Controle</button>
             @endif
         </div>
     </div>

@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', 'Riscos')
-@section('description', 'Registro e Avaliação de Riscos')
+@section('title', 'Registro de Riscos e Vulnerabilidades')
+@section('description', 'Gestão, classificação e tratamento de riscos e vulnerabilidades')
 @section('badge', $riscos->count() . ' Registrados')
 
 @section('content')

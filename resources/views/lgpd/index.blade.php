@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', 'Conformidade LGPD')
-@section('description', 'Manual de Auditoria e Verificação de Requisitos')
+@section('title', 'Conformidade Regulatória (LGPD)')
+@section('description', 'Manual de Auditoria e Verificação de Requisitos Legais')
 @section('badge', $itens->where('conforme', 'conforme')->count() . '/' . $itens->count() . ' Concluídos')
 
 @section('content')

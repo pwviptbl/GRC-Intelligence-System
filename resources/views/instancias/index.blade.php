@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', 'Instâncias')
-@section('description', 'Relacionamento Cliente-Software')
+@section('title', 'Ambientes')
+@section('description', 'Implantações e Ambientes por Organização e Sistema')
 @section('badge', $instancias->count() . ' Total')
 
 @section('content')
@@ -262,23 +262,23 @@
 }">
     <div class="stats-row">
         <div class="stat-card c3">
-            <div class="stat-label">Total de Instâncias</div>
+            <div class="stat-label">Total de Ambientes</div>
             <div class="stat-value">{{ $instancias->count() }}</div>
         </div>
         <div class="stat-card c1">
-            <div class="stat-label">Clientes Ativos</div>
+            <div class="stat-label">Organizações Ativas</div>
             <div class="stat-value">{{ $instancias->unique('cliente_id')->count() }}</div>
         </div>
     </div>
     
     <div class="instances-header">
-        <h3>Instâncias Ativas</h3>
+        <h3>Ambientes Ativos</h3>
         <div class="instances-header-actions">
             <a href="{{ route('instancias.export', request()->all()) }}" target="_blank" class="btn-secondary instances-export">
                 <span>📄 Exportar PDF</span>
             </a>
             @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-            <button class="btn-add" @click="openCreate()">+ Nova Instância</button>
+            <button class="btn-add" @click="openCreate()">+ Novo Ambiente</button>
             @endif
         </div>
     </div>
@@ -349,10 +349,10 @@
                     <td data-label="Ações">
                         <div class="instances-row-actions">
                             <button @click="openEdit({{ $i->toJson() }})" class="instances-edit" title="Editar">🖊️</button>
-                            <form action="{{ route('instancias.destroy', $i) }}" method="POST" onsubmit="return confirm('Deseja remover esta instância?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn-del">🗑</button>
+                            <form action="{{ route('instancias.destroy', $i) }}" method="POST" onsubmit="return confirm('Deseja remover este ambiente?')">
+                                 @csrf
+                                 @method('DELETE')
+                                 <button type="submit" class="btn-del">🗑</button>
                             </form>
                         </div>
                     </td>
@@ -363,7 +363,7 @@
                     <td colspan="6" class="instances-empty">
                         <div class="empty-state">
                             <div class="empty-icon">🔗</div>
-                            <p>Nenhuma instância cadastrada ainda.</p>
+                            <p>Nenhum ambiente cadastrado ainda.</p>
                         </div>
                     </td>
                 </tr>
@@ -372,10 +372,10 @@
         </table>
     </div>
 
-    <!-- Modal Novo/Editar Instância -->
+    <!-- Modal Novo/Editar Ambiente -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
         <div class="modal instances-modal" @click.away="showModal = false">
-            <h3>🔗 <span x-text="editMode ? 'Editar Instância' : 'Nova Instância'"></span></h3>
+            <h3>🔗 <span x-text="editMode ? 'Editar Ambiente' : 'Novo Ambiente'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
                 <template x-if="editMode">
@@ -383,18 +383,18 @@
                 </template>
 
                 <div class="form-group">
-                    <label>Cliente</label>
+                    <label>Organização / Entidade</label>
                     <select name="cliente_id" x-model="form.cliente_id" class="form-select" required>
-                        <option value="">Selecione um Cliente...</option>
+                        <option value="">Selecione uma Organização...</option>
                         @foreach($clientes as $c)
                             <option value="{{ $c->id }}">{{ $c->nome }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Software</label>
+                    <label>Sistema / Ativo</label>
                     <select name="software_id" x-model="form.software_id" class="form-select" required>
-                        <option value="">Selecione um Software...</option>
+                        <option value="">Selecione um Sistema...</option>
                         @foreach($softwares as $s)
                             <option value="{{ $s->id }}">{{ $s->nome }}</option>
                         @endforeach

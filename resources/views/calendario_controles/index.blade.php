@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', $kanbanMode ? 'Execucao de Controles' : 'Central de Controles')
-@section('description', $kanbanMode ? 'Acompanhamento do trabalho aprovado' : 'Captacao, triagem e planejamento de controles')
+@section('title', $kanbanMode ? 'Execuções de Controles' : 'Plano de Controles')
+@section('description', $kanbanMode ? 'Acompanhamento e execução dos controles aprovados' : 'Captação, triagem e planejamento de controles')
 @section('badge', ($sugestoes->count() + $triagens->count() + $eventos->count()) . ' Itens')
 
 @section('content')

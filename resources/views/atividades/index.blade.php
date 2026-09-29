@@ -1,8 +1,8 @@
 @extends('layouts.grc')
 
-@section('title', 'Catalogo de Atividades')
-@section('description', 'Atividades reutilizaveis para sugestao e comparacao de demandas')
-@section('badge', $atividades->count() . ' Atividades')
+@section('title', 'Catálogo de Controles')
+@section('description', 'Controles de segurança reutilizáveis para sugestão e execução')
+@section('badge', $atividades->count() . ' Controles')
 
 @section('content')
 <style>
@@ -177,7 +177,7 @@
 
     <div class="stats-row">
         <div class="stat-card c1">
-            <div class="stat-label">Atividades Catalogadas</div>
+            <div class="stat-label">Controles Catalogados</div>
             <div class="stat-value">{{ $atividades->count() }}</div>
         </div>
         <div class="stat-card" style="background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.12);">
@@ -276,9 +276,9 @@
     </div>
 
     <div class="table-header">
-        <h3>Catalogo Base de Atividades</h3>
+        <h3>Catálogo Base de Controles</h3>
         @if($canManageActivities)
-            <button class="btn-add" @click="openCreate()">+ Nova Atividade</button>
+            <button class="btn-add" @click="openCreate()">+ Novo Controle</button>
         @endif
     </div>
 
@@ -423,7 +423,7 @@
 
     <div class="modal-overlay activities-modal-overlay" x-show="showModal" style="display: none;" x-transition>
         <div class="modal activity-modal" @click.away="showModal = false">
-            <h3>🧩 <span x-text="editMode ? 'Editar Atividade' : 'Nova Atividade'"></span></h3>
+            <h3>🧩 <span x-text="editMode ? 'Editar Controle' : 'Novo Controle'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
                 <template x-if="editMode">
@@ -432,32 +432,32 @@
 
                 <div class="activity-form-grid primary">
                     <div class="form-group">
-                        <label>Atividade</label>
-                        <input type="text" name="atividade" x-model="form.atividade" class="form-input" placeholder="Ex: Analise autenticada" required />
+                        <label>Nome do Controle</label>
+                        <input type="text" name="atividade" x-model="form.atividade" class="form-input" placeholder="Ex: Analise autenticada, Scan de Vulnerabilidades..." required />
                     </div>
                     <div class="form-group">
-                        <label>Esforco</label>
+                        <label>Esforço <span style="font-size:10px; color:var(--text-3); font-weight:normal;">(PP a GG)</span></label>
                         <select name="esforco" x-model="form.esforco" class="form-select" required>
                             @foreach($effortOptions as $effort)
-                                <option value="{{ $effort }}">{{ $effort }}</option>
+                                <option value="{{ $effort }}">{{ $effort }} - {{ match($effort) { 'PP' => 'Muito Pequeno', 'P' => 'Pequeno', 'M' => 'Médio', 'G' => 'Grande', 'GG' => 'Muito Grande', default => $effort } }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Tier Minimo</label>
+                        <label>Nível Mínimo (Tier)</label>
                         <select name="tier_minimo" x-model="form.tier_minimo" class="form-select" required>
-                            <option value="1">Tier 1</option>
-                            <option value="2">Tier 2</option>
-                            <option value="3">Tier 3</option>
+                            <option value="1">Tier 1 - Crítico</option>
+                            <option value="2">Tier 2 - Médio</option>
+                            <option value="3">Tier 3 - Baixo</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="activity-form-grid scope">
                     <div class="form-group">
-                        <label>Software</label>
+                        <label>Sistema / Ativo</label>
                         <select name="software_id" x-model="form.software_id" class="form-select">
-                            <option value="">Global (qualquer software)</option>
+                            <option value="">Global (qualquer sistema)</option>
                             @foreach($softwares as $software)
                                 <option value="{{ $software->id }}">{{ $software->nome }}</option>
                             @endforeach

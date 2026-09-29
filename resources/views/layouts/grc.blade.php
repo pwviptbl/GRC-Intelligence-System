@@ -177,7 +177,7 @@
 
         @if(in_array(auth()->user()->role, ['admin', 'governanca']))
         <a href="{{ route('estrategia.index') }}" class="nav-btn" :class="{ 'active': view.includes('estrategia') }">
-          <span class="icon" style="margin-right: 10px;">🚀</span> Consultor IA
+          <span class="icon" style="margin-right: 10px;">🚀</span> Assistente GRC
         </a>
         @endif
 
@@ -192,15 +192,15 @@
         <div class="nav-submenu-group" x-show="menuAtivosAberto" style="display: none;" x-transition>
           <a href="{{ route('clientes.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('clientes') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🏢</span> Clientes
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🏢</span> Organizações
           </a>
           <a href="{{ route('softwares.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('softwares') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">💾</span> Softwares
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">💾</span> Sistemas
           </a>
           <a href="{{ route('instancias.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('instancias') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔗</span> Instâncias
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔗</span> Ambientes
           </a>
         </div>
 
@@ -216,15 +216,15 @@
           </a>
           <a href="{{ route('tier_politicas.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('tier_politicas') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📐</span> Tiers
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📐</span> Níveis de Criticidade
           </a>
           <a href="{{ route('atividades.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('atividades') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🧩</span> Atividades
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🧩</span> Controles
           </a>
           <a href="{{ route('atividades.module_coverage') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('module_coverage') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🗺️</span> Cobertura de Módulos
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🗺️</span> Mapeamento de Controles
           </a>
           <a href="{{ route('procedimentos.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('procedimentos') }">
@@ -239,7 +239,7 @@
         </div>
         <div class="nav-submenu-group" x-show="menuRiscosAberto" style="display: none;" x-transition>
           <a href="{{ route('riscos.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('riscos') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📋</span> Registro de Riscos
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📋</span> Registro de Riscos / Vulns
           </a>
         </div>
 
@@ -249,7 +249,7 @@
         </a>
         @if(in_array(auth()->user()->role, ['admin', 'governanca']))
         <a href="{{ route('calendario_controles.index') }}" class="nav-btn" :class="{ 'active': view === 'calendario_controles.index' }">
-          <span class="icon" style="margin-right: 10px;">🗓️</span> Calendário de Controles
+          <span class="icon" style="margin-right: 10px;">🗓️</span> Plano de Controles
         </a>
         <a href="{{ route('planejamento_semanal.index') }}" class="nav-btn submenu" :class="{ 'active': view === 'planejamento_semanal.index' }">
           <span class="icon" style="margin-right: 10px;">⌁</span> Planejamento Semanal
@@ -257,11 +257,11 @@
         @endif
         @if(auth()->user()->role !== 'auditor')
         <a href="{{ route('calendario_controles.kanban') }}" class="nav-btn submenu" :class="{ 'active': view === 'calendario_controles.kanban' }">
-          <span class="icon" style="margin-right: 10px;">▦</span> Execução
+          <span class="icon" style="margin-right: 10px;">▦</span> Execuções
         </a>
         @endif
         <a href="{{ route('lgpd.index') }}" class="nav-btn" :class="{ 'active': view.includes('lgpd') }">
-          <span class="icon" style="margin-right: 10px;">📋</span> LGPD
+          <span class="icon" style="margin-right: 10px;">📋</span> Conformidade (LGPD)
         </a>
         <a href="{{ route('treinamentos.index') }}" class="nav-btn"
           :class="{ 'active': view.includes('treinamentos') }">

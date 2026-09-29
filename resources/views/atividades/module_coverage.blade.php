@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', 'Cobertura de Módulos')
-@section('description', 'Módulos cadastrados no inventário e atividades de controle aprovadas')
+@section('title', 'Mapeamento de Controles')
+@section('description', 'Módulos cadastrados no inventário e controles de segurança vinculados')
 @section('badge', count($coverage) . ' Módulos')
 
 @section('content')
@@ -193,7 +193,7 @@
                                 {{ round(($softwareCoveredCount / max(1, $softwareTotalCount)) * 100) }}% Coberto
                             </span>
                             @if($canManageModules && $firstModuleSoftwareId)
-                                <button type="button" class="btn-cancel" style="padding:4px 8px; font-size:11px;" x-on:click="openNewModule({{ $firstModuleSoftwareId }})">+ Módulo neste software</button>
+                                <button type="button" class="btn-cancel" style="padding:4px 8px; font-size:11px;" x-on:click="openNewModule({{ $firstModuleSoftwareId }})">+ Módulo neste sistema</button>
                             @endif
                         </div>
                     </div>

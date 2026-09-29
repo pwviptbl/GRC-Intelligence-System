@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', 'Softwares')
-@section('description', 'Catálogo de Softwares')
+@section('title', 'Sistemas')
+@section('description', 'Catálogo de Ativos e Sistemas')
 @section('badge', $softwares->count() . ' Total')
 
 @section('content')
@@ -143,7 +143,7 @@
 
     <div class="stats-row">
         <div class="stat-card c2">
-            <div class="stat-label">Total de Softwares</div>
+            <div class="stat-label">Total de Sistemas</div>
             <div class="stat-value">{{ $softwares->count() }}</div>
         </div>
         <div class="stat-card" style="background:rgba(0,255,159,.06); border:1px solid rgba(0,255,159,.12);">
@@ -165,16 +165,16 @@
     </div>
     
     <div class="table-header">
-        <h3>Softwares Cadastrados</h3>
+        <h3>Sistemas Cadastrados</h3>
         <div class="software-header-actions">
             <a href="{{ route('tier_politicas.index') }}" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
-                <span>📐 Politica de Tiers</span>
+                <span>📐 Níveis de Criticidade</span>
             </a>
             <a href="{{ route('softwares.export') }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>📄 Exportar PDF</span>
             </a>
             @if($canManageSoftware)
-            <button class="btn-add" @click="openCreate()">+ Novo Software</button>
+            <button class="btn-add" @click="openCreate()">+ Novo Sistema</button>
             @endif
         </div>
     </div>
@@ -319,7 +319,7 @@
                             aria-label="Editar"
                             style="color:var(--yellow)"
                         >✎</button>
-                        <form action="{{ route('softwares.destroy', $s) }}" method="POST" onsubmit="return confirm('Deseja remover este software?')">
+                        <form action="{{ route('softwares.destroy', $s) }}" method="POST" onsubmit="return confirm('Deseja remover este sistema?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn-del" title="Excluir" aria-label="Excluir">×</button>
@@ -328,14 +328,14 @@
                 @endif
             </article>
         @empty
-            <div class="empty-state" style="padding:30px 12px;"><p>Nenhum software cadastrado ainda.</p></div>
+            <div class="empty-state" style="padding:30px 12px;"><p>Nenhum sistema cadastrado ainda.</p></div>
         @endforelse
     </div>
 
-    <!-- Modal Novo/Editar Software -->
+    <!-- Modal Novo/Editar Sistema -->
     <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
         <div class="modal software-modal" @click.away="showModal = false">
-            <h3>💾 <span x-text="editMode ? 'Editar Software' : 'Novo Software'"></span></h3>
+            <h3>💾 <span x-text="editMode ? 'Editar Sistema' : 'Novo Sistema'"></span></h3>
             <form :action="formAction" method="POST">
                 @csrf
                 <template x-if="editMode">
@@ -343,7 +343,7 @@
                 </template>
 
                 <div class="form-group">
-                    <label>Nome do Software</label>
+                    <label>Nome do Sistema / Ativo</label>
                     <input type="text" name="nome" x-model="form.nome" class="form-input" placeholder="Ex: GRC System" required />
                 </div>
                 <div class="form-group">

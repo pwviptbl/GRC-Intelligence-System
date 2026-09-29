@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', 'Clientes')
-@section('description', 'Gestão de Clientes Ativos')
+@section('title', 'Organizações')
+@section('description', 'Gestão de Organizações e Entidades')
 @section('badge', $clientes->count() . ' Total')
 
 @section('content')
@@ -185,19 +185,19 @@
     }">
         <div class="stats-row">
             <div class="stat-card c1">
-                <div class="stat-label">Total de Clientes</div>
+                <div class="stat-label">Total de Organizações</div>
                 <div class="stat-value">{{ $clientes->count() }}</div>
             </div>
         </div>
 
         <div class="clients-header">
-            <h3>Clientes Cadastrados</h3>
+            <h3>Organizações Cadastradas</h3>
             <div class="clients-header-actions">
                 <a href="{{ route('clientes.export') }}" target="_blank" class="btn-secondary clients-export">
                     <span>📄 Exportar PDF</span>
                 </a>
                 @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-                <button class="btn-add" @click="openCreate()">+ Novo Cliente</button>
+                <button class="btn-add" @click="openCreate()">+ Nova Organização</button>
                 @endif
             </div>
         </div>
@@ -225,7 +225,7 @@
                                 <div class="clients-row-actions">
                                     <button @click="openEdit({{ $cliente->toJson() }})" class="clients-edit" title="Editar">🖊️</button>
                                     <form action="{{ route('clientes.destroy', $cliente) }}" method="POST"
-                                        onsubmit="return confirm('Tem certeza que deseja remover este cliente?')">
+                                        onsubmit="return confirm('Tem certeza que deseja remover esta organização?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn-del" title="Remover">🗑</button>
@@ -239,7 +239,7 @@
                             <td colspan="4" class="clients-empty">
                                 <div class="empty-state">
                                     <div class="empty-icon">🏢</div>
-                                    <p>Nenhum cliente cadastrado ainda.</p>
+                                    <p>Nenhuma organização cadastrada ainda.</p>
                                 </div>
                             </td>
                         </tr>
@@ -248,10 +248,10 @@
             </table>
         </div>
 
-        <!-- Modal Novo/Editar Cliente -->
+        <!-- Modal Novo/Editar Organização -->
         <div class="modal-overlay" x-show="showModal" style="display: none;" x-transition>
             <div class="modal clients-modal" @click.away="showModal = false">
-                <h3>🏢 <span x-text="editMode ? 'Editar Cliente' : 'Novo Cliente'"></span></h3>
+                <h3>🏢 <span x-text="editMode ? 'Editar Organização' : 'Nova Organização'"></span></h3>
                 <form :action="formAction" method="POST">
                     @csrf
                     <template x-if="editMode">
@@ -259,13 +259,13 @@
                     </template>
 
                     <div class="form-group">
-                        <label>Nome do Cliente</label>
-                        <input type="text" name="nome" x-model="form.nome" class="form-input" placeholder="Ex: Cliente Exemplo" required
+                        <label>Nome da Organização / Entidade</label>
+                        <input type="text" name="nome" x-model="form.nome" class="form-input" placeholder="Ex: Organização Exemplo" required
                             autofocus />
                     </div>
                     <div class="modal-actions">
                         <button type="button" class="btn-cancel" @click="showModal = false">Cancelar</button>
-                        <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Cliente' : 'Salvar Cliente'"></button>
+                        <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Organização' : 'Salvar Organização'"></button>
                     </div>
                 </form>
             </div>

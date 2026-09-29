@@ -1,6 +1,6 @@
 @extends('layouts.grc')
 
-@section('title', 'Consultor Estratégico (IA)')
+@section('title', 'Assistente GRC (IA)')
 @section('description', 'Roadmap de Segurança e Governança Priorizado')
 
 @section('content')
