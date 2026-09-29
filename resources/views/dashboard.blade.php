@@ -258,12 +258,37 @@
         white-space: nowrap;
     }
 
+    .dashboard-coverage-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .dashboard-coverage-card {
+        display: block;
+        min-width: 0;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-surface);
+        text-decoration: none;
+        transition: border-color .15s, background .15s, transform .15s;
+    }
+
+    .dashboard-coverage-card:hover {
+        border-color: var(--border-glow);
+        background: var(--bg-hover);
+        transform: translateY(-1px);
+    }
+
     @media (max-width: 860px) {
         .dashboard-grid {
             grid-template-columns: minmax(0, 1fr);
         }
 
-        .dashboard-action-grid {
+        .dashboard-action-grid,
+        .dashboard-coverage-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
@@ -390,6 +415,161 @@
         </div>
     </div>
 
+    <!-- Seção de Cobertura de Controles e Módulos -->
+    <div class="dashboard-operational-header" style="margin-top:25px">
+        <div>
+            <h4 style="display:flex;align-items:center;gap:8px">
+                <span>🛡️ Cobertura de Controles e Módulos</span>
+                <span class="badge" style="background:rgba(6,182,212,0.12);color:var(--cyan);border-color:rgba(6,182,212,0.3)">
+                    {{ $cobertura['percentual_sistemas'] }}% Sistemas Cobertos
+                </span>
+            </h4>
+            <span style="color:var(--text-3);font-size:11px">Acompanhamento executivo do mapeamento de controles vinculados aos sistemas e módulos</span>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a href="{{ route('atividades.module_coverage') }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;text-decoration:none">
+                <span>🗺️ Mapeamento de Controles</span>
+            </a>
+            <a href="{{ route('atividades.index') }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;text-decoration:none">
+                <span>📋 Catálogo de Controles</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-coverage-grid">
+        <a class="dashboard-coverage-card" href="{{ route('atividades.index') }}">
+            <div class="dashboard-action-label">Cobertura de Sistemas</div>
+            <div class="dashboard-action-value" style="color:{{ $cobertura['percentual_sistemas'] >= 80 ? 'var(--green)' : ($cobertura['percentual_sistemas'] >= 50 ? 'var(--yellow)' : 'var(--red)') }}">
+                {{ $cobertura['percentual_sistemas'] }}%
+            </div>
+            <div class="dashboard-action-hint">{{ $cobertura['sistemas_cobertos'] }} de {{ $cobertura['total_sistemas'] }} sistemas com controles</div>
+        </a>
+
+        <a class="dashboard-coverage-card" href="{{ route('atividades.module_coverage') }}">
+            <div class="dashboard-action-label">Módulos Mapeados</div>
+            <div class="dashboard-action-value" style="color:var(--cyan)">
+                {{ $cobertura['modulos_cobertos'] }} <span style="font-size:14px;color:var(--text-3);font-weight:400">/ {{ $cobertura['total_modulos'] }}</span>
+            </div>
+            <div class="dashboard-action-hint">{{ $cobertura['percentual_modulos'] }}% dos módulos com controle ativo</div>
+        </a>
+
+        <a class="dashboard-coverage-card" href="{{ route('atividades.module_coverage', ['uncovered' => 1]) }}" style="border-color:{{ $cobertura['modulos_sem_controle'] > 0 ? 'rgba(255,215,64,0.35)' : 'var(--border)' }}">
+            <div class="dashboard-action-label">Lacunas ("A Decidir")</div>
+            <div class="dashboard-action-value" style="color:{{ $cobertura['modulos_sem_controle'] > 0 ? 'var(--yellow)' : 'var(--green)' }}">
+                {{ $cobertura['modulos_sem_controle'] }}
+            </div>
+            <div class="dashboard-action-hint">{{ $cobertura['modulos_sem_controle'] > 0 ? 'Módulos sem nenhum controle vinculado ➔' : 'Todos os módulos mapeados' }}</div>
+        </a>
+
+        <a class="dashboard-coverage-card" href="{{ route('calendario_controles.kanban', ['status' => 'atrasado']) }}" style="border-color:{{ $cobertura['controles_vencidos'] > 0 ? 'rgba(255,83,112,0.35)' : 'var(--border)' }}">
+            <div class="dashboard-action-label">Prazos de Controles</div>
+            <div class="dashboard-action-value">
+                <span style="color:var(--red)">{{ $cobertura['controles_vencidos'] }}</span>
+                <span style="font-size:14px;color:var(--text-3);font-weight:400">vencidos · </span>
+                <span style="color:var(--yellow);font-size:18px">{{ $cobertura['controles_vencendo_7d'] }}</span>
+                <span style="font-size:12px;color:var(--text-3);font-weight:400">em 7d</span>
+            </div>
+            <div class="dashboard-action-hint">Acompanhar no Plano de Controles ➔</div>
+        </a>
+    </div>
+
+    <!-- Tabela de Cobertura por Sistema -->
+    <div class="table-card" style="padding:18px;margin-bottom:25px" x-data="{
+        search: '',
+        statusFilter: 'all',
+        sistemas: {{ Js::from($cobertura['sistemas']) }},
+        get filteredSistemas() {
+            return this.sistemas.filter(s => {
+                const matchSearch = !this.search || s.nome.toLowerCase().includes(this.search.toLowerCase()) || (s.tecnologia && s.tecnologia.toLowerCase().includes(this.search.toLowerCase()));
+                const matchStatus = this.statusFilter === 'all' || s.status === this.statusFilter;
+                return matchSearch && matchStatus;
+            });
+        }
+    }">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+            <div>
+                <div class="dashboard-panel-title" style="margin:0">Mapeamento de Cobertura por Sistema</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">Distribuição de módulos e controles cadastrados por sistema</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <input type="text" x-model="search" placeholder="Buscar por nome ou tecnologia..." style="font-size:12px;padding:6px 12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;color:var(--text-1);min-width:220px">
+                <select x-model="statusFilter" style="font-size:12px;padding:6px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;color:var(--text-1)">
+                    <option value="all">Todos os status</option>
+                    <option value="total">100% Cobertos</option>
+                    <option value="parcial">Cobertura Parcial</option>
+                    <option value="descoberto">Sem Controles</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead>
+                    <tr style="border-bottom:1px solid var(--border);text-align:left;color:var(--text-3);font-size:11px;text-transform:uppercase">
+                        <th style="padding:8px 10px">Sistema</th>
+                        <th style="padding:8px 10px">Criticidade / Nível</th>
+                        <th style="padding:8px 10px;text-align:center">Módulos</th>
+                        <th style="padding:8px 10px;text-align:center">Cobertos</th>
+                        <th style="padding:8px 10px;text-align:center">Lacunas</th>
+                        <th style="padding:8px 10px;width:180px">Progresso</th>
+                        <th style="padding:8px 10px;text-align:center">Status</th>
+                        <th style="padding:8px 10px;text-align:right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="item in filteredSistemas" :key="item.id">
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+                            <td style="padding:10px">
+                                <strong style="color:var(--text-1)" x-text="item.nome"></strong>
+                                <div style="font-size:11px;color:var(--text-3)" x-text="item.tecnologia || 'Tecnologia não inf.'"></div>
+                            </td>
+                            <td style="padding:10px">
+                                <span class="tech-badge" x-text="item.tier_sugerido_label"></span>
+                            </td>
+                            <td style="padding:10px;text-align:center;color:var(--text-2)" x-text="item.total_modulos"></td>
+                            <td style="padding:10px;text-align:center;font-weight:600;color:var(--green)" x-text="item.modulos_cobertos"></td>
+                            <td style="padding:10px;text-align:center">
+                                <span :style="item.modulos_sem_controle > 0 ? 'color:var(--yellow);font-weight:700' : 'color:var(--text-3)'" x-text="item.modulos_sem_controle"></span>
+                            </td>
+                            <td style="padding:10px">
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+                                        <div :style="'height:100%;width:' + item.percentual + '%;background:' + (item.percentual >= 100 ? 'var(--green)' : (item.percentual > 0 ? 'var(--cyan)' : 'var(--red)'))"></div>
+                                    </div>
+                                    <span style="font-size:11px;font-family:var(--mono);color:var(--text-2);min-width:32px" x-text="item.percentual + '%'"></span>
+                                </div>
+                            </td>
+                            <td style="padding:10px;text-align:center">
+                                <template x-if="item.status === 'total'">
+                                    <span class="badge" style="background:rgba(0,255,159,0.12);color:var(--green);border-color:rgba(0,255,159,0.3)">100% Coberto</span>
+                                </template>
+                                <template x-if="item.status === 'parcial'">
+                                    <span class="badge" style="background:rgba(6,182,212,0.12);color:var(--cyan);border-color:rgba(6,182,212,0.3)">Parcial</span>
+                                </template>
+                                <template x-if="item.status === 'descoberto'">
+                                    <span class="badge" style="background:rgba(255,83,112,0.12);color:var(--red);border-color:rgba(255,83,112,0.3)">Sem Controles</span>
+                                </template>
+                            </td>
+                            <td style="padding:10px;text-align:right;white-space:nowrap">
+                                <a :href="'{{ route('atividades.module_coverage') }}?software_id=' + item.id" class="btn-secondary" style="font-size:11px;padding:4px 8px;text-decoration:none" title="Mapear Controles nos Módulos">
+                                    🗺️ Mapear
+                                </a>
+                                <a :href="'{{ route('atividades.index') }}?software_id=' + item.id" class="btn-secondary" style="font-size:11px;padding:4px 8px;text-decoration:none;margin-left:4px" title="Ver Controles do Sistema">
+                                    📋 Controles
+                                </a>
+                            </td>
+                        </tr>
+                    </template>
+                    <template x-if="filteredSistemas.length === 0">
+                        <tr>
+                            <td colspan="8" style="text-align:center;padding:24px;color:var(--text-3)">Nenhum sistema encontrado com os filtros atuais.</td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Visão do CISO (IA) -->
     <div class="dashboard-ai">
         <div>
@@ -400,9 +580,9 @@
 
     <!-- Row 1: Cards principais -->
     <div class="stats-row" style="margin-bottom:20px">
-        <div class="stat-card c1"><div class="stat-label">Clientes</div><div class="stat-value">{{ $ativos['clientes'] }}</div></div>
-        <div class="stat-card c2"><div class="stat-label">Softwares</div><div class="stat-value">{{ $ativos['softwares'] }}</div></div>
-        <div class="stat-card c3"><div class="stat-label">Instâncias</div><div class="stat-value">{{ $ativos['instancias'] }}</div></div>
+        <div class="stat-card c1"><div class="stat-label">Organizações</div><div class="stat-value">{{ $ativos['clientes'] }}</div></div>
+        <div class="stat-card c2"><div class="stat-label">Sistemas</div><div class="stat-value">{{ $ativos['softwares'] }}</div></div>
+        <div class="stat-card c3"><div class="stat-label">Ambientes</div><div class="stat-value">{{ $ativos['instancias'] }}</div></div>
         <div class="stat-card" style="flex:1;background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:18px 20px">
             <div class="stat-label">Políticas Vigentes</div>
             <div class="stat-value" style="color:var(--cyan)">{{ $governanca['politicas_vigentes'] }}/{{ $governanca['politicas'] }}</div>

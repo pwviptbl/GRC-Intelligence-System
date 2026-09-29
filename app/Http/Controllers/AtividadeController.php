@@ -46,11 +46,13 @@ class AtividadeController extends Controller
     public function moduleCoverage(Request $request)
     {
         $softwareId = $request->integer('software_id') ?: null;
+        $onlyUncovered = $request->boolean('uncovered') || $request->boolean('only_uncovered');
 
         return view('atividades.module_coverage', [
             'softwares' => Software::query()->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'selectedSoftwareId' => $softwareId,
-            'coverage' => app(ActivityCatalogCoverageService::class)->moduleCoverage($softwareId),
+            'onlyUncovered' => $onlyUncovered,
+            'coverage' => app(ActivityCatalogCoverageService::class)->moduleCoverage($softwareId, $onlyUncovered),
             'availableActivities' => Atividade::query()
                 ->where('ativo', true)
                 ->orderBy('atividade')

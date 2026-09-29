@@ -113,19 +113,36 @@
 
     <form method="GET" class="module-coverage-filter">
         <div class="form-group" style="margin:0; min-width:260px">
-            <label>Software</label>
+            <label>Sistema</label>
             <select name="software_id" class="form-select">
-                <option value="">Todos os softwares ativos</option>
+                <option value="">Todos os sistemas ativos</option>
                 @foreach($softwares as $software)<option value="{{ $software->id }}" @selected($selectedSoftwareId === $software->id)>{{ $software->nome }}</option>@endforeach
             </select>
         </div>
+        <div class="form-group" style="margin:0; display:flex; align-items:center; gap:8px; padding-bottom:8px">
+            <label style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-2); text-transform:none">
+                <input type="checkbox" name="uncovered" value="1" @checked($onlyUncovered)> Apenas módulos sem controle ("A decidir")
+            </label>
+        </div>
         <button class="btn-add">Ver cobertura</button>
+        @if($selectedSoftwareId || $onlyUncovered)
+            <a href="{{ route('atividades.module_coverage') }}" class="btn-secondary" style="font-size:12px; padding:8px 12px; text-decoration:none">Limpar filtros</a>
+        @endif
     </form>
 
     <div class="module-coverage-summary">
-        <div class="module-coverage-card"><div class="label">Módulos mapeados</div><div class="value">{{ count($coverage) }}</div></div>
-        <div class="module-coverage-card"><div class="label">Cobertos por atividade</div><div class="value" style="color:var(--green)">{{ $covered }}</div></div>
-        <div class="module-coverage-card"><div class="label">A decidir</div><div class="value" style="color:var(--yellow)">{{ $uncovered }}</div></div>
+        <a href="{{ route('atividades.module_coverage', array_filter(['software_id' => $selectedSoftwareId])) }}" class="module-coverage-card" style="text-decoration:none; cursor:pointer">
+            <div class="label">Módulos mapeados</div>
+            <div class="value">{{ count($coverage) }}</div>
+        </a>
+        <div class="module-coverage-card">
+            <div class="label">Cobertos por controle</div>
+            <div class="value" style="color:var(--green)">{{ $covered }}</div>
+        </div>
+        <a href="{{ route('atividades.module_coverage', array_filter(['software_id' => $selectedSoftwareId, 'uncovered' => 1])) }}" class="module-coverage-card" style="text-decoration:none; cursor:pointer; border-color:{{ $uncovered > 0 ? 'rgba(255,215,64,.35)' : 'var(--border)' }}">
+            <div class="label">A decidir (sem controle)</div>
+            <div class="value" style="color:var(--yellow)">{{ $uncovered }}</div>
+        </a>
     </div>
 
     @if($canManageModules && count($coverage) > 0)

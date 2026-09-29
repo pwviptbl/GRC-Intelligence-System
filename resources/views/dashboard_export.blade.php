@@ -84,6 +84,15 @@
         
         <div class="indicator-row">
             <div class="indicator-info">
+                <div class="indicator-name">Cobertura de Controles e Módulos</div>
+                <div class="indicator-desc">Dos {{ $cobertura['total_modulos'] }} módulos ativos cadastrados, {{ $cobertura['modulos_cobertos'] }} possuem controles de segurança vinculados.</div>
+            </div>
+            <div class="indicator-bar"><div class="indicator-fill" style="width: {{ $cobertura['percentual'] }}%; background: #06b6d4;"></div></div>
+            <div style="font-weight: 800; width: 40px;">{{ $cobertura['percentual'] }}%</div>
+        </div>
+
+        <div class="indicator-row">
+            <div class="indicator-info">
                 <div class="indicator-name">Governança e Políticas</div>
                 <div class="indicator-desc">Percentual de ativos com políticas vigentes mapeadas.</div>
             </div>

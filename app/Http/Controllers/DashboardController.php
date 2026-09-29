@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\Software;
+use App\Models\SoftwareModulo;
 use App\Models\InstanciaCliente;
 use App\Models\Politica;
 use App\Models\Risco;
@@ -107,13 +108,100 @@ class DashboardController extends Controller
             'team' => $teamWorkload,
         ];
 
+        $softwaresAtivos = Software::query()
+            ->where('ativo', true)
+            ->with(['modulos' => function ($q) {
+                $q->where('ativo', true)->withCount('atividades');
+            }])
+            ->withCount('atividades')
+            ->orderBy('nome')
+            ->get();
+
+        $totalSistemas = $softwaresAtivos->count();
+        $totalModulos = 0;
+        $totalModulosCobertos = 0;
+        $sistemasCobertosCount = 0;
+
+        $sistemasCoverage = $softwaresAtivos->map(function (Software $software) use (&$totalModulos, &$totalModulosCobertos, &$sistemasCobertosCount) {
+            $modulosCount = $software->modulos->count();
+            $modulosComAtividade = $software->modulos->filter(fn ($m) => $m->atividades_count > 0)->count();
+            $modulosSemAtividade = $modulosCount - $modulosComAtividade;
+
+            $totalModulos += $modulosCount;
+            $totalModulosCobertos += $modulosComAtividade;
+
+            $hasCoverage = $modulosCount > 0 ? ($modulosComAtividade > 0) : ($software->atividades_count > 0);
+            $isTotal = $modulosCount > 0 ? ($modulosComAtividade === $modulosCount) : ($software->atividades_count > 0);
+
+            if ($hasCoverage) {
+                $sistemasCobertosCount++;
+            }
+
+            $percentual = $modulosCount > 0
+                ? (int) round(($modulosComAtividade / $modulosCount) * 100)
+                : ($software->atividades_count > 0 ? 100 : 0);
+
+            $status = $isTotal ? 'total' : ($hasCoverage ? 'parcial' : 'descoberto');
+
+            return [
+                'id' => $software->id,
+                'nome' => $software->nome,
+                'tecnologia' => $software->tecnologia,
+                'classificacao_nivel' => $software->classificacao_nivel,
+                'tier_sugerido_label' => $software->tier_sugerido_label,
+                'total_modulos' => $modulosCount,
+                'modulos_cobertos' => $modulosComAtividade,
+                'modulos_sem_controle' => $modulosSemAtividade,
+                'total_controles' => $software->atividades_count,
+                'percentual' => $percentual,
+                'status' => $status,
+            ];
+        });
+
+        $today = now()->toDateString();
+        $in7Days = now()->addDays(7)->toDateString();
+
+        $controlesVencidos = ControleEvento::query()
+            ->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])
+            ->where(function ($q) use ($today) {
+                $q->whereNotNull('data_limite')->where('data_limite', '<', $today)
+                    ->orWhere(function ($sq) use ($today) {
+                        $sq->whereNull('data_limite')->whereNotNull('data_prevista')->where('data_prevista', '<', $today);
+                    });
+            })->count();
+
+        $controlesVencendo7Dias = ControleEvento::query()
+            ->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])
+            ->where(function ($q) use ($today, $in7Days) {
+                $q->whereBetween('data_limite', [$today, $in7Days])
+                    ->orWhere(function ($sq) use ($today, $in7Days) {
+                        $sq->whereNull('data_limite')->whereBetween('data_prevista', [$today, $in7Days]);
+                    });
+            })->count();
+
+        $cobertura = [
+            'total_sistemas' => $totalSistemas,
+            'sistemas_cobertos' => $sistemasCobertosCount,
+            'percentual_sistemas' => $totalSistemas > 0 ? (int) round(($sistemasCobertosCount / $totalSistemas) * 100) : 0,
+            'total_modulos' => $totalModulos,
+            'modulos_cobertos' => $totalModulosCobertos,
+            'modulos_sem_controle' => $totalModulos - $totalModulosCobertos,
+            'percentual_modulos' => $totalModulos > 0 ? (int) round(($totalModulosCobertos / $totalModulos) * 100) : 0,
+            'controles_vencidos' => $controlesVencidos,
+            'controles_vencendo_7d' => $controlesVencendo7Dias,
+            'sistemas' => $sistemasCoverage,
+        ];
+
         return view('dashboard', compact(
-            'ativos', 'governanca', 'riscos', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_riscos', 'ultimos_incidentes', 'operacional'
+            'ativos', 'governanca', 'riscos', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_riscos', 'ultimos_incidentes', 'operacional', 'cobertura'
         ));
     }
 
     public function exportExecutive(GeminiService $gemini)
     {
+        $totalModulos = SoftwareModulo::where('ativo', true)->count();
+        $modulosCobertos = SoftwareModulo::where('ativo', true)->whereHas('atividades')->count();
+
         $data = [
             'company' => config('app.company'),
             'date' => now()->format('d/m/Y H:i'),
@@ -121,6 +209,12 @@ class DashboardController extends Controller
                 'clientes' => \App\Models\Cliente::count(),
                 'softwares' => \App\Models\Software::count(),
                 'instancias' => \App\Models\InstanciaCliente::count(),
+            ],
+            'cobertura' => [
+                'total_sistemas' => \App\Models\Software::where('ativo', true)->count(),
+                'total_modulos' => $totalModulos,
+                'modulos_cobertos' => $modulosCobertos,
+                'percentual' => $totalModulos > 0 ? round(($modulosCobertos / $totalModulos) * 100) : 0,
             ],
             'riscos' => [
                 'criticos' => \App\Models\Risco::where('criticidade', 'Critico')->where('status', '!=', 'fechado')->count(),
