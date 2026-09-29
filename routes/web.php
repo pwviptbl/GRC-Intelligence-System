@@ -4,7 +4,6 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\CalendarioControleController;
-use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EstrategiaController;
@@ -51,9 +50,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:admin,governanca')->group(function () {
         Route::get('/estrategia', [EstrategiaController::class, 'index'])->name('estrategia.index');
         Route::post('/estrategia/roadmap', [EstrategiaController::class, 'generateRoadmap'])->name('estrategia.roadmap');
-        Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-        Route::post('/chat/send', [ChatController::class, 'send'])->name('chat.send');
-        Route::post('/chat/reset', [ChatController::class, 'reset'])->name('chat.reset');
     });
 
     // Gestão de Usuários (Apenas Admin)
@@ -83,6 +79,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cobertura-modulos', [AtividadeController::class, 'moduleCoverage'])->name('atividades.module_coverage');
         Route::post('/cobertura-modulos', [AtividadeController::class, 'storeModule'])->middleware('role:admin,governanca')->name('atividades.modules.store');
         Route::patch('/cobertura-modulos/{softwareModulo}', [AtividadeController::class, 'updateModule'])->middleware('role:admin,governanca')->name('atividades.modules.update');
+        Route::delete('/cobertura-modulos/lote', [AtividadeController::class, 'destroyModulesBatch'])->middleware('role:admin,governanca')->name('atividades.modules.destroy_batch');
         Route::delete('/cobertura-modulos/{softwareModulo}', [AtividadeController::class, 'destroyModule'])->middleware('role:admin,governanca')->name('atividades.modules.destroy');
 
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
@@ -143,6 +140,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::middleware('role:admin,governanca,operacional')->group(function () {
+        Route::match(['put', 'patch'], '/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
         Route::get('/plano_acoes', fn () => redirect()->route('calendario_controles.kanban'))->name('plano_acoes.index');
         Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
         Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->middleware('role:admin,governanca')->name('calendario_controles.store_manual');

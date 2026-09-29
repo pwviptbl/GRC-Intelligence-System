@@ -6,23 +6,26 @@
 
 @section('content')
 <style>
-    .module-coverage-filter { display:flex; gap:10px; align-items:end; margin-bottom:16px; }
+    .module-coverage-filter { display:flex; gap:10px; align-items:end; margin-bottom:16px; flex-wrap:wrap; }
     .module-coverage-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
     .module-coverage-card { padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--bg-surface); }
     .module-coverage-card .label { color:var(--text-3); font-size:10px; text-transform:uppercase; }
     .module-coverage-card .value { margin-top:6px; color:var(--text-1); font-size:22px; font-weight:700; }
     .module-coverage-list { display:grid; gap:8px; }
-    .module-coverage-item { display:grid; grid-template-columns:minmax(180px,.8fr) minmax(200px,1.2fr) auto auto; gap:14px; align-items:center; padding:12px 14px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.02); }
+    .module-coverage-item { display:grid; grid-template-columns:auto minmax(180px,.8fr) minmax(200px,1.2fr) auto auto; gap:14px; align-items:center; padding:12px 14px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.02); transition:background .2s, border-color .2s; }
+    .module-coverage-item.is-selected { background:rgba(255,83,112,.06); border-color:rgba(255,83,112,.3); }
     .module-coverage-name { color:var(--text-1); font-size:13px; font-weight:700; }
     .module-coverage-software { margin-top:4px; color:var(--text-3); font-size:10px; }
     .module-coverage-activities { color:var(--text-2); font-size:11px; line-height:1.5; }
     .module-coverage-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
     .module-coverage-modal { width:min(620px, calc(100vw - 48px)); max-width:620px; }
+    .module-coverage-bulk-bar { display:flex; justify-content:space-between; align-items:center; background:rgba(255,83,112,.12); border:1px solid rgba(255,83,112,.35); border-radius:8px; padding:12px 16px; margin-bottom:16px; }
     @media (max-width:760px) { 
         .module-coverage-filter { align-items:stretch; flex-direction:column; } 
         .module-coverage-summary { grid-template-columns:1fr 1fr; } 
         .module-coverage-item { grid-template-columns:1fr; gap:10px; } 
         .module-coverage-actions { justify-content:flex-start; margin-top:4px; }
+        .module-coverage-bulk-bar { flex-direction:column; gap:10px; align-items:stretch; }
     }
 </style>
 
@@ -38,12 +41,39 @@
     editModule: false,
     moduleAction: '{{ route('atividades.modules.store') }}',
     allActivities: {{ Js::from($availableActivities) }},
+    allModuleIds: {{ Js::from(collect($coverage)->pluck('id')) }},
+    selectedIds: [],
     moduleForm: { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] },
     filteredActivities() {
         if (!this.moduleForm.software_id) {
             return this.allActivities.filter(a => !a.software_id);
         }
         return this.allActivities.filter(a => !a.software_id || String(a.software_id) === String(this.moduleForm.software_id));
+    },
+    toggleAll() {
+        if (this.selectedIds.length === this.allModuleIds.length) {
+            this.selectedIds = [];
+        } else {
+            this.selectedIds = [...this.allModuleIds];
+        }
+    },
+    toggleArea(areaIds) {
+        const allInAreaSelected = areaIds.length > 0 && areaIds.every(id => this.selectedIds.includes(id));
+        if (allInAreaSelected) {
+            this.selectedIds = this.selectedIds.filter(id => !areaIds.includes(id));
+        } else {
+            const toAdd = areaIds.filter(id => !this.selectedIds.includes(id));
+            this.selectedIds = [...this.selectedIds, ...toAdd];
+        }
+    },
+    isAreaSelected(areaIds) {
+        return areaIds.length > 0 && areaIds.every(id => this.selectedIds.includes(id));
+    },
+    deleteSelected() {
+        if (this.selectedIds.length === 0) return;
+        if (confirm(`Tem certeza que deseja remover os ${this.selectedIds.length} módulos selecionados do inventário?`)) {
+            this.$refs.bulkDeleteForm.submit();
+        }
     },
     openNewModule() {
         this.editModule = false;
@@ -69,10 +99,16 @@
 }">
     @if(session('success'))<div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(0,255,159,.35); background:rgba(0,255,159,.08); color:#d7ffef; font-size:13px">{{ session('success') }}</div>@endif
     @if($errors->any())<div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,83,112,.35); background:rgba(255,83,112,.08); color:#ffd7de; font-size:13px">{{ $errors->first() }}</div>@endif
+    
     <div class="table-header">
         <h3>Inventário e Cobertura de Módulos</h3>
-        @if($canManageModules)<button type="button" class="btn-add" @click="openNewModule()">+ Novo módulo</button>@endif
+        @if($canManageModules)
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-add" @click="openNewModule()">+ Novo módulo</button>
+            </div>
+        @endif
     </div>
+
     <form method="GET" class="module-coverage-filter">
         <div class="form-group" style="margin:0; min-width:260px">
             <label>Software</label>
@@ -90,12 +126,60 @@
         <div class="module-coverage-card"><div class="label">A decidir</div><div class="value" style="color:var(--yellow)">{{ $uncovered }}</div></div>
     </div>
 
+    @if($canManageModules && count($coverage) > 0)
+        <!-- Barra de Ações em Lote -->
+        <div x-show="selectedIds.length > 0" x-transition class="module-coverage-bulk-bar" style="display:none;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <span style="color:#ffd7de; font-weight:700; font-size:13px;">
+                    <span x-text="selectedIds.length"></span> de {{ count($coverage) }} módulo(s) selecionado(s)
+                </span>
+                <button type="button" class="btn-cancel" style="padding:4px 10px; font-size:11px;" @click="selectedIds = []">Desmarcar todos</button>
+            </div>
+            <div>
+                <button type="button" class="btn-del" style="background:#ff5370; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;" @click="deleteSelected()">
+                    🗑️ Excluir selecionados (<span x-text="selectedIds.length"></span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Seletor Global -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding:0 4px;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-2); cursor:pointer;">
+                <input type="checkbox" :checked="selectedIds.length > 0 && selectedIds.length === allModuleIds.length" @change="toggleAll()" style="cursor:pointer; width:16px; height:16px;">
+                <span style="font-weight:600;">Selecionar todos os módulos ({{ count($coverage) }})</span>
+            </label>
+        </div>
+
+        <!-- Formulário oculto para exclusão em lote -->
+        <form x-ref="bulkDeleteForm" action="{{ route('atividades.modules.destroy_batch') }}" method="POST" style="display:none;">
+            @csrf
+            @method('DELETE')
+            <template x-for="id in selectedIds" :key="id">
+                <input type="hidden" name="ids[]" :value="id">
+            </template>
+        </form>
+    @endif
+
     <div class="module-coverage-list">
         @forelse($coverageByArea as $area => $modules)
-            <section>
-                <div style="margin:14px 0 7px; color:var(--text-3); font-size:10px; font-weight:700; text-transform:uppercase">{{ $area }}</div>
+            <section style="margin-bottom:8px;">
+                <div style="margin:14px 0 7px; display:flex; align-items:center; justify-content:space-between;">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--text-3); font-size:10px; font-weight:700; text-transform:uppercase;">
+                        @if($canManageModules)
+                            <input type="checkbox" :checked="isAreaSelected({{ Js::from($modules->pluck('id')) }})" @change="toggleArea({{ Js::from($modules->pluck('id')) }})" style="cursor:pointer;">
+                        @endif
+                        <span>{{ $area }} ({{ count($modules) }})</span>
+                    </label>
+                </div>
                 @foreach($modules as $module)
-                    <article class="module-coverage-item">
+                    <article class="module-coverage-item" :class="{ 'is-selected': selectedIds.includes({{ $module['id'] }}) }">
+                        @if($canManageModules)
+                            <div>
+                                <input type="checkbox" :value="{{ $module['id'] }}" x-model.number="selectedIds" style="cursor:pointer; width:16px; height:16px;">
+                            </div>
+                        @else
+                            <div></div>
+                        @endif
                         <div><div class="module-coverage-name">{{ $module['modulo'] }}</div><div class="module-coverage-software">{{ $module['software'] }}{{ $module['origem'] ? ' · ' . $module['origem'] : '' }}</div></div>
                         <div class="module-coverage-activities">
                             @forelse($module['activities'] as $activity)
@@ -158,3 +242,4 @@
     </div>
 </div>
 @endsection
+

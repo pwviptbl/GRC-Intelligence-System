@@ -429,6 +429,10 @@
 
         this.triageForm = {
             software_nome: item.software?.nome ?? '',
+            tier_label: item.tier_label ?? (item.tier ? `Tier ${item.tier}` : ''),
+            frequencia: item.frequencia_snapshot ?? item.tier_politica?.frequencia ?? '',
+            sla: item.sla_correcao_snapshot ?? item.tier_politica?.sla_correcao ?? '',
+            descricao: item.descricao ?? item.tier_politica?.observacoes ?? '',
             scope_label: item.scope_label ?? '',
             acao_controle_snapshot: item.acao_controle_snapshot ?? '',
             modulo: item.modulo ?? '',
@@ -967,10 +971,26 @@
             <h3>Atualizar triagem</h3>
             <div class="execution-modal-summary">
                 <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px;">
-                    <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; margin-bottom:6px;">Software</div>
-                    <div style="color:var(--text-1); font-weight:600;" x-text="triageForm.software_nome || 'Sem software'"></div>
-                    <div style="font-size:11px; color:var(--text-3); margin-top:12px; text-transform:uppercase; margin-bottom:6px;">Atividade</div>
-                    <div style="color:var(--text-2);" x-text="triageForm.acao_controle_snapshot"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                        <div>
+                            <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; margin-bottom:4px;">Software</div>
+                            <div style="color:var(--text-1); font-weight:600;" x-text="triageForm.software_nome || 'Sem software'"></div>
+                        </div>
+                        <template x-if="triageForm.tier_label">
+                            <span class="badge" style="background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3); font-size:11px; font-weight:700;" x-text="triageForm.tier_label"></span>
+                        </template>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-3); margin-top:10px; text-transform:uppercase; margin-bottom:4px;">Atividade / Controle</div>
+                    <div style="color:var(--text-2); font-weight:500;" x-text="triageForm.acao_controle_snapshot"></div>
+                    <div style="display:flex; gap:16px; margin-top:8px; font-size:11px; color:var(--text-3);" x-show="triageForm.frequencia || triageForm.sla">
+                        <span x-show="triageForm.frequencia">Frequência: <strong style="color:var(--text-2);" x-text="triageForm.frequencia"></strong></span>
+                        <span x-show="triageForm.sla">SLA: <strong style="color:var(--text-2);" x-text="triageForm.sla"></strong></span>
+                    </div>
+                    <template x-if="triageForm.descricao">
+                        <div style="margin-top:10px; padding:8px 10px; background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.15); border-radius:6px; font-size:11px; color:var(--text-2);">
+                            <span style="color:var(--cyan); font-weight:600;">Diretriz original do Tier:</span> <span x-text="triageForm.descricao"></span>
+                        </div>
+                    </template>
                 </div>
             </div>
 

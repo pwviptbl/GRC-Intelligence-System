@@ -703,12 +703,7 @@ class CalendarioControleController extends Controller
             $query->whereNotIn('status', ['sugestao', 'triagem', 'cancelado', 'dispensado']);
         }
 
-        $query->where(function ($query) {
-            $query->whereNotNull('atividade_id')
-                ->orWhere('origem', 'manual')
-                ->orWhere('origem', 'mcp')
-                ->orWhereNull('tier_politica_id');
-        });
+
 
         if ($request->filled('executor_id')) {
             match ($request->executor_id) {

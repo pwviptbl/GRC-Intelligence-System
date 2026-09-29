@@ -85,6 +85,18 @@ class AtividadeController extends Controller
         return redirect()->back()->with('success', 'Módulo removido do inventário.');
     }
 
+    public function destroyModulesBatch(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:software_modulos,id'],
+        ]);
+
+        $count = SoftwareModulo::query()->whereIn('id', $validated['ids'])->delete();
+
+        return redirect()->back()->with('success', "{$count} módulo(s) removido(s) do inventário com sucesso.");
+    }
+
     public function store(Request $request)
     {
         if (! $this->tableAvailable()) {

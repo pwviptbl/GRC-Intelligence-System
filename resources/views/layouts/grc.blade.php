@@ -184,12 +184,6 @@
         <a href="{{ route('relatorios.index') }}" class="nav-btn" :class="{ 'active': view.includes('relatorios') }">
           <span class="icon" style="margin-right: 10px;">📊</span> Centro de Relatórios
         </a>
-
-        @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-        <a href="{{ route('chat') }}" class="nav-btn" :class="{ 'active': view === 'chat' }">
-          <span class="icon" style="margin-right: 10px;">💬</span> Chat GRC
-        </a>
-        @endif
         <div class="nav-folder" @click="menuAtivosAberto = !menuAtivosAberto" style="margin-top: 20px;">
           <span style="display: flex; align-items: center; gap: 6px;"><span class="icon"
               style="font-size: 14px; margin-right: 10px;">📁</span> Ativos</span>
