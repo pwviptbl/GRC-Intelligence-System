@@ -12,7 +12,6 @@ class Atividade extends Model
         'software_id',
         'tier_politica_id',
         'atividade',
-        'modulo',
         'categoria',
         'rotina',
         'esforco',

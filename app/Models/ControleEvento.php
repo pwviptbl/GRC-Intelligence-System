@@ -65,7 +65,6 @@ class ControleEvento extends Model
     protected $fillable = [
         'software_id',
         'cliente_id',
-        'plano_acao_legado_id',
         'tier_politica_id',
         'atividade_id',
         'risco_id',
