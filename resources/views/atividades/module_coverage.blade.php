@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
 @section('title', 'Cobertura de Módulos')
-@section('description', 'Módulos cadastrados pelo MCP e atividades específicas já aprovadas')
+@section('description', 'Módulos cadastrados no inventário e atividades de controle aprovadas')
 @section('badge', count($coverage) . ' Módulos')
 
 @section('content')
@@ -11,11 +11,10 @@
     .module-coverage-card { padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--bg-surface); }
     .module-coverage-card .label { color:var(--text-3); font-size:10px; text-transform:uppercase; }
     .module-coverage-card .value { margin-top:6px; color:var(--text-1); font-size:22px; font-weight:700; }
-    .module-coverage-list { display:grid; gap:8px; }
-    .module-coverage-item { display:grid; grid-template-columns:auto minmax(180px,.8fr) minmax(200px,1.2fr) auto auto; gap:14px; align-items:center; padding:12px 14px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.02); transition:background .2s, border-color .2s; }
+    .software-coverage-card { border:1px solid var(--border); border-radius:10px; background:var(--bg-surface); padding:16px 18px; margin-bottom:20px; }
+    .module-coverage-item { display:grid; grid-template-columns:auto minmax(180px,.8fr) minmax(200px,1.2fr) auto auto; gap:14px; align-items:center; padding:10px 14px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(255,255,255,.02); transition:background .2s, border-color .2s; }
     .module-coverage-item.is-selected { background:rgba(255,83,112,.06); border-color:rgba(255,83,112,.3); }
     .module-coverage-name { color:var(--text-1); font-size:13px; font-weight:700; }
-    .module-coverage-software { margin-top:4px; color:var(--text-3); font-size:10px; }
     .module-coverage-activities { color:var(--text-2); font-size:11px; line-height:1.5; }
     .module-coverage-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
     .module-coverage-modal { width:min(620px, calc(100vw - 48px)); max-width:620px; }
@@ -32,10 +31,13 @@
 @php
     $covered = collect($coverage)->where('status', 'coberto')->count();
     $uncovered = collect($coverage)->where('status', 'sem_atividade')->count();
-    $coverageByArea = collect($coverage)->groupBy(fn ($module) => $module['area'] ?: 'Sem área');
+    // Hierarquia: Software (Mãe) -> Áreas (Filhos) -> Módulos
+    $coverageBySoftware = collect($coverage)->groupBy(fn ($module) => $module['software'] ?: 'Software Geral');
 @endphp
 
-@php($canManageModules = in_array(auth()->user()->role, ['admin', 'governanca'], true))
+@php
+    $canManageModules = auth()->check() && in_array(auth()->user()->role, ['admin', 'governanca'], true);
+@endphp
 <div class="table-view" x-data="{
     showModuleModal: false,
     editModule: false,
@@ -58,7 +60,7 @@
         }
     },
     toggleArea(areaIds) {
-        const allInAreaSelected = areaIds.length > 0 && areaIds.every(id => this.selectedIds.includes(id));
+        const allInAreaSelected = areaIds.every(id => this.selectedIds.includes(id));
         if (allInAreaSelected) {
             this.selectedIds = this.selectedIds.filter(id => !areaIds.includes(id));
         } else {
@@ -75,10 +77,10 @@
             this.$refs.bulkDeleteForm.submit();
         }
     },
-    openNewModule() {
+    openNewModule(softwareId = null) {
         this.editModule = false;
         this.moduleAction = '{{ route('atividades.modules.store') }}';
-        this.moduleForm = { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] };
+        this.moduleForm = { id: '', software_id: softwareId ? String(softwareId) : '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] };
         this.showModuleModal = true;
     },
     openEditModule(encoded) {
@@ -87,7 +89,7 @@
         this.moduleAction = `/cobertura-modulos/${module.id}`;
         this.moduleForm = { 
             id: module.id, 
-            software_id: module.software_id, 
+            software_id: String(module.software_id), 
             area: module.area || '', 
             nome: module.modulo, 
             descricao: module.descricao || '', 
@@ -104,7 +106,7 @@
         <h3>Inventário e Cobertura de Módulos</h3>
         @if($canManageModules)
             <div style="display:flex; gap:8px;">
-                <button type="button" class="btn-add" @click="openNewModule()">+ Novo módulo</button>
+                <button type="button" class="btn-add" x-on:click="openNewModule()">+ Novo módulo</button>
             </div>
         @endif
     </div>
@@ -133,10 +135,10 @@
                 <span style="color:#ffd7de; font-weight:700; font-size:13px;">
                     <span x-text="selectedIds.length"></span> de {{ count($coverage) }} módulo(s) selecionado(s)
                 </span>
-                <button type="button" class="btn-cancel" style="padding:4px 10px; font-size:11px;" @click="selectedIds = []">Desmarcar todos</button>
+                <button type="button" class="btn-cancel" style="padding:4px 10px; font-size:11px;" x-on:click="selectedIds = []">Desmarcar todos</button>
             </div>
             <div>
-                <button type="button" class="btn-del" style="background:#ff5370; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;" @click="deleteSelected()">
+                <button type="button" class="btn-del" style="background:#ff5370; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;" x-on:click="deleteSelected()">
                     🗑️ Excluir selecionados (<span x-text="selectedIds.length"></span>)
                 </button>
             </div>
@@ -145,7 +147,7 @@
         <!-- Seletor Global -->
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding:0 4px;">
             <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-2); cursor:pointer;">
-                <input type="checkbox" :checked="selectedIds.length > 0 && selectedIds.length === allModuleIds.length" @change="toggleAll()" style="cursor:pointer; width:16px; height:16px;">
+                <input type="checkbox" :checked="selectedIds.length > 0 && selectedIds.length === allModuleIds.length" x-on:change="toggleAll()" style="cursor:pointer; width:16px; height:16px;">
                 <span style="font-weight:600;">Selecionar todos os módulos ({{ count($coverage) }})</span>
             </label>
         </div>
@@ -161,65 +163,119 @@
     @endif
 
     <div class="module-coverage-list">
-        @forelse($coverageByArea as $area => $modules)
-            <section style="margin-bottom:8px;">
-                <div style="margin:14px 0 7px; display:flex; align-items:center; justify-content:space-between;">
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--text-3); font-size:10px; font-weight:700; text-transform:uppercase;">
-                        @if($canManageModules)
-                            <input type="checkbox" :checked="isAreaSelected({{ Js::from($modules->pluck('id')) }})" @change="toggleArea({{ Js::from($modules->pluck('id')) }})" style="cursor:pointer;">
-                        @endif
-                        <span>{{ $area }} ({{ count($modules) }})</span>
-                    </label>
-                </div>
-                @foreach($modules as $module)
-                    <article class="module-coverage-item" :class="{ 'is-selected': selectedIds.includes({{ $module['id'] }}) }">
-                        @if($canManageModules)
+        @if($coverageBySoftware->isNotEmpty())
+            @foreach($coverageBySoftware as $softwareName => $softwareModules)
+                @php
+                    $softwareModuleIds = $softwareModules->pluck('id');
+                    $areasInSoftware = $softwareModules->groupBy(fn ($m) => $m['area'] ?: 'Geral / Sem área');
+                    $softwareCoveredCount = $softwareModules->where('status', 'coberto')->count();
+                    $softwareTotalCount = $softwareModules->count();
+                    $firstModuleSoftwareId = $softwareModules->first()['software_id'] ?? null;
+                @endphp
+                <div class="software-coverage-card">
+                    <!-- Cabeçalho do Software (Entidade Principal / Mãe) -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            @if($canManageModules)
+                                <input type="checkbox" :checked="isAreaSelected({{ Js::from($softwareModuleIds) }})" x-on:change="toggleArea({{ Js::from($softwareModuleIds) }})" style="cursor:pointer; width:18px; height:18px;" title="Selecionar todos os módulos deste software">
+                            @endif
                             <div>
-                                <input type="checkbox" :value="{{ $module['id'] }}" x-model.number="selectedIds" style="cursor:pointer; width:16px; height:16px;">
+                                <div style="font-size:16px; font-weight:700; color:var(--text-1); display:flex; align-items:center; gap:8px;">
+                                    <span>💾 {{ $softwareName }}</span>
+                                </div>
+                                <div style="font-size:11px; color:var(--text-3); margin-top:2px;">
+                                    {{ $softwareTotalCount }} módulo(s) mapeado(s) · {{ $softwareCoveredCount }} coberto(s) · {{ $softwareTotalCount - $softwareCoveredCount }} pendente(s)
+                                </div>
                             </div>
-                        @else
-                            <div></div>
-                        @endif
-                        <div><div class="module-coverage-name">{{ $module['modulo'] }}</div><div class="module-coverage-software">{{ $module['software'] }}{{ $module['origem'] ? ' · ' . $module['origem'] : '' }}</div></div>
-                        <div class="module-coverage-activities">
-                            @forelse($module['activities'] as $activity)
-                                <div><span style="color:var(--text-1); font-weight:500;">{{ $activity['atividade'] }}</span> <span style="color:var(--text-3); font-size:10px;">· a cada {{ $activity['recorrencia_meses'] }} meses</span></div>
-                            @empty
-                                <div style="color:var(--text-3)">Nenhuma atividade específica vinculada.</div>
-                            @endforelse
                         </div>
-                        <div>
-                            <span class="badge" style="{{ $module['status'] === 'coberto' ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)' }}">{{ $module['status'] === 'coberto' ? 'Coberto' : 'A decidir' }}</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span class="badge" style="font-size:11px; {{ $softwareCoveredCount === $softwareTotalCount ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)' }}">
+                                {{ round(($softwareCoveredCount / max(1, $softwareTotalCount)) * 100) }}% Coberto
+                            </span>
+                            @if($canManageModules && $firstModuleSoftwareId)
+                                <button type="button" class="btn-cancel" style="padding:4px 8px; font-size:11px;" x-on:click="openNewModule({{ $firstModuleSoftwareId }})">+ Módulo neste software</button>
+                            @endif
                         </div>
-                        @if($canManageModules)
-                            <div class="module-coverage-actions">
-                                <button type="button" class="btn-del" style="color:var(--yellow)" @click="openEditModule('{{ base64_encode(json_encode($module)) }}')" title="Editar módulo e cobertura">✎</button>
-                                <form action="{{ route('atividades.modules.destroy', $module['id']) }}" method="POST" onsubmit="return confirm('Remover este módulo do inventário?')">@csrf @method('DELETE')<button class="btn-del" title="Excluir módulo">×</button></form>
+                    </div>
+
+                    <!-- Áreas do Software (Filhos do Software) -->
+                    @foreach($areasInSoftware as $areaName => $modules)
+                        @php
+                            $areaModuleIds = $modules->pluck('id');
+                        @endphp
+                        <div style="margin-bottom:16px;">
+                            <div style="margin:8px 0 8px; display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:7px 12px; border-radius:6px; border-left:3px solid var(--cyan);">
+                                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--cyan); font-size:11px; font-weight:700; text-transform:uppercase;">
+                                    @if($canManageModules)
+                                        <input type="checkbox" :checked="isAreaSelected({{ Js::from($areaModuleIds) }})" x-on:change="toggleArea({{ Js::from($areaModuleIds) }})" style="cursor:pointer; width:14px; height:14px;">
+                                    @endif
+                                    <span>📁 {{ $areaName }} ({{ count($modules) }})</span>
+                                </label>
+                                <span style="font-size:10px; color:var(--text-3);">{{ $modules->where('status', 'coberto')->count() }}/{{ count($modules) }} cobertos</span>
                             </div>
-                        @endif
-                    </article>
-                @endforeach
-            </section>
-        @empty
+
+                            <!-- Módulos da Área -->
+                            <div style="display:grid; gap:6px;">
+                                @foreach($modules as $module)
+                                    <article class="module-coverage-item" :class="{ 'is-selected': selectedIds.includes({{ $module['id'] }}) }">
+                                        @if($canManageModules)
+                                            <div>
+                                                <input type="checkbox" :value="{{ $module['id'] }}" x-model.number="selectedIds" style="cursor:pointer; width:16px; height:16px;">
+                                            </div>
+                                        @else
+                                            <div></div>
+                                        @endif
+                                        <div>
+                                            <div class="module-coverage-name">{{ $module['modulo'] }}</div>
+                                            @if(!empty($module['descricao']))
+                                                <div style="color:var(--text-3); font-size:10px; margin-top:2px;">{{ Str::limit($module['descricao'], 80) }}</div>
+                                            @endif
+                                        </div>
+                                        <div class="module-coverage-activities">
+                                            @if(!empty($module['activities']))
+                                                @foreach($module['activities'] as $activity)
+                                                    <div><span style="color:var(--text-1); font-weight:500;">{{ $activity['atividade'] }}</span> <span style="color:var(--text-3); font-size:10px;">· a cada {{ $activity['recorrencia_meses'] }} meses</span></div>
+                                                @endforeach
+                                            @else
+                                                <div style="color:var(--text-3)">Nenhuma atividade específica vinculada.</div>
+                                            @endif
+                                        </div>
+                                        <div>
+                                            <span class="badge" style="{{ $module['status'] === 'coberto' ? 'background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)' : 'background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)' }}">{{ $module['status'] === 'coberto' ? 'Coberto' : 'A decidir' }}</span>
+                                        </div>
+                                        @if($canManageModules)
+                                            <div class="module-coverage-actions">
+                                                <button type="button" class="btn-del" style="color:var(--yellow)" x-on:click="openEditModule('{{ base64_encode(json_encode($module)) }}')" title="Editar módulo e cobertura">✎</button>
+                                                <form action="{{ route('atividades.modules.destroy', $module['id']) }}" method="POST" onsubmit="return confirm('Remover este módulo do inventário?')">@csrf @method('DELETE')<button class="btn-del" title="Excluir módulo">×</button></form>
+                                            </div>
+                                        @endif
+                                    </article>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endforeach
+        @else
             <div class="empty-state"><p>Nenhum módulo mapeado ainda. Use o MCP para importar o inventário do software.</p></div>
-        @endforelse
+        @endif
     </div>
 
     <div class="modal-overlay" x-show="showModuleModal" style="display:none" x-transition>
-        <div class="modal module-coverage-modal" @click.away="showModuleModal = false">
+        <div class="modal module-coverage-modal" x-on:click.away="showModuleModal = false">
             <h3 x-text="editModule ? 'Editar Módulo e Cobertura' : 'Novo Módulo'"></h3>
             <form :action="moduleAction" method="POST">
                 @csrf
                 <template x-if="editModule"><input type="hidden" name="_method" value="PATCH"></template>
                 <div class="form-group"><label>Software</label><select name="software_id" x-model="moduleForm.software_id" class="form-select" required><option value="">Selecione...</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
-                <div class="form-group"><label>Área</label><input name="area" x-model="moduleForm.area" class="form-input" placeholder="Opcional: Financeiro, Tributário, Saúde..."></div>
-                <div class="form-group"><label>Módulo</label><input name="nome" x-model="moduleForm.nome" class="form-input" required maxlength="255" placeholder="Ex.: Tesouraria"></div>
-                <div class="form-group"><label>Descrição</label><textarea name="descricao" x-model="moduleForm.descricao" class="form-textarea" rows="2" maxlength="2000" placeholder="Contexto opcional para o agente."></textarea></div>
+                <div class="form-group"><label>Área</label><input name="area" x-model="moduleForm.area" class="form-input" placeholder="Ex.: Tributário, Financeiro, Saúde, Administrativo, etc."></div>
+                <div class="form-group"><label>Módulo</label><input name="nome" x-model="moduleForm.nome" class="form-input" required maxlength="255" placeholder="Ex.: Tesouraria, Arrecadação, etc."></div>
+                <div class="form-group"><label>Descrição</label><textarea name="descricao" x-model="moduleForm.descricao" class="form-textarea" rows="2" maxlength="2000" placeholder="Contexto técnico ou operacional para auditoria/agente."></textarea></div>
                 
                 <div class="form-group">
                     <label style="display:flex; justify-content:space-between; align-items:center;">
                         <span>Atividades de Controle que cobrem este módulo</span>
-                        <span style="font-size:10px; color:var(--text-3); font-weight:normal;">Exibindo ações globais e do software</span>
+                        <span style="font-size:10px; color:var(--text-3); font-weight:normal;">Exibindo ações do software e globais</span>
                     </label>
                     <div style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px; background:rgba(0,0,0,0.18); display:grid; gap:5px;">
                         <template x-for="act in filteredActivities()" :key="act.id">
@@ -236,10 +292,9 @@
                 </div>
 
                 <div class="form-group"><label>Status</label><select name="ativo" x-model="moduleForm.ativo" class="form-select"><option value="1">Ativo</option><option value="0">Desativado</option></select></div>
-                <div class="modal-actions"><button type="button" class="btn-cancel" @click="showModuleModal = false">Cancelar</button><button class="btn-save" x-text="editModule ? 'Salvar módulo' : 'Cadastrar módulo'"></button></div>
+                <div class="modal-actions"><button type="button" class="btn-cancel" x-on:click="showModuleModal = false">Cancelar</button><button class="btn-save" x-text="editModule ? 'Salvar módulo' : 'Cadastrar módulo'"></button></div>
             </form>
         </div>
     </div>
 </div>
 @endsection
-
