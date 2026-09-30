@@ -102,7 +102,7 @@ class AlertService
                 'count' => $riscosVencidos,
                 'description' => "{$riscosVencidos} vulnerabilidade(s) legada(s) ultrapassaram o tempo limite de remediação.",
                 'action_label' => 'Ver Vulnerabilidades',
-                'action_url' => route('riscos.index', ['sla_status' => 'vencido']),
+                'action_url' => route('findings.index', ['sla_status' => 'atrasado']),
             ];
         }
 
@@ -142,7 +142,7 @@ class AlertService
                 'count' => $riscos7Dias,
                 'description' => "{$riscos7Dias} vulnerabilidade(s) com prazo de correção nos próximos 7 dias.",
                 'action_label' => 'Revisar SLAs',
-                'action_url' => route('riscos.index', ['sla_status' => 'alerta']),
+                'action_url' => route('findings.index', ['sla_status' => 'alerta']),
             ];
         }
 

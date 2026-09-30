@@ -2,7 +2,7 @@
 @section('title', $finding->titulo . ' - Achado')
 
 @section('content')
-<div style="max-width:900px;margin:0 auto;padding:0 16px">
+<div class="table-view" style="width:100%;">
 
   {{-- Breadcrumb --}}
   <div style="margin-bottom:16px;font-size:13px;color:var(--text-3)">

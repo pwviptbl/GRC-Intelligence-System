@@ -74,7 +74,7 @@ class RiscoController extends Controller
         $origemOptions = Risco::ORIGEM_OPTIONS;
         $statusOptions = Risco::STATUS_OPTIONS;
 
-        return view('riscos.index', compact('riscos', 'clientes', 'softwares', 'modulos', 'atividades', 'origemOptions', 'statusOptions'));
+        return redirect()->route('findings.index');
     }
 
     public function store(Request $request)

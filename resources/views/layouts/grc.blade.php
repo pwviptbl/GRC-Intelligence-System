@@ -299,19 +299,8 @@
           <a href="{{ route('engagements.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('engagement') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔐</span> Engajamentos
           </a>
-          <a href="{{ route('findings.index') }}" class="nav-btn submenu" :class="{ 'active': view === 'findings.index' }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🎯</span> Achados
-          </a>
-        </div>
-
-        <div class="nav-folder" @click="menuRiscosAberto = !menuRiscosAberto" style="margin-top: 4px;">
-          <span style="display: flex; align-items: center; gap: 6px;"><span class="icon"
-              style="font-size: 14px; margin-right: 10px;">⚠️</span> Riscos</span>
-          <span style="font-size: 10px; color: var(--text-3);" x-text="menuRiscosAberto ? '▼' : '►'"></span>
-        </div>
-        <div class="nav-submenu-group" x-show="menuRiscosAberto" style="display: none;" x-transition>
-          <a href="{{ route('riscos.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('riscos') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📋</span> Registro de Riscos / Vulns
+          <a href="{{ route('findings.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('finding') || view.includes('risco') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🎯</span> Achados & Vulnerabilidades
           </a>
         </div>
 
