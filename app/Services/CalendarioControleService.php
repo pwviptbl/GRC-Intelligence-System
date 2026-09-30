@@ -68,7 +68,10 @@ class CalendarioControleService
                     ->where('ativo', true)
                     ->with(['atividades' => function ($query) use ($tier) {
                         $query->where('ativo', true)
-                            ->where('tier_minimo', '>=', $tier)
+                            ->where(function ($q) use ($tier) {
+                                $q->whereNull('tier_minimo')
+                                  ->orWhere('tier_minimo', '>=', $tier);
+                            })
                             ->with('tierPolitica');
                     }])
                     ->get();
@@ -115,7 +118,10 @@ class CalendarioControleService
                 $standaloneActivities = Atividade::query()
                     ->with('tierPolitica')
                     ->where('ativo', true)
-                    ->where('tier_minimo', '>=', $tier)
+                    ->where(function ($q) use ($tier) {
+                        $q->whereNull('tier_minimo')
+                          ->orWhere('tier_minimo', '>=', $tier);
+                    })
                     ->where(function ($query) use ($software) {
                         $query->where('software_id', $software->id)
                             ->orWhereNull('software_id');

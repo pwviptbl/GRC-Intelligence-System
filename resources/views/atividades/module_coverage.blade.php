@@ -45,12 +45,17 @@
     allActivities: {{ Js::from($availableActivities) }},
     allModuleIds: {{ Js::from(collect($coverage)->pluck('id')) }},
     selectedIds: [],
+    activitySearch: '',
     moduleForm: { id: '', software_id: '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] },
     filteredActivities() {
-        if (!this.moduleForm.software_id) {
-            return this.allActivities.filter(a => !a.software_id);
+        if (!this.activitySearch || this.activitySearch.trim() === '') {
+            return this.allActivities;
         }
-        return this.allActivities.filter(a => !a.software_id || String(a.software_id) === String(this.moduleForm.software_id));
+        const term = this.activitySearch.toLowerCase().trim();
+        return this.allActivities.filter(a =>
+            (a.atividade && a.atividade.toLowerCase().includes(term)) ||
+            (a.categoria && a.categoria.toLowerCase().includes(term))
+        );
     },
     toggleAll() {
         if (this.selectedIds.length === this.allModuleIds.length) {
@@ -79,6 +84,7 @@
     },
     openNewModule(softwareId = null) {
         this.editModule = false;
+        this.activitySearch = '';
         this.moduleAction = '{{ route('atividades.modules.store') }}';
         this.moduleForm = { id: '', software_id: softwareId ? String(softwareId) : '{{ $selectedSoftwareId ?: '' }}', area: '', nome: '', descricao: '', ativo: '1', atividade_ids: [] };
         this.showModuleModal = true;
@@ -86,6 +92,7 @@
     openEditModule(encoded) {
         const module = JSON.parse(atob(encoded));
         this.editModule = true;
+        this.activitySearch = '';
         this.moduleAction = `/cobertura-modulos/${module.id}`;
         this.moduleForm = { 
             id: module.id, 
@@ -251,10 +258,16 @@
                                         <div class="module-coverage-activities">
                                             @if(!empty($module['activities']))
                                                 @foreach($module['activities'] as $activity)
-                                                    <div><span style="color:var(--text-1); font-weight:500;">{{ $activity['atividade'] }}</span> <span style="color:var(--text-3); font-size:10px;">· a cada {{ $activity['recorrencia_meses'] }} meses</span></div>
+                                                    <div style="margin-bottom:3px;">
+                                                        <span style="color:var(--text-1); font-weight:600;">{{ $activity['atividade'] }}</span>
+                                                        @if(!empty($activity['categoria']))
+                                                            <span class="badge" style="font-size:9px; padding:1px 5px; background:rgba(168,85,247,.1); color:#c084fc; border-color:rgba(168,85,247,.2);">{{ $activity['categoria'] }}</span>
+                                                        @endif
+                                                        <span style="color:var(--text-3); font-size:10px;">· a cada {{ $activity['recorrencia_meses'] }} meses</span>
+                                                    </div>
                                                 @endforeach
                                             @else
-                                                <div style="color:var(--text-3)">Nenhuma atividade específica vinculada.</div>
+                                                <div style="color:var(--yellow); font-size:11px;">⚠️ Nenhum controle vinculado a este módulo.</div>
                                             @endif
                                         </div>
                                         <div>
@@ -290,20 +303,27 @@
                 <div class="form-group"><label>Descrição</label><textarea name="descricao" x-model="moduleForm.descricao" class="form-textarea" rows="2" maxlength="2000" placeholder="Contexto técnico ou operacional para auditoria/agente."></textarea></div>
                 
                 <div class="form-group">
-                    <label style="display:flex; justify-content:space-between; align-items:center;">
-                        <span>Atividades de Controle que cobrem este módulo</span>
-                        <span style="font-size:10px; color:var(--text-3); font-weight:normal;">Exibindo ações do software e globais</span>
+                    <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-weight:600; color:var(--text-1);">Controles de Segurança Vinculados</span>
+                        <span style="font-size:11px; color:var(--cyan); font-weight:normal;" x-text="`${moduleForm.atividade_ids.length} selecionado(s)`"></span>
                     </label>
-                    <div style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px; background:rgba(0,0,0,0.18); display:grid; gap:5px;">
+                    <input type="text" x-model="activitySearch" placeholder="🔍 Filtrar controles por nome ou categoria..." class="form-input" style="padding:6px 10px; font-size:12px; margin-bottom:8px;">
+                    <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px; background:rgba(0,0,0,0.18); display:grid; gap:6px;">
                         <template x-for="act in filteredActivities()" :key="act.id">
-                            <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; color:var(--text-2); padding:3px 6px; border-radius:4px;">
-                                <input type="checkbox" name="atividade_ids[]" :value="act.id" :checked="moduleForm.atividade_ids.includes(act.id)">
-                                <span style="font-weight:600; color:var(--text-1)" x-text="act.atividade"></span>
-                                <span style="font-size:10px; color:var(--text-3)" x-text="`(a cada ${act.recorrencia_meses} meses · Tier ${act.tier_minimo}+ ${act.software_id ? '· Específica' : '· Global'})`"></span>
+                            <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer; color:var(--text-2); padding:5px 8px; border-radius:5px; border:1px solid rgba(255,255,255,.05); background:rgba(255,255,255,.015);">
+                                <input type="checkbox" name="atividade_ids[]" :value="act.id" :checked="moduleForm.atividade_ids.includes(act.id)" style="margin-top:2px;">
+                                <div style="flex:1;">
+                                    <div style="font-weight:600; color:var(--text-1)" x-text="act.atividade"></div>
+                                    <div style="font-size:10px; color:var(--text-3); margin-top:2px;">
+                                        <span x-show="act.categoria" style="color:#c084fc; font-weight:600;" x-text="act.categoria + ' · '"></span>
+                                        <span x-text="`A cada ${act.recorrencia_meses} meses`"></span>
+                                        <span x-show="act.esforco" x-text="` · Esforço ${act.esforco}`"></span>
+                                    </div>
+                                </div>
                             </label>
                         </template>
-                        <div x-show="filteredActivities().length === 0" style="font-size:11px; color:var(--text-3); padding:4px;">
-                            Nenhuma atividade disponível para este software ou global.
+                        <div x-show="filteredActivities().length === 0" style="font-size:11px; color:var(--text-3); padding:8px; text-align:center;">
+                            Nenhum controle encontrado no catálogo.
                         </div>
                     </div>
                 </div>

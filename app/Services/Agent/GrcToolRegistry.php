@@ -164,7 +164,7 @@ class GrcToolRegistry
                 'Cria uma atividade reutilizavel para sugestoes e planejamento.',
                 self::RISK_WRITE,
                 $this->activityInputSchema(),
-                ['atividade', 'esforco', 'tier_minimo']
+                ['atividade', 'esforco']
             ),
             $this->tool(
                 'create_activities_batch',
@@ -1873,7 +1873,7 @@ class GrcToolRegistry
             'categoria' => ['nullable', 'string', 'max:255'],
             'rotina' => ['nullable', 'string', 'max:255'],
             'esforco' => [$creating ? 'required' : 'nullable', 'in:'.implode(',', ControleEvento::EFFORT_OPTIONS)],
-            'tier_minimo' => [$creating ? 'required' : 'nullable', 'integer', 'in:1,2,3'],
+            'tier_minimo' => ['nullable', 'integer', 'in:1,2,3'],
             'tipo_demanda' => ['nullable', 'in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
             'recorrencia_meses' => ['nullable', 'integer', 'min:1', 'max:120'],
             'observacoes' => ['nullable', 'string', 'max:1000'],

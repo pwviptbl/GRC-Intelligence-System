@@ -18,7 +18,7 @@ class AtividadeController extends Controller
     public function index(Request $request)
     {
         $tableAvailable = $this->tableAvailable();
-        $softwares = Software::query()->orderBy('nome')->get();
+        $softwares = Software::query()->where('ativo', true)->orderBy('nome')->get();
         $atividades = collect();
 
         if ($tableAvailable) {
@@ -36,8 +36,6 @@ class AtividadeController extends Controller
                 ->merge(ControleEvento::CATEGORY_OPTIONS)->unique()->sort()->values(),
             'effortOptions' => ControleEvento::EFFORT_OPTIONS,
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
-            'tierPolicies' => TierPolitica::query()->where('ativo', true)->orderBy('tier')->orderBy('acao_controle')->get(),
-            'tierPolicyFilterOptions' => TierPolitica::query()->orderBy('tier')->orderBy('acao_controle')->get(),
             'activityCoverage' => $activityCoverage,
             'catalogCoverage' => $catalogCoverage,
         ]);
@@ -55,8 +53,9 @@ class AtividadeController extends Controller
             'coverage' => app(ActivityCatalogCoverageService::class)->moduleCoverage($softwareId, $onlyUncovered),
             'availableActivities' => Atividade::query()
                 ->where('ativo', true)
+                ->orderBy('categoria')
                 ->orderBy('atividade')
-                ->get(['id', 'atividade', 'recorrencia_meses', 'tier_minimo', 'software_id']),
+                ->get(['id', 'atividade', 'categoria', 'recorrencia_meses', 'esforco']),
         ]);
     }
 
@@ -102,47 +101,47 @@ class AtividadeController extends Controller
     public function store(Request $request)
     {
         if (! $this->tableAvailable()) {
-            return redirect()->back()->withErrors('A tabela de atividades ainda nao existe. Rode a migration antes de cadastrar a atividade.');
+            return redirect()->back()->withErrors('A tabela de atividades ainda não existe. Rode a migration antes de cadastrar a atividade.');
         }
 
         Atividade::create($this->validatedData($request));
 
-        return redirect()->back()->with('success', 'Atividade cadastrada com sucesso!');
+        return redirect()->back()->with('success', 'Controle cadastrado com sucesso no catálogo!');
     }
 
     public function update(Request $request, Atividade $atividade)
     {
         if (! $this->tableAvailable()) {
-            return redirect()->back()->withErrors('A tabela de atividades ainda nao existe. Rode a migration antes de atualizar a atividade.');
+            return redirect()->back()->withErrors('A tabela de atividades ainda não existe. Rode a migration antes de atualizar a atividade.');
         }
 
         $atividade->update($this->validatedData($request));
 
-        return redirect()->back()->with('success', 'Atividade atualizada com sucesso!');
+        return redirect()->back()->with('success', 'Controle atualizado com sucesso!');
     }
 
     public function duplicate(Atividade $atividade)
     {
         if (! $this->tableAvailable()) {
-            return redirect()->back()->withErrors('A tabela de atividades ainda nao existe. Rode a migration antes de duplicar a atividade.');
+            return redirect()->back()->withErrors('A tabela de atividades ainda não existe. Rode a migration antes de duplicar a atividade.');
         }
 
         $copia = $atividade->replicate();
         $copia->atividade = $this->nextDuplicateName($atividade->atividade);
         $copia->save();
 
-        return redirect()->back()->with('success', 'Atividade duplicada com sucesso!');
+        return redirect()->back()->with('success', 'Controle duplicado com sucesso!');
     }
 
     public function destroy(Atividade $atividade)
     {
         if (! $this->tableAvailable()) {
-            return redirect()->back()->withErrors('A tabela de atividades ainda nao existe. Rode a migration antes de remover a atividade.');
+            return redirect()->back()->withErrors('A tabela de atividades ainda não existe. Rode a migration antes de remover a atividade.');
         }
 
         $atividade->delete();
 
-        return redirect()->back()->with('success', 'Atividade removida com sucesso!');
+        return redirect()->back()->with('success', 'Controle removido do catálogo com sucesso!');
     }
 
     protected function validatedData(Request $request): array
@@ -154,7 +153,7 @@ class AtividadeController extends Controller
             'categoria' => 'nullable|string|max:255',
             'rotina' => 'nullable|string|max:255',
             'esforco' => 'required|in:'.implode(',', ControleEvento::EFFORT_OPTIONS),
-            'tier_minimo' => 'required|integer|in:1,2,3',
+            'tier_minimo' => 'nullable|integer|in:1,2,3',
             'tipo_demanda' => 'nullable|in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
             'recorrencia_meses' => 'required|integer|min:1|max:120',
             'observacoes' => 'nullable|string|max:1000',
@@ -162,7 +161,7 @@ class AtividadeController extends Controller
         ]);
 
         if (! empty($data['tier_politica_id'])) {
-            $data['tier_minimo'] = TierPolitica::query()->findOrFail($data['tier_politica_id'])->tier;
+            $data['tier_minimo'] = TierPolitica::query()->find($data['tier_politica_id'])?->tier;
         }
 
         return $data;
@@ -209,30 +208,26 @@ class AtividadeController extends Controller
     {
         $query = Atividade::query()
             ->with([
-                'software:id,nome',
-                'tierPolitica:id,tier,acao_controle,frequencia,responsavel,ativo',
-                'softwareModulos:id,nome,software_id',
+                'softwareModulos.software:id,nome',
             ])
-            ->orderByRaw('CASE WHEN software_id IS NULL THEN 0 ELSE 1 END DESC')
-            ->orderBy('tier_minimo')
+            ->withCount('softwareModulos')
             ->orderBy('atividade');
 
         if ($request->filled('software_id')) {
-            if ($request->software_id === 'global') {
-                $query->whereNull('software_id');
+            if ($request->software_id === 'unlinked') {
+                $query->doesntHave('softwareModulos');
+            } elseif ($request->software_id === 'linked') {
+                $query->has('softwareModulos');
             } else {
-                $query->where('software_id', $request->software_id);
+                $sid = $request->software_id;
+                $query->whereHas('softwareModulos', function ($mq) use ($sid) {
+                    $mq->where('software_id', $sid);
+                });
             }
         }
 
         if ($request->filled('categoria')) {
             $query->where('categoria', $request->categoria);
-        }
-
-        if ($request->filled('tier_politica_id')) {
-            $request->tier_politica_id === 'none'
-                ? $query->whereNull('tier_politica_id')
-                : $query->where('tier_politica_id', $request->tier_politica_id);
         }
 
         if ($request->filled('ativo')) {
@@ -244,6 +239,8 @@ class AtividadeController extends Controller
             $query->where(function ($subQuery) use ($term) {
                 $subQuery->where('atividade', 'like', $term)
                     ->orWhere('rotina', 'like', $term)
+                    ->orWhere('categoria', 'like', $term)
+                    ->orWhere('observacoes', 'like', $term)
                     ->orWhereHas('softwareModulos', fn ($mq) => $mq->where('nome', 'like', $term));
             });
         }

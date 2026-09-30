@@ -13,6 +13,7 @@ class Atividade extends Model
         'tier_politica_id',
         'atividade',
         'categoria',
+        'modulo',
         'rotina',
         'esforco',
         'tier_minimo',
@@ -36,7 +37,6 @@ class Atividade extends Model
     protected $appends = [
         'scope_label',
         'software_label',
-        'tier_minimo_label',
     ];
 
     public function software()
@@ -53,6 +53,11 @@ class Atividade extends Model
     {
         return $this->belongsToMany(SoftwareModulo::class, 'software_modulo_atividades', 'atividade_id', 'software_modulo_id')
             ->withTimestamps();
+    }
+
+    public function modulos()
+    {
+        return $this->softwareModulos();
     }
 
     public function getScopeLabelAttribute(): string
@@ -85,12 +90,20 @@ class Atividade extends Model
 
     public function getSoftwareLabelAttribute(): string
     {
-        return $this->software?->nome ?: 'Global';
+        if ($this->relationLoaded('softwareModulos') && $this->softwareModulos->isNotEmpty()) {
+            $softwares = $this->softwareModulos->map(fn($m) => $m->software?->nome)->filter()->unique()->values();
+            if ($softwares->isNotEmpty()) {
+                $list = implode(', ', $softwares->slice(0, 2)->all());
+                return $softwares->count() > 2 ? $list . ' (+'.($softwares->count() - 2).')' : $list;
+            }
+        }
+
+        return $this->software?->nome ?: 'Catálogo Geral';
     }
 
     public function getTierMinimoLabelAttribute(): string
     {
-        return 'Tier '.$this->tier_minimo.' ou mais critico';
+        return $this->tier_minimo ? 'Tier '.$this->tier_minimo : 'Padrão';
     }
 
     public function findings(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
@@ -99,5 +112,4 @@ class Atividade extends Model
             ->withTimestamps()
             ->withPivot('notas');
     }
-
 }

@@ -5,28 +5,44 @@ namespace App\Services;
 use App\Models\Atividade;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
-use App\Models\TierPolitica;
 use Illuminate\Support\Facades\Schema;
 
 class ActivityCatalogCoverageService
 {
     public function summary(): array
     {
-        $activities = Atividade::query()->where('ativo', true)->get(['id', 'software_id', 'tier_politica_id']);
-        $specificSoftwareIds = $activities->pluck('software_id')->filter()->unique();
-        $policyIds = $activities->pluck('tier_politica_id')->filter()->unique();
-        $activeSoftware = Software::query()->where('ativo', true)->orderBy('nome')->get(['id', 'nome']);
-        $activePolicies = TierPolitica::query()->where('ativo', true)->orderBy('tier')->orderBy('acao_controle')->get(['id', 'tier', 'acao_controle', 'responsavel']);
+        $hasModulesTable = Schema::hasTable('software_modulos');
+        $hasPivotTable = Schema::hasTable('software_modulo_atividades');
+
+        $activeActivitiesCount = Atividade::query()->where('ativo', true)->count();
+        $linkedActivitiesCount = ($hasPivotTable && $hasModulesTable)
+            ? Atividade::query()->where('ativo', true)->has('softwareModulos')->count()
+            : 0;
+        $unlinkedActivitiesCount = $activeActivitiesCount - $linkedActivitiesCount;
+
+        $totalModules = $hasModulesTable
+            ? SoftwareModulo::query()->where('ativo', true)->count()
+            : 0;
+        $coveredModules = ($hasModulesTable && $hasPivotTable)
+            ? SoftwareModulo::query()->where('ativo', true)->has('atividades')->count()
+            : 0;
+        $uncoveredModules = max(0, $totalModules - $coveredModules);
+
+        $softwaresWithoutModules = $hasModulesTable
+            ? Software::query()->where('ativo', true)->doesntHave('modulos')->orderBy('nome')->get(['id', 'nome'])
+            : collect();
 
         return [
-            'active_activities' => $activities->count(),
-            'unlinked_activities' => $activities->whereNull('tier_politica_id')->count(),
-            'software_without_specific_activity' => $activeSoftware->whereNotIn('id', $specificSoftwareIds)->values()->all(),
-            'tier_policies_without_activity' => $activePolicies->whereNotIn('id', $policyIds)->values()->all(),
-            'tier_policies_without_responsible' => $activePolicies
-                ->filter(fn (TierPolitica $policy) => blank($policy->responsavel))
-                ->values()
-                ->all(),
+            'active_activities' => $activeActivitiesCount,
+            'linked_activities' => $linkedActivitiesCount,
+            'unlinked_activities' => $unlinkedActivitiesCount,
+            'total_modules' => $totalModules,
+            'covered_modules' => $coveredModules,
+            'uncovered_modules' => $uncoveredModules,
+            'software_without_modules' => $softwaresWithoutModules->values()->all(),
+            'software_without_specific_activity' => [],
+            'tier_policies_without_activity' => [],
+            'tier_policies_without_responsible' => [],
         ];
     }
 
@@ -39,7 +55,9 @@ class ActivityCatalogCoverageService
         $modules = SoftwareModulo::query()
             ->with([
                 'software:id,nome',
-                'atividades:id,atividade,recorrencia_meses,tier_politica_id,tier_minimo',
+                'atividades' => function ($query) {
+                    $query->select(['atividades.id', 'atividades.atividade', 'atividades.categoria', 'atividades.esforco', 'atividades.recorrencia_meses']);
+                },
             ])
             ->where('ativo', true)
             ->when($softwareId, fn ($query) => $query->where('software_id', $softwareId))
@@ -48,8 +66,23 @@ class ActivityCatalogCoverageService
             ->orderBy('nome')
             ->get();
 
-        $coverage = $modules->map(function (SoftwareModulo $module) {
+        $legacyActivities = Atividade::query()
+            ->where('ativo', true)
+            ->whereNotNull('modulo')
+            ->get(['id', 'software_id', 'modulo', 'atividade', 'categoria', 'esforco', 'recorrencia_meses']);
+
+        $coverage = $modules->map(function (SoftwareModulo $module) use ($legacyActivities) {
             $activities = $module->atividades;
+            if ($activities->isEmpty()) {
+                $moduleName = $this->normalizedName($module->nome);
+                $matchedLegacy = $legacyActivities->filter(fn (Atividade $activity) =>
+                    $activity->software_id === $module->software_id
+                    && $this->normalizedName((string) $activity->modulo) === $moduleName
+                );
+                if ($matchedLegacy->isNotEmpty()) {
+                    $activities = $matchedLegacy;
+                }
+            }
 
             return [
                 'id' => $module->id,
@@ -65,8 +98,9 @@ class ActivityCatalogCoverageService
                 'activities' => $activities->map(fn (Atividade $activity) => [
                     'id' => $activity->id,
                     'atividade' => $activity->atividade,
+                    'categoria' => $activity->categoria,
+                    'esforco' => $activity->esforco,
                     'recorrencia_meses' => $activity->recorrencia_meses,
-                    'tier_politica_id' => $activity->tier_politica_id,
                 ])->values()->all(),
                 'status' => $activities->isEmpty() ? 'sem_atividade' : 'coberto',
             ];
