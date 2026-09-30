@@ -115,4 +115,17 @@ class RiscosMigrationAndLayoutTest extends TestCase
         $this->assertEquals('Usar prepared statements', $finding->remediacao_sugerida);
         $this->assertEquals('aberto', $finding->status);
     }
+    public function test_engagement_test_show_renders_successfully(): void
+    {
+        $user = $this->makeUser();
+        $software = Software::create(['nome' => 'App Test Show', 'ativo' => true]);
+        $eng = Engagement::create(['software_id' => $software->id, 'nome' => 'Auditoria Pentest', 'tipo' => 'pentest', 'status' => 'ativo']);
+        $test = EngagementTest::create(['engagement_id' => $eng->id, 'titulo' => 'Teste Nikto Web', 'tipo_teste' => 'dast', 'ferramenta' => 'nikto', 'status' => 'concluido']);
+
+        $response = $this->actingAs($user)->get(route('engagement-tests.show', $test));
+        $response->assertStatus(200);
+        $response->assertSee('Teste Nikto Web');
+        $response->assertSee('table-view');
+        $response->assertSee('data-table');
+    }
 }

@@ -225,7 +225,7 @@
         </div>
 
         <div x-show="openUpload" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);" x-transition>
-            <form action="{{ route('engagement-tests.import_scan', $engagementTest) }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('engagement-tests.import', $engagementTest) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div style="display:grid; grid-template-columns:1.5fr 1fr auto; gap:14px; align-items:end;">
                     <div class="form-group" style="margin:0;">

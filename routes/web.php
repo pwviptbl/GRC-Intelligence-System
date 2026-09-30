@@ -196,6 +196,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/engagement-tests/create', [EngagementTestController::class, 'create'])->name('engagement-tests.create');
         Route::post('/engagement-tests/{engagement_test}/mitigate', [EngagementTestController::class, 'mitigate'])->name('engagement-tests.mitigate');
         Route::post('/engagement-tests/{engagement_test}/import', [EngagementTestController::class, 'importScan'])->name('engagement-tests.import');
+        Route::post('/engagement-tests/{engagement_test}/import-scan', [EngagementTestController::class, 'importScan'])->name('engagement-tests.import_scan');
 
         // Relatórios PDF de Segurança (DefectDojo-style)
         Route::get('/softwares/{software}/security-report.pdf', [SecurityReportController::class, 'softwareReport'])->name('softwares.security_report');
