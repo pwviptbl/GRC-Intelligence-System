@@ -78,7 +78,12 @@ class EngagementController extends Controller
             }
         }
 
-        return view('engagements.show', compact('engagement', 'findingStats'));
+        $allFindings = $engagement->tests->flatMap->findings->sortBy(function ($f) {
+            $order = ['critico' => 1, 'alto' => 2, 'medio' => 3, 'baixo' => 4, 'informativo' => 5];
+            return $order[$f->severidade] ?? 99;
+        });
+
+        return view('engagements.show', compact('engagement', 'findingStats', 'allFindings'));
     }
 
     public function edit(Engagement $engagement)
