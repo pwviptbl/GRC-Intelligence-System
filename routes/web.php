@@ -22,6 +22,9 @@ use App\Http\Controllers\RiscoController;
 use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\EngagementTestController;
 use App\Http\Controllers\FindingController;
+use App\Http\Controllers\SecurityReportController;
+use App\Http\Controllers\Api\SecurityApiController;
+use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\TierPoliticaController;
 use App\Http\Controllers\TreinamentoController;
@@ -193,6 +196,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/engagement-tests/create', [EngagementTestController::class, 'create'])->name('engagement-tests.create');
         Route::post('/engagement-tests/{engagement_test}/mitigate', [EngagementTestController::class, 'mitigate'])->name('engagement-tests.mitigate');
         Route::post('/engagement-tests/{engagement_test}/import', [EngagementTestController::class, 'importScan'])->name('engagement-tests.import');
+
+        // Relatórios PDF de Segurança (DefectDojo-style)
+        Route::get('/softwares/{software}/security-report.pdf', [SecurityReportController::class, 'softwareReport'])->name('softwares.security_report');
+        Route::get('/engagements/{engagement}/report.pdf', [SecurityReportController::class, 'engagementReport'])->name('engagements.report');
+        Route::get('/engagement-tests/{engagement_test}/report.pdf', [SecurityReportController::class, 'testReport'])->name('engagement-tests.report');
+        Route::get('/findings/{finding}/report.pdf', [SecurityReportController::class, 'findingReport'])->name('findings.report');
+
+        // Geração de API Token pessoal
+        Route::post('/profile/api-token', [ProfileController::class, 'generateApiToken'])->name('profile.api_token');
         Route::resource('findings', FindingController::class);
         Route::patch('/findings/{finding}/status', [FindingController::class, 'updateStatus'])->name('findings.update_status');
         Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
@@ -209,3 +221,22 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+
+// --- API REST v1 (DefectDojo-style) ---
+Route::prefix('api/v1')->middleware([AuthenticateApiKey::class])->group(function () {
+    Route::get('/engagements', [SecurityApiController::class, 'getEngagements']);
+    Route::post('/engagements', [SecurityApiController::class, 'storeEngagement']);
+    Route::get('/engagements/{engagement}', [SecurityApiController::class, 'getEngagement']);
+    Route::match(['PUT', 'PATCH'], '/engagements/{engagement}', [SecurityApiController::class, 'updateEngagement']);
+    Route::get('/engagements/{engagement}/tests', [SecurityApiController::class, 'getTests']);
+    Route::post('/engagements/{engagement}/tests', [SecurityApiController::class, 'storeTest']);
+
+    Route::get('/tests/{engagement_test}', [SecurityApiController::class, 'getTest']);
+    Route::post('/tests/{engagement_test}/import', [SecurityApiController::class, 'importScan']);
+
+    Route::get('/findings', [SecurityApiController::class, 'getFindings']);
+    Route::post('/findings', [SecurityApiController::class, 'storeFinding']);
+    Route::get('/findings/{finding}', [SecurityApiController::class, 'getFinding']);
+    Route::patch('/findings/{finding}/status', [SecurityApiController::class, 'updateFindingStatus']);
+});

@@ -52,6 +52,7 @@
             </button>
           </form>
         @endif
+        <a href="{{ route('engagement-tests.report', $engagementTest) }}" target="_blank" style="padding:8px 14px;background:rgba(239,68,68,0.15);color:#ef4444;border-radius:6px;font-size:13px;text-decoration:none;border:1px solid rgba(239,68,68,0.3);display:inline-flex;align-items:center;gap:6px">📄 Relatório PDF</a>
         <a href="{{ route('findings.create', ['test_id' => $engagementTest->id]) }}" style="padding:8px 16px;background:var(--cyan);color:#0d1628;font-weight:600;border-radius:6px;font-size:13px;text-decoration:none">+ Novo Achado</a>
         <a href="{{ route('engagement-tests.edit', $engagementTest) }}" style="padding:8px 14px;background:rgba(255,255,255,0.05);color:var(--text-2);border-radius:6px;font-size:13px;text-decoration:none;border:1px solid var(--border)">Editar</a>
       </div>

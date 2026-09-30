@@ -49,6 +49,7 @@
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
+        <a href="{{ route('findings.report', $finding) }}" target="_blank" style="padding:8px 16px;background:rgba(239,68,68,0.15);color:#ef4444;border-radius:6px;font-size:13px;text-decoration:none;border:1px solid rgba(239,68,68,0.3);text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:6px">📄 Ficha Técnica PDF</a>
         <a href="{{ route('findings.edit', $finding) }}" style="padding:8px 16px;background:rgba(255,255,255,0.05);color:var(--text-2);border-radius:6px;font-size:13px;text-decoration:none;border:1px solid var(--border);text-align:center">✏️ Editar</a>
         <form method="POST" action="{{ route('findings.destroy', $finding) }}" onsubmit="return confirm('Remover achado?')">
           @csrf @method('DELETE')

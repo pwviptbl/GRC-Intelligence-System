@@ -22,6 +22,7 @@ class User extends Authenticatable
         'areas_atuacao',
         'active',
         'theme_preference',
+        'api_token',
     ];
 
     protected $hidden = [
@@ -56,4 +57,12 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    public function generateApiToken(): string
+    {
+        $this->api_token = \Illuminate\Support\Str::random(60);
+        $this->save();
+        return $this->api_token;
+    }
+
 }

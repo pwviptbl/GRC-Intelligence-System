@@ -93,4 +93,15 @@ class ProfileController extends Controller
             'theme' => $validated['theme'],
         ]);
     }
+
+    /**
+     * Gera ou renova o token pessoal de API do usuário.
+     */
+    public function generateApiToken(Request $request)
+    {
+        $token = $request->user()->generateApiToken();
+
+        return redirect()->route('profile.edit')->with('status', 'api-token-generated');
+    }
+
 }

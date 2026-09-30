@@ -40,6 +40,9 @@
         @endif
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{{ route('engagements.report', $engagement) }}" target="_blank" style="padding:8px 14px;background:rgba(239,68,68,0.15);color:#ef4444;border-radius:6px;font-size:13px;text-decoration:none;border:1px solid rgba(239,68,68,0.3);display:inline-flex;align-items:center;gap:6px">
+          📄 Relatório PDF
+        </a>
         <a href="{{ route('engagement-tests.create', ['engagement_id' => $engagement->id]) }}" style="padding:8px 16px;background:var(--cyan);color:#0d1628;font-weight:600;border-radius:6px;font-size:13px;text-decoration:none">
           + Novo Teste
         </a>

@@ -177,5 +177,47 @@
             ✅ Preferência de tema atualizada na sua conta com sucesso!
         </div>
     </div>
+
+    {{-- Card de API Token (DefectDojo REST API) --}}
+    <div class="data-card" style="margin-bottom: 24px;">
+        <h3 style="color:var(--text-1); font-size:16px; margin-bottom:8px">🔑 Chave de Acesso API (REST API / CI-CD)</h3>
+        <p style="color:var(--text-3); font-size:12px; margin-bottom:16px">
+            Utilize este token pessoal para integrar pipelines CI/CD, scanners automáticos ou consumir a API REST de Engajamentos e Achados do GRC.
+        </p>
+
+        @if(session('status') === 'api-token-generated')
+            <div style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#22c55e;padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:12px">
+                ✅ Novo token de API gerado com sucesso!
+            </div>
+        @endif
+
+        @if(auth()->user()->api_token)
+            <div style="margin-bottom:16px">
+                <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Seu Token de API:</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <input type="text" readonly value="{{ auth()->user()->api_token }}" class="form-input" style="width:100%;font-family:monospace;font-size:12px;padding:8px" id="api-token-input">
+                    <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('api-token-input').value); alert('Token copiado para a área de transferência!');"
+                            style="padding:8px 14px;background:rgba(0,229,255,0.15);color:var(--cyan);border:1px solid rgba(0,229,255,0.3);border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap">
+                        📋 Copiar
+                    </button>
+                </div>
+                <div style="margin-top:6px;font-size:11px;color:var(--text-3)">
+                    Exemplo de uso: <code>curl -H "X-API-Key: {{ substr(auth()->user()->api_token, 0, 10) }}..." {{ url('/api/v1/engagements') }}</code>
+                </div>
+            </div>
+        @else
+            <div style="margin-bottom:16px;font-size:12px;color:var(--text-3)">
+                Você ainda não gerou um token de API para esta conta.
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('profile.api_token') }}">
+            @csrf
+            <button type="submit" class="btn-primary" style="padding:9px 18px;background:var(--cyan);color:#0d1628;font-weight:600;border:none;border-radius:6px;cursor:pointer;font-size:13px">
+                {{ auth()->user()->api_token ? '🔄 Renovar / Gerar Novo Token' : '⚡ Gerar Meu Token de API' }}
+            </button>
+        </form>
+    </div>
+
 </div>
 @endsection
