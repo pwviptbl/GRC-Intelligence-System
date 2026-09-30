@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\WeeklyPlanningBacklogService;
 
 class PlanejamentoSemanalController extends Controller
 {
@@ -50,13 +51,10 @@ class PlanejamentoSemanalController extends Controller
             ];
         });
 
-        $backlog = ControleEvento::query()
-            ->with(['software:id,nome', 'risco:id,titulo'])
-            ->whereNull('semana_planejada')
-            ->whereIn('status', ['planejado', 'pendente', 'atrasado'])
+        app(WeeklyPlanningBacklogService::class)->syncDueModuleControls();
 
-            ->orderByRaw($this->priorityOrderSql())
-            ->orderBy('data_prevista')
+        $backlog = app(WeeklyPlanningBacklogService::class)
+            ->getBacklogQuery()
             ->limit(200)
             ->get();
 
@@ -288,6 +286,7 @@ class PlanejamentoSemanalController extends Controller
             ->whereKey($ids)
             ->whereNull('semana_planejada')
             ->whereIn('status', ['planejado', 'pendente', 'atrasado'])
+            ->where('origem', '!=', 'tier')
             ->orderByRaw($this->priorityOrderSql())
             ->orderBy('data_prevista')
             ->get();

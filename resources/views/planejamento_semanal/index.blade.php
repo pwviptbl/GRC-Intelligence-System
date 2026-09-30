@@ -135,12 +135,33 @@
         <form method="POST" action="{{ route('planejamento_semanal.assign') }}" class="weekly-panel">
             @csrf
             <input type="hidden" name="semana" value="{{ $weekStart->toDateString() }}">
-            <div class="weekly-panel-header"><h3>Backlog Priorizado</h3><p>PP=1, P=2, M=4 e G=8 pontos. GG precisa ser dividida.</p></div>
+            <div class="weekly-panel-header">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0;">Backlog de Módulos ({{ $backlog->count() }})</h3>
+                    <span style="font-size:10px; color:var(--cyan); font-weight:600;">Controles de Cobertura</span>
+                </div>
+                <p style="margin:4px 0 0;">Controles mapeados em módulos prontos para execução no ciclo (ex: semestral). PP=1, P=2, M=4 e G=8 pts.</p>
+            </div>
             <div class="weekly-backlog-list">
                 @forelse($backlog as $event)
                     <label class="weekly-backlog-item">
                         <input type="checkbox" name="event_ids[]" value="{{ $event->id }}">
-                        <span><span class="weekly-backlog-title">{{ $event->acao_controle_snapshot }}</span><span class="weekly-backlog-meta"><span>{{ $event->prioridade ?: 'Sem prioridade' }}</span><span>{{ $event->software?->nome ?: 'Atividade geral' }}</span><span>{{ $event->scope_label }}</span>@if($event->decision_score !== null)<span>Score {{ $event->decision_score }}</span>@endif</span></span>
+                        <span>
+                            <span class="weekly-backlog-title">{{ $event->acao_controle_snapshot }}</span>
+                            <span class="weekly-backlog-meta">
+                                <span>{{ $event->prioridade ?: 'Média' }}</span>
+                                @if($event->software)
+                                    <span style="color:var(--cyan); font-weight:600;">📦 {{ $event->software->nome }}</span>
+                                @endif
+                                @if($event->modulo)
+                                    <span style="color:var(--text-2);">📁 {{ $event->modulo }}</span>
+                                @endif
+                                @if($event->categoria)
+                                    <span style="color:#c084fc;">{{ $event->categoria }}</span>
+                                @endif
+                                @if($event->decision_score !== null)<span>Score {{ $event->decision_score }}</span>@endif
+                            </span>
+                        </span>
                         <span class="weekly-hours">{{ $event->effort_points > 0 ? $event->esforco . ' · ' . $event->effort_points . ' pts' : ($event->esforco ?: 'Sem esforço') . ' · dividir' }}</span>
                     </label>
                 @empty
@@ -165,7 +186,24 @@
                         <div class="weekly-member-header"><div class="weekly-member-top"><div><div class="weekly-member-name">{{ $entry['member']->name }}</div><div class="weekly-member-role">{{ $entry['member']->nivel_operacional ?: 'Nível não definido' }} · {{ $entry['member']->areas_atuacao ?: 'Áreas não informadas' }}</div></div><div class="weekly-capacity {{ $entry['remaining'] < 0 ? 'overflow' : '' }}">{{ $entry['planned'] }}/{{ $entry['planning_limit'] }} pts</div></div><div class="weekly-progress"><span class="{{ $entry['remaining'] < 0 ? 'overflow' : '' }}" style="width:{{ $percent }}%"></span></div></div>
                         <div class="weekly-member-tasks">
                             @forelse($entry['tasks'] as $task)
-                                <div class="weekly-task"><div class="weekly-task-title">{{ $task->acao_controle_snapshot }}</div><div class="weekly-task-footer"><span>{{ $task->esforco }} · {{ $task->effort_points }} pts · {{ $task->status }}</span><form method="POST" action="{{ route('planejamento_semanal.remove', $task) }}">@csrf @method('DELETE')<input type="hidden" name="semana" value="{{ $weekStart->toDateString() }}"><button class="weekly-remove" onclick="return confirm('Devolver esta tarefa ao backlog?')">Remover</button></form></div></div>
+                                <div class="weekly-task">
+                                    <div class="weekly-task-title">{{ $task->acao_controle_snapshot }}</div>
+                                    @if($task->software || $task->modulo)
+                                        <div style="font-size:10px; color:var(--text-3); margin-top:2px;">
+                                            <span>📦 {{ $task->software?->nome }}</span>
+                                            @if($task->modulo) · <span>{{ $task->modulo }}</span> @endif
+                                        </div>
+                                    @endif
+                                    <div class="weekly-task-footer">
+                                        <span>{{ $task->esforco }} · {{ $task->effort_points }} pts · {{ $task->status }}</span>
+                                        <form method="POST" action="{{ route('planejamento_semanal.remove', $task) }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <input type="hidden" name="semana" value="{{ $weekStart->toDateString() }}">
+                                            <button class="weekly-remove" onclick="return confirm('Devolver esta tarefa ao backlog?')">Remover</button>
+                                        </form>
+                                    </div>
+                                </div>
                             @empty
                                 <div class="weekly-empty">Nenhuma tarefa nesta semana.</div>
                             @endforelse
