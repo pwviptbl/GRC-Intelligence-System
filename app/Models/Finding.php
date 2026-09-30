@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\FindingDeduplicationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,6 +51,13 @@ class Finding extends Model
         "falso_positivo" => "#6b7280",
         "fechado"        => "#22c55e",
         "duplicado"      => "#6b7280",
+    ];
+
+    protected $attributes = [
+        'status'         => 'aberto',
+        'is_regression'  => false,
+        'falso_positivo' => false,
+        'aceito_risco'   => false,
     ];
 
     protected $fillable = [
@@ -116,17 +124,34 @@ class Finding extends Model
             if (! $finding->detectado_em) {
                 $finding->detectado_em = now()->toDateString();
             }
-            // Gerar hash de deduplicação
-            if (! $finding->hash_dedup) {
-                $finding->hash_dedup = $finding->generateDedupHash();
+
+            // Deduplicação e detecção de regressão automática
+            try {
+                $service = app(FindingDeduplicationService::class);
+                $service->deduplicateFinding($finding);
+            } catch (\Throwable $e) {
+                // Fallback de hash simples em caso de contexto isolado
+                if (! $finding->hash_dedup) {
+                    $finding->hash_dedup = $finding->generateDedupHash();
+                }
             }
         });
     }
 
     public function generateDedupHash(): string
     {
-        // Busca o software_id via test -> engagement -> software
-        $softwareId = $this->test?->engagement?->software_id ?? 0;
+        $softwareId = 0;
+        if ($this->relationLoaded('test') && $this->test) {
+            $softwareId = $this->test->relationLoaded('engagement') && $this->test->engagement
+                ? ($this->test->engagement->software_id ?? 0)
+                : (Engagement::where('id', $this->test->engagement_id)->value('software_id') ?? 0);
+        } elseif ($this->test_id) {
+            $test = EngagementTest::find($this->test_id);
+            if ($test) {
+                $softwareId = Engagement::where('id', $test->engagement_id)->value('software_id') ?? 0;
+            }
+        }
+
         $str = implode("|", [
             strtolower(trim($this->titulo ?? "")),
             strtolower(trim($this->endpoint ?? "")),

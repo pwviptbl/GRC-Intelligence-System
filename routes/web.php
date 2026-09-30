@@ -191,6 +191,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('engagements', EngagementController::class);
         Route::resource('engagement-tests', EngagementTestController::class)->except(['index', 'create']);
         Route::get('/engagement-tests/create', [EngagementTestController::class, 'create'])->name('engagement-tests.create');
+        Route::post('/engagement-tests/{engagement_test}/mitigate', [EngagementTestController::class, 'mitigate'])->name('engagement-tests.mitigate');
         Route::resource('findings', FindingController::class);
         Route::patch('/findings/{finding}/status', [FindingController::class, 'updateStatus'])->name('findings.update_status');
         Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');

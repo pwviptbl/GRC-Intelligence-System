@@ -61,6 +61,24 @@
     </select>
   </div>
 
+  {{-- Campo de Reteste (Vincular a Teste Anterior) --}}
+  <div style="grid-column:1/-1">
+    <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">
+      🔄 Reteste de Teste Anterior (Opcional - permite fechar achados corrigidos automaticamente)
+    </label>
+    <select name="retest_of_test_id" class="form-input" style="width:100%;padding:10px">
+      <option value="">Não é reteste (novo teste autônomo)</option>
+      @if(isset($availableTests))
+        @foreach($availableTests as $availTest)
+          <option value="{{ $availTest->id }}"
+            {{ old('retest_of_test_id', $engagementTest->retest_of_test_id ?? '') == $availTest->id ? 'selected' : '' }}>
+            Teste #{{ $availTest->id }} — {{ $availTest->titulo }} ({{ $availTest->tipo_label }} · {{ $availTest->findings_count ?? $availTest->findings->count() }} achados)
+          </option>
+        @endforeach
+      @endif
+    </select>
+  </div>
+
   <div>
     <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Data de Início</label>
     <input type="date" name="data_inicio" class="form-input" style="width:100%;padding:10px"

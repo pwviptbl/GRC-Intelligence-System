@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Engagement;
 use App\Models\EngagementTest;
+use App\Services\FindingDeduplicationService;
 use Illuminate\Http\Request;
 
 class EngagementTestController extends Controller
@@ -11,8 +12,9 @@ class EngagementTestController extends Controller
     public function create(Request $request)
     {
         $engagementId = $request->input('engagement_id');
-        $engagement = Engagement::with('software')->findOrFail($engagementId);
-        return view('engagement-tests.create', compact('engagement'));
+        $engagement = Engagement::with(['software', 'tests'])->findOrFail($engagementId);
+        $availableTests = $engagement->tests;
+        return view('engagement-tests.create', compact('engagement', 'availableTests'));
     }
 
     public function store(Request $request)
@@ -26,7 +28,7 @@ class EngagementTestController extends Controller
 
     public function show(EngagementTest $engagementTest)
     {
-        $engagementTest->load(['engagement.software', 'findings']);
+        $engagementTest->load(['engagement.software', 'findings', 'retestOf', 'retests']);
 
         $findingStats = [
             'total'          => $engagementTest->findings->count(),
@@ -37,6 +39,8 @@ class EngagementTestController extends Controller
             'baixos'         => $engagementTest->findings->where('severidade', 'baixo')->count(),
             'informativos'   => $engagementTest->findings->where('severidade', 'informativo')->count(),
             'fechados'       => $engagementTest->findings->where('status', 'fechado')->count(),
+            'duplicados'     => $engagementTest->findings->where('status', 'duplicado')->count(),
+            'regressoes'     => $engagementTest->findings->where('is_regression', true)->count(),
             'falsos_positivos' => $engagementTest->findings->where('status', 'falso_positivo')->count(),
         ];
 
@@ -46,7 +50,10 @@ class EngagementTestController extends Controller
     public function edit(EngagementTest $engagementTest)
     {
         $engagementTest->load(['engagement.software']);
-        return view('engagement-tests.edit', compact('engagementTest'));
+        $availableTests = EngagementTest::where('engagement_id', $engagementTest->engagement_id)
+            ->where('id', '!=', $engagementTest->id)
+            ->get();
+        return view('engagement-tests.edit', compact('engagementTest', 'availableTests'));
     }
 
     public function update(Request $request, EngagementTest $engagementTest)
@@ -67,18 +74,33 @@ class EngagementTestController extends Controller
             ->with('success', 'Teste removido.');
     }
 
+    /**
+     * Executa a mitigação automática dos achados resolvidos no reteste.
+     */
+    public function mitigate(Request $request, EngagementTest $engagementTest, FindingDeduplicationService $dedupService)
+    {
+        $result = $dedupService->mitigateResolvedFindings($engagementTest);
+
+        if (! $result['success']) {
+            return redirect()->back()->with('error', $result['message']);
+        }
+
+        return redirect()->back()->with('success', $result['message']);
+    }
+
     protected function validateTest(Request $request): array
     {
         return $request->validate([
-            'engagement_id' => ['required', 'integer', 'exists:engagements,id'],
-            'titulo'        => ['required', 'string', 'max:255'],
-            'tipo_teste'    => ['required', 'in:pentest,dast,sast,sca,infra,nuclei,outro'],
-            'ferramenta'    => ['nullable', 'string', 'max:100'],
-            'ambiente'      => ['nullable', 'string', 'max:100'],
-            'data_inicio'   => ['nullable', 'date'],
-            'data_fim'      => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'status'        => ['required', 'in:planejado,em_andamento,concluido,cancelado'],
-            'notas'         => ['nullable', 'string'],
+            'engagement_id'     => ['required', 'integer', 'exists:engagements,id'],
+            'titulo'            => ['required', 'string', 'max:255'],
+            'tipo_teste'        => ['required', 'in:pentest,dast,sast,sca,infra,nuclei,reteste,outro'],
+            'ferramenta'        => ['nullable', 'string', 'max:100'],
+            'ambiente'          => ['nullable', 'string', 'max:100'],
+            'data_inicio'       => ['nullable', 'date'],
+            'data_fim'          => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'status'            => ['required', 'in:planejado,em_andamento,concluido,cancelado'],
+            'retest_of_test_id' => ['nullable', 'integer', 'exists:engagement_tests,id'],
+            'notas'             => ['nullable', 'string'],
         ], [
             'titulo.required'        => 'O título do teste é obrigatório.',
             'engagement_id.required' => 'O engajamento é obrigatório.',

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ControleEvento;
+use App\Models\Finding;
 use App\Models\Risco;
 use App\Models\SoftwareModulo;
 use Carbon\Carbon;
@@ -16,7 +17,48 @@ class AlertService
 
         $alerts = [];
 
-        // 1. Controles Atrasados (Crítico)
+        // 1. Regressões de Segurança (Crítico) - DefectDojo
+        $regressoes = Finding::query()
+            ->where('is_regression', true)
+            ->whereNotIn('status', ['fechado', 'falso_positivo'])
+            ->count();
+
+        if ($regressoes > 0) {
+            $alerts[] = [
+                'id' => 'findings_regressoes',
+                'severity' => 'danger',
+                'category' => 'Segurança',
+                'icon' => '🔄',
+                'title' => 'Regressões de Segurança Detectadas',
+                'count' => $regressoes,
+                'description' => "{$regressoes} vulnerabilidade(s) anteriormente mitigadas reapareceram em novos testes.",
+                'action_label' => 'Ver Regressões',
+                'action_url' => route('findings.index', ['tab' => 'regressoes']),
+            ];
+        }
+
+        // 2. Achados de Segurança com SLA Vencido (Crítico) - DefectDojo
+        $findingsVencidos = Finding::query()
+            ->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+            ->whereNotNull('data_limite_correcao')
+            ->where('data_limite_correcao', '<', $today)
+            ->count();
+
+        if ($findingsVencidos > 0) {
+            $alerts[] = [
+                'id' => 'findings_vencidos',
+                'severity' => 'danger',
+                'category' => 'Segurança',
+                'icon' => '🎯',
+                'title' => 'Achados de Segurança com SLA Vencido',
+                'count' => $findingsVencidos,
+                'description' => "{$findingsVencidos} achado(s) de segurança ultrapassaram o tempo limite de correção.",
+                'action_label' => 'Ver Achados',
+                'action_url' => route('findings.index', ['sla_status' => 'atrasado']),
+            ];
+        }
+
+        // 3. Controles Atrasados (Crítico)
         $controlesAtrasados = ControleEvento::query()
             ->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])
             ->where(function ($q) use ($today) {
@@ -43,7 +85,7 @@ class AlertService
             ];
         }
 
-        // 2. Riscos / Vulnerabilidades com SLA Vencido (Crítico)
+        // 4. Riscos / Vulnerabilidades Legadas com SLA Vencido (Crítico)
         $riscosVencidos = Risco::query()
             ->where('status', '!=', 'fechado')
             ->whereNotNull('data_limite_correcao')
@@ -56,15 +98,15 @@ class AlertService
                 'severity' => 'danger',
                 'category' => 'Vulnerabilidades',
                 'icon' => '⚠️',
-                'title' => 'Vulnerabilidades com SLA Vencido',
+                'title' => 'Vulnerabilidades Legadas com SLA Vencido',
                 'count' => $riscosVencidos,
-                'description' => "{$riscosVencidos} vulnerabilidade(s) ultrapassaram o tempo limite de remediação.",
+                'description' => "{$riscosVencidos} vulnerabilidade(s) legada(s) ultrapassaram o tempo limite de remediação.",
                 'action_label' => 'Ver Vulnerabilidades',
                 'action_url' => route('riscos.index', ['sla_status' => 'vencido']),
             ];
         }
 
-        // 3. Controles Bloqueados (Atenção)
+        // 5. Controles Bloqueados (Atenção)
         $bloqueados = ControleEvento::query()
             ->where('status', 'bloqueado')
             ->count();
@@ -83,7 +125,7 @@ class AlertService
             ];
         }
 
-        // 4. Riscos / Vulnerabilidades com SLA Próximo em 7 Dias (Atenção)
+        // 6. Riscos / Vulnerabilidades com SLA Próximo em 7 Dias (Atenção)
         $riscos7Dias = Risco::query()
             ->where('status', '!=', 'fechado')
             ->whereNotNull('data_limite_correcao')
@@ -104,7 +146,7 @@ class AlertService
             ];
         }
 
-        // 5. Controles a Vencer nos Próximos 7 Dias (Informativo / Atenção)
+        // 7. Controles a Vencer nos Próximos 7 Dias (Informativo / Atenção)
         $controles7Dias = ControleEvento::query()
             ->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])
             ->where(function ($q) use ($today, $in7Days) {
@@ -128,7 +170,7 @@ class AlertService
             ];
         }
 
-        // 6. Lacunas de Cobertura de Módulos (Atenção)
+        // 8. Lacunas de Cobertura de Módulos (Atenção)
         $modulosSemControle = SoftwareModulo::query()
             ->where('ativo', true)
             ->whereDoesntHave('atividades')

@@ -17,6 +17,7 @@ class EngagementTest extends Model
         "sca"        => "SCA (Trivy, Grype)",
         "infra"      => "Infraestrutura (Nmap)",
         "nuclei"     => "Nuclei Multi-protocolo",
+        "reteste"    => "Reteste / Validação",
         "outro"      => "Outro",
     ];
 
@@ -44,13 +45,15 @@ class EngagementTest extends Model
         "status",
         "arquivo_scan",
         "formato_scan",
+        "retest_of_test_id",
         "notas",
     ];
 
     protected $casts = [
-        "engagement_id" => "integer",
-        "data_inicio"   => "date",
-        "data_fim"      => "date",
+        "engagement_id"      => "integer",
+        "retest_of_test_id"  => "integer",
+        "data_inicio"        => "date",
+        "data_fim"           => "date",
     ];
 
     public function engagement(): BelongsTo
@@ -61,6 +64,16 @@ class EngagementTest extends Model
     public function findings(): HasMany
     {
         return $this->hasMany(Finding::class, "test_id");
+    }
+
+    public function retestOf(): BelongsTo
+    {
+        return $this->belongsTo(EngagementTest::class, "retest_of_test_id");
+    }
+
+    public function retests(): HasMany
+    {
+        return $this->hasMany(EngagementTest::class, "retest_of_test_id");
     }
 
     public function getTipoLabelAttribute(): string

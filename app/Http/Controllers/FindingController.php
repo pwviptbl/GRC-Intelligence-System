@@ -11,7 +11,19 @@ class FindingController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Finding::with(['test.engagement.software'])->latest();
+        $query = Finding::with(['test.engagement.software', 'duplicadoDe', 'regressedFrom'])->latest();
+
+        $tab = $request->input('tab', 'todos');
+
+        if ($tab === 'abertos') {
+            $query->whereIn('status', ['aberto', 'confirmado', 'em_tratamento']);
+        } elseif ($tab === 'regressoes') {
+            $query->where('is_regression', true);
+        } elseif ($tab === 'duplicados') {
+            $query->where('status', 'duplicado');
+        } elseif ($tab === 'fechados') {
+            $query->where('status', 'fechado');
+        }
 
         if ($request->filled('severidade')) {
             $query->where('severidade', $request->severidade);
@@ -46,16 +58,19 @@ class FindingController extends Controller
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
 
         $stats = [
-            'total'    => Finding::count(),
-            'abertos'  => Finding::whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
-            'criticos' => Finding::where('severidade', 'critico')
-                                 ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado'])->count(),
-            'atrasados'=> Finding::whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
-                                 ->whereNotNull('data_limite_correcao')
-                                 ->whereDate('data_limite_correcao', '<', now())->count(),
+            'total'      => Finding::count(),
+            'abertos'    => Finding::whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
+            'criticos'   => Finding::where('severidade', 'critico')
+                                   ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado'])->count(),
+            'regressoes' => Finding::where('is_regression', true)
+                                   ->whereNotIn('status', ['fechado', 'falso_positivo'])->count(),
+            'duplicados' => Finding::where('status', 'duplicado')->count(),
+            'atrasados'  => Finding::whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+                                   ->whereNotNull('data_limite_correcao')
+                                   ->whereDate('data_limite_correcao', '<', now())->count(),
         ];
 
-        return view('findings.index', compact('findings', 'softwares', 'stats'));
+        return view('findings.index', compact('findings', 'softwares', 'stats', 'tab'));
     }
 
     public function create(Request $request)
@@ -70,8 +85,14 @@ class FindingController extends Controller
         $validated = $this->validateFinding($request);
         $finding   = Finding::create($validated);
 
-        return redirect()->route('engagement-tests.show', $finding->test_id)
-            ->with('success', 'Achado criado com sucesso!');
+        $msg = 'Achado criado com sucesso!';
+        if ($finding->is_regression) {
+            $msg = '⚠️ Atenção: Este achado foi identificado automaticamente como REGRESSÃO de uma vulnerabilidade corrigida anteriormente!';
+        } elseif ($finding->status === 'duplicado') {
+            $msg = 'ℹ️ Este achado foi identificado e marcado automaticamente como DUPLICADO de outro achado em aberto.';
+        }
+
+        return redirect()->route('engagement-tests.show', $finding->test_id)->with('success', $msg);
     }
 
     public function show(Finding $finding)
