@@ -61,6 +61,11 @@ class Software extends Model
         return $this->hasMany(InstanciaCliente::class);
     }
 
+    public function engagements()
+    {
+        return $this->hasMany(Engagement::class);
+    }
+
     public function riscos()
     {
         return $this->hasMany(Risco::class);

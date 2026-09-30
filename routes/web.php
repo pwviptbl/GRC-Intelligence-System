@@ -19,6 +19,9 @@ use App\Http\Controllers\ProcedimentoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\RiscoController;
+use App\Http\Controllers\EngagementController;
+use App\Http\Controllers\EngagementTestController;
+use App\Http\Controllers\FindingController;
 use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\TierPoliticaController;
 use App\Http\Controllers\TreinamentoController;
@@ -183,6 +186,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');
         Route::post('/procedimentos/suggest', [ProcedimentoController::class, 'suggestIA'])->name('procedimentos.suggest');
         Route::post('/riscos/analyze', [RiscoController::class, 'analyzeIA'])->name('riscos.analyze');
+
+        // --- Gestão de Vulnerabilidades DefectDojo-style ---
+        Route::resource('engagements', EngagementController::class);
+        Route::resource('engagement-tests', EngagementTestController::class)->except(['index', 'create']);
+        Route::get('/engagement-tests/create', [EngagementTestController::class, 'create'])->name('engagement-tests.create');
+        Route::resource('findings', FindingController::class);
+        Route::patch('/findings/{finding}/status', [FindingController::class, 'updateStatus'])->name('findings.update_status');
         Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
         Route::post('/treinamentos/{treinamento}/alunos', [TreinamentoController::class, 'addAlunos'])->name('treinamentos.add_alunos');
     });
