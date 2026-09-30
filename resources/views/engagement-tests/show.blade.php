@@ -76,6 +76,61 @@
     </div>
   @endif
 
+
+  {{-- Card de Importação de Scans --}}
+  <div class="data-card" style="padding:20px;margin-bottom:20px;border:1px solid var(--border)" x-data="{ openImport: false }">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-1);display:flex;align-items:center;gap:8px">
+          <span>📥 Importar Arquivo de Scan</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:rgba(0,229,255,0.1);color:var(--cyan)">DefectDojo Parser</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:4px">
+          Suporte automático a <strong>OWASP ZAP, Nikto, Nuclei, Nmap, Burp Suite, Semgrep, Trivy, Bandit e Grype</strong>.
+        </div>
+      </div>
+      <button type="button" @click="openImport = !openImport" class="btn-primary" style="padding:8px 16px;background:rgba(0,229,255,0.15);color:var(--cyan);font-weight:600;border:1px solid rgba(0,229,255,0.4);border-radius:6px;cursor:pointer;font-size:13px">
+        <span x-text="openImport ? '▲ Ocultar Formulário' : '+ Importar Arquivo de Scan'"></span>
+      </button>
+    </div>
+
+    <div x-show="openImport" x-transition style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <form method="POST" action="{{ route('engagement-tests.import', $engagementTest) }}" enctype="multipart/form-data">
+        @csrf
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;align-items:flex-end">
+          <div>
+            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Arquivo do Relatório / Scan *</label>
+            <input type="file" name="arquivo_scan" required class="form-input" style="width:100%;padding:8px;font-size:12px"
+                   accept=".xml,.json,.jsonl,.txt">
+            <span style="font-size:11px;color:var(--text-3);display:block;margin-top:4px">Extensões aceitas: XML, JSON, JSONL ou TXT (máx. 50MB)</span>
+          </div>
+
+          <div>
+            <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Formato / Ferramenta (Opcional - detecção automática)</label>
+            <select name="formato_scan" class="form-input" style="width:100%;padding:9px;font-size:12px">
+              <option value="">🔍 Detectar Automaticamente pelo Conteúdo</option>
+              <option value="zap">OWASP ZAP (XML / JSON)</option>
+              <option value="nuclei">ProjectDiscovery Nuclei (JSON / JSONL)</option>
+              <option value="nmap">Nmap (XML -oX)</option>
+              <option value="nikto">Nikto (XML / Texto)</option>
+              <option value="burp">Burp Suite (XML Export)</option>
+              <option value="semgrep">Semgrep (JSON SAST)</option>
+              <option value="trivy">Aqua Trivy (JSON SCA / Container)</option>
+              <option value="bandit">Bandit (JSON SAST Python)</option>
+              <option value="grype">Anchore Grype (JSON SCA)</option>
+            </select>
+          </div>
+
+          <div>
+            <button type="submit" style="width:100%;padding:10px 20px;background:var(--cyan);color:#0d1628;font-weight:700;border:none;border-radius:6px;cursor:pointer;font-size:13px">
+              ⚡ Processar e Importar Achados
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   {{-- KPIs --}}
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px">
     @php

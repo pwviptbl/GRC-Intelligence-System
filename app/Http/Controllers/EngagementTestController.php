@@ -65,6 +65,39 @@ class EngagementTestController extends Controller
             ->with('success', 'Teste atualizado com sucesso!');
     }
 
+
+    /**
+     * Importa arquivo de scan e converte em Findings.
+     */
+    public function importScan(Request $request, EngagementTest $engagementTest, \App\Services\ScanImportService $importService)
+    {
+        $request->validate([
+            'arquivo_scan' => ['required', 'file', 'max:51200'], // 50MB
+            'formato_scan' => ['nullable', 'string', 'in:zap,nikto,nuclei,nmap,burp,semgrep,trivy,bandit,grype'],
+        ], [
+            'arquivo_scan.required' => 'Selecione o arquivo de scan para importar.',
+            'arquivo_scan.max'      => 'O arquivo de scan não pode ultrapassar 50MB.',
+        ]);
+
+        $file = $request->file('arquivo_scan');
+        $filename = $file->getClientOriginalName();
+        $content = file_get_contents($file->getRealPath());
+
+        $result = $importService->importScan(
+            $engagementTest,
+            $filename,
+            $content,
+            $request->input('formato_scan')
+        );
+
+        if (! $result['success']) {
+            return redirect()->back()->with('error', $result['message']);
+        }
+
+        return redirect()->route('engagement-tests.show', $engagementTest)
+            ->with('success', $result['message']);
+    }
+
     public function destroy(EngagementTest $engagementTest)
     {
         $engagementId = $engagementTest->engagement_id;
