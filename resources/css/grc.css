@@ -6,7 +6,8 @@
       padding: 0;
     }
 
-    :root {
+    :root,
+    html[data-theme="dark"] {
       --bg-base: #070d1a;
       --bg-surface: #0d1628;
       --bg-card: #111e35;
@@ -24,6 +25,88 @@
       --text-3: #4a6090;
       --font: 'Inter', sans-serif;
       --mono: 'JetBrains Mono', monospace;
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, .4);
+    }
+
+    html[data-theme="light"] {
+      --bg-base: #f4f6fa;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-hover: #f1f5f9;
+      --border: #e2e8f0;
+      --border-glow: #cbd5e1;
+      --cyan: #0284c7;
+      --cyan-dim: #0369a1;
+      --green: #10b981;
+      --green-dim: #059669;
+      --yellow: #d97706;
+      --red: #ef4444;
+      --text-1: #0f172a;
+      --text-2: #334155;
+      --text-3: #64748b;
+      --font: 'Inter', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --card-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 1px 2px rgba(0, 0, 0, .04);
+    }
+
+    html[data-theme="light"] .form-input,
+    html[data-theme="light"] .form-select,
+    html[data-theme="light"] .form-textarea {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      color: #0f172a;
+    }
+
+    html[data-theme="light"] .form-select option {
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    html[data-theme="light"] .table-card {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    html[data-theme="light"] .data-table th {
+      background: #f8fafc;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    html[data-theme="light"] .data-table td {
+      border-bottom: 1px solid #f1f5f9;
+      color: #334155;
+    }
+
+    html[data-theme="light"] .data-table tr:hover td {
+      background: #f8fafc;
+    }
+
+    html[data-theme="light"] .modal-overlay {
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    html[data-theme="light"] .modal {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    html[data-theme="light"] .btn-cancel {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
+
+    html[data-theme="light"] .btn-cancel:hover {
+      background: #f1f5f9;
+    }
+
+    html[data-theme="light"] .nav-folder:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    html[data-theme="light"] .sidebar-backdrop {
+      background: rgba(15, 23, 42, 0.5);
     }
 
     html,

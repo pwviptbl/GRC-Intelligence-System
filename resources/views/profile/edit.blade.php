@@ -111,5 +111,71 @@
             </div>
         </form>
     </div>
+
+    <!-- Seção Aparência / Tema -->
+    <div class="card profile-card" style="grid-column: span 2;" x-data="{
+        theme: '{{ $user->theme_preference ?? 'dark' }}',
+        saving: false,
+        saved: false,
+        async setTheme(val) {
+            this.theme = val;
+            this.saving = true;
+            this.saved = false;
+            document.documentElement.setAttribute('data-theme', val);
+            localStorage.setItem('grc_theme', val);
+            try {
+                await fetch('{{ route('profile.theme') }}', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ theme: val })
+                });
+                this.saved = true;
+                setTimeout(() => this.saved = false, 3000);
+            } catch(e) {} finally {
+                this.saving = false;
+            }
+        }
+    }">
+        <h3>
+            🎨 Preferência de Tema (Aparência)
+        </h3>
+        <p style="font-size:12px; color:var(--text-3); margin-top:-10px; margin-bottom:16px">
+            Escolha como prefere visualizar a interface do GRC. A preferência é salva na sua conta e lembrada neste navegador.
+        </p>
+
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px;">
+            <div x-on:click="setTheme('dark')" 
+                 style="cursor:pointer; padding:16px; border-radius:10px; border:2px solid; transition:all .2s;"
+                 :style="theme === 'dark' ? 'border-color:var(--cyan); background:rgba(0, 229, 255, 0.06)' : 'border-color:var(--border); background:var(--bg-base)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+                    <strong style="color:var(--text-1); font-size:14px">🌙 Modo Escuro (Padrão)</strong>
+                    <span x-show="theme === 'dark'" style="color:var(--cyan); font-weight:700">✓ Ativo</span>
+                </div>
+                <p style="font-size:11px; color:var(--text-3); margin:0; line-height:1.4">
+                    Tema escuro clássico em tons de azul marinho profundo (Cyberpunk / Modern SOC), ideal para ambientes de baixa luminosidade.
+                </p>
+            </div>
+
+            <div x-on:click="setTheme('light')" 
+                 style="cursor:pointer; padding:16px; border-radius:10px; border:2px solid; transition:all .2s;"
+                 :style="theme === 'light' ? 'border-color:var(--cyan); background:rgba(0, 229, 255, 0.06)' : 'border-color:var(--border); background:var(--bg-base)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+                    <strong style="color:var(--text-1); font-size:14px">☀️ Modo Claro</strong>
+                    <span x-show="theme === 'light'" style="color:var(--cyan); font-weight:700">✓ Ativo</span>
+                </div>
+                <p style="font-size:11px; color:var(--text-3); margin:0; line-height:1.4">
+                    Tema claro corporativo com alto contraste, excelente legibilidade para relatórios, planilhas e uso durante o dia.
+                </p>
+            </div>
+        </div>
+
+        <div style="margin-top:14px; font-size:12px; color:var(--green); display:none" x-show="saved">
+            ✅ Preferência de tema atualizada na sua conta com sucesso!
+        </div>
+    </div>
 </div>
 @endsection

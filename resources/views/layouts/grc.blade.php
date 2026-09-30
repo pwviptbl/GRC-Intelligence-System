@@ -13,8 +13,15 @@
     rel="stylesheet" />
 
   @vite(['resources/css/grc.css', 'resources/js/app.js'])
+  <script>
+    (function() {
+      const userPref = @json(auth()->user()?->theme_preference);
+      const savedTheme = localStorage.getItem('grc_theme') || userPref || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
   <style>
-    :root {
+    :root, html[data-theme="dark"] {
       --bg-base: #070d1a;
       --bg-surface: #0d1628;
       --border: #1e3258;
@@ -26,6 +33,18 @@
       --green: #00ff9f;
       --yellow: #ffd740;
     }
+    html[data-theme="light"] {
+      --bg-base: #f4f6fa;
+      --bg-surface: #ffffff;
+      --border: #e2e8f0;
+      --text-1: #0f172a;
+      --text-2: #334155;
+      --text-3: #64748b;
+      --cyan: #0284c7;
+      --red: #ef4444;
+      --green: #10b981;
+      --yellow: #d97706;
+    }
     body { background: var(--bg-base); color: var(--text-1); margin: 0; display: flex; font-family: 'Inter', sans-serif; }
     .sidebar {
       height: 100vh !important;
@@ -35,7 +54,7 @@
       top: 0; left: 0;
       width: 220px;
       z-index: 1000;
-      background: #0d1628 !important; 
+      background: var(--bg-surface) !important; 
       border-right: 1px solid var(--border);
     }
     .main { margin-left: 220px !important; flex: 1; min-height: 100vh; background: var(--bg-base); }
@@ -65,9 +84,9 @@
       position: absolute !important;
       bottom: 0 !important;
       width: 100% !important;
-      background: #0d1628 !important;
+      background: var(--bg-surface) !important;
       padding: 15px !important;
-      border-top: 1px solid #1e3258 !important;
+      border-top: 1px solid var(--border) !important;
       box-sizing: border-box;
     }
     .topbar { background: var(--bg-surface); padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; position: relative; }
@@ -161,7 +180,22 @@
     menuAtivosAberto: false,
     menuGovernancaAberto: false,
     menuRiscosAberto: false,
-    view: '{{ request()->route()?->getName() ?? 'dashboard' }}'
+    view: '{{ request()->route()?->getName() ?? 'dashboard' }}',
+    currentTheme: document.documentElement.getAttribute('data-theme') || 'dark',
+    toggleTheme() {
+      this.currentTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', this.currentTheme);
+      localStorage.setItem('grc_theme', this.currentTheme);
+      fetch('{{ route('profile.theme') }}', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ theme: this.currentTheme })
+      }).catch(() => {});
+    }
   }">
 
     <button
@@ -332,6 +366,16 @@
           @hasSection('badge')
             <span class="badge">@yield('badge')</span>
           @endif
+
+          <!-- Botão Alternador de Tema (Modo Claro / Modo Escuro) -->
+          <button type="button" 
+                  x-on:click="toggleTheme()" 
+                  class="btn-topbar-bell" 
+                  :title="currentTheme === 'dark' ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'" 
+                  aria-label="Alternar Tema">
+              <span x-show="currentTheme === 'dark'" style="font-size:16px">☀️</span>
+              <span x-show="currentTheme === 'light'" style="font-size:16px;display:none">🌙</span>
+          </button>
 
           <!-- Central de Notificações e Alertas In-App -->
           <div class="topbar-alerts" x-data="{

@@ -21,6 +21,7 @@ class User extends Authenticatable
         'disponivel_para_tarefas',
         'areas_atuacao',
         'active',
+        'theme_preference',
     ];
 
     protected $hidden = [
