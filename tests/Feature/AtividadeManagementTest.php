@@ -138,6 +138,35 @@ class AtividadeManagementTest extends TestCase
         ]);
     }
 
+    public function test_catalog_activities_remain_generic_and_unlinkable_to_specific_software(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $atividade = Atividade::create([
+            'atividade' => 'Gestão de Dependências (SCA)',
+            'categoria' => 'SCA / Dependências',
+            'esforco' => 'M',
+            'recorrencia_meses' => 6,
+            'ativo' => true,
+        ]);
+
+        $response = $this->put(route('atividades.update', $atividade), [
+            'atividade' => 'Gestão de Dependências (SCA)',
+            'categoria' => 'SCA / Dependências',
+            'esforco' => 'M',
+            'recorrencia_meses' => 6,
+            'ativo' => '1',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        $atividade->refresh();
+        $this->assertNull($atividade->software_id);
+        $this->assertNull($atividade->tier_minimo);
+        $this->assertSame('Gestão de Dependências (SCA)', $atividade->atividade);
+    }
+
     protected function adminUser(): User
     {
         return User::factory()->create([
