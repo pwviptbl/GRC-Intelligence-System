@@ -157,23 +157,31 @@ class Software extends Model
         $latestTest = EngagementTest::whereHas('engagement', function ($q) {
             $q->where('software_id', $this->id);
         })->whereIn('status', ['concluido', 'em_andamento'])
-          ->latest('data_fim')
+          ->orderByRaw('COALESCE(data_fim, data_inicio, created_at) DESC')
           ->first();
 
-        if (! $latestTest || ! $latestTest->data_fim) {
+        $refDate = $latestTest ? ($latestTest->data_fim ?? $latestTest->data_inicio ?? $latestTest->created_at) : null;
+
+        if (! $latestTest || ! $refDate) {
+            $createdAt = $this->created_at ?? now();
+            $diasDesdeCriacao = (int) $createdAt->diffInDays(now());
+            $cicloDias = $cicloMeses * 30;
+            $isAtrasado = $diasDesdeCriacao > $cicloDias;
+
             return [
                 'status'         => 'pendente_primeiro_teste',
-                'label'          => 'Sem Testes',
-                'cor'            => '#ef4444',
-                'dias_restantes' => 0,
-                'atrasado'       => true,
+                'label'          => $isAtrasado ? 'Ciclo Inicial Vencido' : 'Sem Testes',
+                'cor'            => $isAtrasado ? '#ef4444' : '#64748b',
+                'dias_restantes' => $isAtrasado ? ($cicloDias - $diasDesdeCriacao) : null,
+                'atrasado'       => $isAtrasado,
                 'ultimo_teste'   => null,
-                'proximo_teste'  => now()->toDateString(),
-                'descricao'      => 'Nenhum teste de segurança concluído até o momento.',
+                'proximo_teste'  => $isAtrasado ? now()->toDateString() : null,
+                'descricao'      => 'Nenhum teste de segurança registrado até o momento.',
             ];
         }
 
-        $dataLimite = $latestTest->data_fim->copy()->addMonths($cicloMeses);
+        $refCarbon = \Carbon\Carbon::parse($refDate);
+        $dataLimite = $refCarbon->copy()->addMonths($cicloMeses);
         $diasRestantes = (int) now()->startOfDay()->diffInDays($dataLimite->startOfDay(), false);
 
         if ($diasRestantes < 0) {
@@ -183,9 +191,9 @@ class Software extends Model
                 'cor'            => '#ef4444',
                 'dias_restantes' => $diasRestantes,
                 'atrasado'       => true,
-                'ultimo_teste'   => $latestTest->data_fim->format('d/m/Y'),
+                'ultimo_teste'   => $refCarbon->format('d/m/Y'),
                 'proximo_teste'  => $dataLimite->format('d/m/Y'),
-                'descricao'      => "Último teste há mais de {$cicloMeses} meses ({$latestTest->data_fim->format('d/m/Y')}). Novo ciclo vencido.",
+                'descricao'      => "Último teste há mais de {$cicloMeses} meses ({$refCarbon->format('d/m/Y')}). Novo ciclo vencido.",
             ];
         }
 
@@ -196,7 +204,7 @@ class Software extends Model
                 'cor'            => '#eab308',
                 'dias_restantes' => $diasRestantes,
                 'atrasado'       => false,
-                'ultimo_teste'   => $latestTest->data_fim->format('d/m/Y'),
+                'ultimo_teste'   => $refCarbon->format('d/m/Y'),
                 'proximo_teste'  => $dataLimite->format('d/m/Y'),
                 'descricao'      => "Próximo teste deve ocorrer até {$dataLimite->format('d/m/Y')} (ciclo de {$cicloMeses} meses).",
             ];
@@ -208,7 +216,7 @@ class Software extends Model
             'cor'            => '#22c55e',
             'dias_restantes' => $diasRestantes,
             'atrasado'       => false,
-            'ultimo_teste'   => $latestTest->data_fim->format('d/m/Y'),
+            'ultimo_teste'   => $refCarbon->format('d/m/Y'),
             'proximo_teste'  => $dataLimite->format('d/m/Y'),
             'descricao'      => "Ciclo semestral/definido em conformidade até {$dataLimite->format('d/m/Y')}.",
         ];
