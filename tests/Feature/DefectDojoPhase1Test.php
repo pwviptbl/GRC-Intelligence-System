@@ -82,13 +82,13 @@ class DefectDojoPhase1Test extends TestCase
         $test = $this->makeTest($eng);
 
         $critico = $this->makeFinding($test, 'SQLi crítico', 'critico');
-        $this->assertEquals(7, $critico->sla_dias);
+        $this->assertEquals(30, $critico->sla_dias);
         $this->assertNotNull($critico->data_limite_correcao);
         $this->assertNotNull($critico->hash_dedup);
         $this->assertEquals('Crítico', $critico->severidade_label);
 
         $baixo = $this->makeFinding($test, 'Info exposta', 'baixo');
-        $this->assertEquals(180, $baixo->sla_dias);
+        $this->assertEquals(365, $baixo->sla_dias);
     }
 
     /** @test */

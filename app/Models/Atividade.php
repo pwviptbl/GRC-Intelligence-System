@@ -92,4 +92,12 @@ class Atividade extends Model
     {
         return 'Tier '.$this->tier_minimo.' ou mais critico';
     }
+
+    public function findings(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Finding::class, 'finding_atividades', 'atividade_id', 'finding_id')
+            ->withTimestamps()
+            ->withPivot('notas');
+    }
+
 }

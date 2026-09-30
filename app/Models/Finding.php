@@ -10,11 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Finding extends Model
 {
     public const DEFAULT_SLA_DAYS = [
-        "critico"     => 7,
-        "alto"        => 30,
-        "medio"       => 90,
-        "baixo"       => 180,
-        "informativo" => 365,
+        "critico"     => 30,
+        "alto"        => 90,
+        "medio"       => 180,
+        "baixo"       => 365,
+        "informativo" => 730,
     ];
 
     public const SEVERIDADE_OPTIONS = [
@@ -114,9 +114,21 @@ class Finding extends Model
     protected static function booted(): void
     {
         static::creating(function (Finding $finding) {
-            // SLA automático por severidade
+            // SLA automático respeitando a política customizada do software
             if (! $finding->sla_dias && $finding->severidade) {
-                $finding->sla_dias = self::DEFAULT_SLA_DAYS[$finding->severidade] ?? 90;
+                $software = null;
+                if ($finding->relationLoaded('test') && $finding->test) {
+                    $software = $finding->test->relationLoaded('engagement') && $finding->test->engagement
+                        ? $finding->test->engagement->software
+                        : Software::find($finding->test->engagement?->software_id);
+                } elseif ($finding->test_id) {
+                    $test = EngagementTest::with('engagement.software')->find($finding->test_id);
+                    $software = $test?->engagement?->software;
+                }
+
+                $finding->sla_dias = $software
+                    ? $software->getSlaDays($finding->severidade)
+                    : (self::DEFAULT_SLA_DAYS[$finding->severidade] ?? 90);
             }
             if (! $finding->data_limite_correcao && $finding->sla_dias) {
                 $finding->data_limite_correcao = now()->addDays($finding->sla_dias)->toDateString();
@@ -159,6 +171,13 @@ class Finding extends Model
             (string) $softwareId,
         ]);
         return hash("sha256", $str);
+    }
+
+    public function controles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Atividade::class, 'finding_atividades', 'finding_id', 'atividade_id')
+            ->withTimestamps()
+            ->withPivot('notas');
     }
 
     public function test(): BelongsTo

@@ -207,6 +207,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/profile/api-token', [ProfileController::class, 'generateApiToken'])->name('profile.api_token');
         Route::resource('findings', FindingController::class);
         Route::patch('/findings/{finding}/status', [FindingController::class, 'updateStatus'])->name('findings.update_status');
+        Route::post('/findings/{finding}/controles', [FindingController::class, 'syncControles'])->name('findings.sync_controles');
         Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
         Route::post('/treinamentos/{treinamento}/alunos', [TreinamentoController::class, 'addAlunos'])->name('treinamentos.add_alunos');
     });

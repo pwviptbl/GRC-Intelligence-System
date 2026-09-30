@@ -97,8 +97,15 @@ class FindingController extends Controller
 
     public function show(Finding $finding)
     {
-        $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom']);
-        return view('findings.show', compact('finding'));
+        $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom', 'controles']);
+        $softwareId = $finding->test?->engagement?->software_id;
+        $availableControles = \App\Models\Atividade::where(function ($q) use ($softwareId) {
+            if ($softwareId) {
+                $q->where('software_id', $softwareId)->orWhereNull('software_id');
+            }
+        })->where('ativo', true)->orderBy('atividade')->get();
+
+        return view('findings.show', compact('finding', 'availableControles'));
     }
 
     public function edit(Finding $finding)
@@ -137,6 +144,28 @@ class FindingController extends Controller
         $label = Finding::STATUS_OPTIONS[$validated['status']] ?? $validated['status'];
 
         return redirect()->back()->with('success', "Status atualizado para: {$label}");
+    }
+
+
+    /**
+     * Vincula controles de governança ao achado de segurança.
+     */
+    public function syncControles(Request $request, Finding $finding)
+    {
+        $validated = $request->validate([
+            'atividade_ids' => ['nullable', 'array'],
+            'atividade_ids.*' => ['integer', 'exists:atividades,id'],
+            'notas' => ['nullable', 'string'],
+        ]);
+
+        $syncData = [];
+        foreach ($validated['atividade_ids'] ?? [] as $atvId) {
+            $syncData[$atvId] = ['notas' => $validated['notas'] ?? null];
+        }
+
+        $finding->controles()->sync($syncData);
+
+        return redirect()->back()->with('success', 'Controles de governança atualizados com sucesso!');
     }
 
     public function destroy(Finding $finding)

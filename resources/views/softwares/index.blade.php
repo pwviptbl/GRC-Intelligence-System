@@ -76,7 +76,7 @@
         criticidade_operacional_nivel: '',
         criticidade_operacional_detalhe: '',
         autenticacao_nivel: '',
-        autenticacao_detalhe: ''
+        autenticacao_detalhe: '', ciclo_testes_meses: 6, sla_critico_dias: 30, sla_alto_dias: 90, sla_medio_dias: 180, sla_baixo_dias: 365
     },
 
     classificationStyle(level) {
@@ -106,7 +106,7 @@
             criticidade_operacional_nivel: '',
             criticidade_operacional_detalhe: '',
             autenticacao_nivel: '',
-            autenticacao_detalhe: ''
+            autenticacao_detalhe: '', ciclo_testes_meses: 6, sla_critico_dias: 30, sla_alto_dias: 90, sla_medio_dias: 180, sla_baixo_dias: 365
         };
         this.formAction = '{{ route('softwares.store') }}';
         this.showModal = true;
@@ -191,6 +191,7 @@
                     <th>Dados</th>
                     <th>Criticidade</th>
                     <th>Autenticação</th>
+                    <th>Postura & Ciclo</th>
                     <th>Repositório</th>
                     @if($canManageSoftware)
                     <th>Ações</th>
@@ -227,6 +228,18 @@
                     <td style="font-size:12px; color:var(--text-2)">{{ $s->dados_sensibilidade_label }}</td>
                     <td style="font-size:12px; color:var(--text-2)">{{ $s->criticidade_operacional_label }}</td>
                     <td style="font-size:12px; color:var(--text-2)">{{ $s->autenticacao_label }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                            @php($score = $s->security_score)
+                            <span style="padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;background:{{ $score['cor'] }}22;color:{{ $score['cor'] }};border:1px solid {{ $score['cor'] }}55">
+                                {{ $score['grade'] }} · {{ $score['score'] }}pts
+                            </span>
+                            @php($cycle = $s->test_cycle_status)
+                            <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:{{ $cycle['cor'] }}18;color:{{ $cycle['cor'] }};border:1px solid {{ $cycle['cor'] }}33" title="{{ $cycle['descricao'] }}">
+                                {{ $cycle['label'] }}
+                            </span>
+                        </div>
+                    </td>
                     <td>
                         @if($s->git_url)
                             <a href="{{ $s->git_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-size:12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none;" title="{{ $s->git_url }}">
@@ -403,6 +416,38 @@
                         <input type="text" name="autenticacao_detalhe" x-model="form.autenticacao_detalhe" class="form-input" placeholder="Ex: Requer conta de empresa" style="margin-top:8px" />
                     </div>
                 </div>
+
+                <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+                    <h4 style="font-size:13px;font-weight:600;color:var(--cyan);margin:0 0 10px 0">🛡️ Ciclo de Testes & SLAs de Vulnerabilidade</h4>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                        <div style="grid-column:1/-1">
+                            <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Ciclo de Testes Esperado (Auditoria Periódica)</label>
+                            <select name="ciclo_testes_meses" x-model="form.ciclo_testes_meses" class="form-select" style="width:100%">
+                                <option value="6">Semestral (a cada 6 meses - Recomendado)</option>
+                                <option value="12">Anual (a cada 12 meses)</option>
+                                <option value="3">Trimestral (a cada 3 meses)</option>
+                                <option value="0">Sob Demanda (sem periodicidade fixa)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">SLA Crítico (dias)</label>
+                            <input type="number" name="sla_critico_dias" x-model="form.sla_critico_dias" class="form-input" min="1" placeholder="30" />
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">SLA Alto (dias)</label>
+                            <input type="number" name="sla_alto_dias" x-model="form.sla_alto_dias" class="form-input" min="1" placeholder="90" />
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">SLA Médio (dias)</label>
+                            <input type="number" name="sla_medio_dias" x-model="form.sla_medio_dias" class="form-input" min="1" placeholder="180" />
+                        </div>
+                        <div>
+                            <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">SLA Baixo (dias)</label>
+                            <input type="number" name="sla_baixo_dias" x-model="form.sla_baixo_dias" class="form-input" min="1" placeholder="365" />
+                        </div>
+                    </div>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" @click="showModal = false">Cancelar</button>
                     <button type="submit" class="btn-save" x-text="editMode ? 'Atualizar Software' : 'Salvar Software'"></button>

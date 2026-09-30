@@ -157,6 +157,79 @@
   </div>
   @endif
 
+
+  {{-- Controles de Governança Afetados (Ponte GRC ↔ Vulnerabilidades) --}}
+  <div class="data-card" style="padding:20px;margin-bottom:20px" x-data="{ openAddControle: false }">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-1);display:flex;align-items:center;gap:8px">
+          <span>🛡️ Controles de Governança Afetados (ISO / CIS / LGPD)</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:rgba(0,229,255,0.1);color:var(--cyan)">Ponte GRC</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:2px">
+          Controles do catálogo institucional cuja eficácia fica comprometida enquanto esta vulnerabilidade estiver aberta.
+        </div>
+      </div>
+      @if(isset($availableControles) && $availableControles->isNotEmpty())
+        <button type="button" @click="openAddControle = !openAddControle"
+                style="padding:6px 12px;background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.3);border-radius:6px;cursor:pointer;font-size:12px">
+          <span x-text="openAddControle ? '✕ Fechar Seleção' : '+ Vincular Controles'"></span>
+        </button>
+      @endif
+    </div>
+
+    {{-- Lista de Controles Vinculados --}}
+    @if($finding->controles->isNotEmpty())
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:14px">
+        @foreach($finding->controles as $controle)
+          <div style="padding:12px 14px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-size:11px;padding:1px 6px;border-radius:4px;background:rgba(239,68,68,0.2);color:#ef4444;font-weight:600">
+                COMPROMETIDO
+              </span>
+              <span style="font-size:10px;color:var(--text-3)">{{ $controle->categoria ?: 'Controle' }}</span>
+            </div>
+            <div style="font-size:13px;font-weight:600;color:var(--text-1);margin-top:6px">{{ $controle->atividade }}</div>
+            @if($controle->modulo)
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px">Módulo: {{ $controle->modulo }}</div>
+            @endif
+          </div>
+        @endforeach
+      </div>
+    @else
+      <div style="padding:16px;background:rgba(255,255,255,0.02);border:1px dashed var(--border);border-radius:6px;font-size:12px;color:var(--text-3);text-align:center">
+        Nenhum controle de conformidade/governança vinculado a este achado técnico.
+      </div>
+    @endif
+
+    {{-- Formulário de Vínculo --}}
+    <div x-show="openAddControle" x-transition style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <form method="POST" action="{{ route('findings.sync_controles', $finding) }}">
+        @csrf
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Selecione os controles de governança impactados por este achado:</label>
+        <div style="max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:12px">
+          @if(isset($availableControles))
+            @foreach($availableControles as $ctrl)
+              <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;color:var(--text-2);cursor:pointer">
+                <input type="checkbox" name="atividade_ids[]" value="{{ $ctrl->id }}"
+                       {{ $finding->controles->contains('id', $ctrl->id) ? 'checked' : '' }}>
+                <span><strong>[{{ $ctrl->categoria ?: 'Geral' }}]</strong> {{ $ctrl->atividade }}</span>
+              </label>
+            @endforeach
+          @endif
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="submit" style="padding:8px 18px;background:var(--cyan);color:#0d1628;font-weight:600;border:none;border-radius:6px;cursor:pointer;font-size:12px">
+            Salvar Vínculos de Governança
+          </button>
+          <button type="button" @click="openAddControle = false" style="padding:8px 14px;background:transparent;color:var(--text-3);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   @if($finding->remediacao_sugerida)
   <div class="data-card" style="padding:20px;margin-bottom:20px">
     <div style="font-size:14px;font-weight:600;color:var(--text-1);margin-bottom:12px">🛡️ Remediação Sugerida</div>

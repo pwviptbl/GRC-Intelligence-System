@@ -63,6 +63,12 @@ class SoftwareController extends Controller
             'criticidade_operacional_detalhe' => 'nullable|string|max:255',
             'autenticacao_nivel' => 'nullable|integer|in:1,2,3',
             'autenticacao_detalhe' => 'nullable|string|max:255',
+            'ciclo_testes_meses' => 'nullable|integer|in:0,3,6,12',
+            'sla_critico_dias' => 'nullable|integer|min:1',
+            'sla_alto_dias' => 'nullable|integer|min:1',
+            'sla_medio_dias' => 'nullable|integer|min:1',
+            'sla_baixo_dias' => 'nullable|integer|min:1',
+            'sla_informativo_dias' => 'nullable|integer|min:1',
         ]);
     }
 
