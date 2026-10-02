@@ -261,7 +261,7 @@
                                                     <div style="margin-bottom:3px;">
                                                         <span style="color:var(--text-1); font-weight:600;">{{ $activity['atividade'] }}</span>
                                                         @if(!empty($activity['categoria']))
-                                                            <span class="badge" style="font-size:9px; padding:1px 5px; background:rgba(168,85,247,.1); color:#c084fc; border-color:rgba(168,85,247,.2);">{{ $activity['categoria'] }}</span>
+                                                            <span class="category-badge" style="font-size:9px; padding:1px 6px;">{{ $activity['categoria'] }}</span>
                                                         @endif
                                                         <span style="color:var(--text-3); font-size:10px;">· a cada {{ $activity['recorrencia_meses'] }} meses</span>
                                                     </div>

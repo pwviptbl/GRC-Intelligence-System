@@ -51,6 +51,19 @@
         margin: 2px 4px 2px 0;
         white-space: nowrap;
     }
+    .category-badge {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.3;
+        background: rgba(168, 85, 247, 0.12);
+        color: #c084fc;
+        border: 1px solid rgba(168, 85, 247, 0.28);
+    }
 
     @media (max-width: 1180px) {
         .activities-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -275,7 +288,7 @@
             <thead>
                 <tr>
                     <th>Controle / Atividade</th>
-                    <th>Categoria</th>
+                    <th style="white-space: nowrap;">Categoria</th>
                     <th>Esforço</th>
                     <th>Recorrência</th>
                     <th>Módulos & Softwares Vinculados</th>
@@ -298,9 +311,9 @@
                                 <div style="font-size:10px; color:var(--text-3); margin-top:3px; opacity:.8;">{{ Str::limit($atividade->observacoes, 75) }}</div>
                             @endif
                         </td>
-                        <td>
+                        <td style="white-space: nowrap;">
                             @if($atividade->categoria)
-                                <span class="badge" style="background:rgba(168,85,247,.1); color:#c084fc; border-color:rgba(168,85,247,.25);">
+                                <span class="category-badge">
                                     {{ $atividade->categoria }}
                                 </span>
                             @else
@@ -413,7 +426,7 @@
                 </div>
                 <div class="activity-mobile-meta">
                     @if($atividade->categoria)
-                        <span class="badge" style="background:rgba(168,85,247,.1); color:#c084fc; border-color:rgba(168,85,247,.25);">{{ $atividade->categoria }}</span>
+                        <span class="category-badge">{{ $atividade->categoria }}</span>
                     @endif
                     <span>Esforço: {{ $atividade->esforco }}</span>
                     <span>A cada {{ $atividade->recorrencia_meses }} meses</span>

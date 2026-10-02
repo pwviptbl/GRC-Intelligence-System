@@ -247,13 +247,32 @@
     }
 
     .badge {
-      padding: 4px 12px;
-      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      padding: 3px 10px;
+      border-radius: 6px;
       font-size: 11px;
       font-weight: 600;
       background: rgba(0, 229, 255, .1);
       color: var(--cyan);
       border: 1px solid rgba(0, 229, 255, .25);
+    }
+
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.3;
+      background: rgba(168, 85, 247, .12);
+      color: #c084fc;
+      border: 1px solid rgba(168, 85, 247, .28);
     }
 
     .content {
