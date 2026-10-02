@@ -49,7 +49,7 @@
             <div class="stat-label" style="color:var(--text-3)">Total Achados</div>
             <div class="stat-value" style="color:var(--text-1)">{{ $stats['total'] }}</div>
         </a>
-        <a href="{{ route('findings.index', ['severidade' => 'critico']) }}" class="stat-card" style="background:rgba(255,83,112,.08); border:1px solid rgba(255,83,112,{{ request('severidade') === 'critico' ? '.7' : '.25' }}); text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s; box-shadow:{{ request('severidade') === 'critico' ? '0 0 12px rgba(255,83,112,.3)' : 'none' }};" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='rgba(255,83,112,.6)'" onmouseout="this.style.transform='translateY(0)';this.style.borderColor='rgba(255,83,112,{{ request('severidade') === 'critico' ? '.7' : '.25' }})'" title="Clique para filtrar apenas os Achados Críticos">
+        <a href="{{ route('findings.index', ['tab' => 'abertos', 'severidade' => 'critico']) }}" class="stat-card" style="background:rgba(255,83,112,.08); border:1px solid rgba(255,83,112,{{ request('severidade') === 'critico' ? '.7' : '.25' }}); text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s; box-shadow:{{ request('severidade') === 'critico' ? '0 0 12px rgba(255,83,112,.3)' : 'none' }};" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='rgba(255,83,112,.6)'" onmouseout="this.style.transform='translateY(0)';this.style.borderColor='rgba(255,83,112,{{ request('severidade') === 'critico' ? '.7' : '.25' }})'" title="Clique para filtrar apenas os Achados Críticos">
             <div class="stat-label" style="color:var(--red); font-weight:700;">🔴 Críticos (Filtrar)</div>
             <div class="stat-value" style="color:var(--red)">{{ $stats['criticos'] }}</div>
         </a>
@@ -73,7 +73,7 @@
 
     {{-- Abas de Navegação Estilo DefectDojo --}}
     @php
-      $currentTab = request('tab', 'todos');
+      $currentTab = request('tab', 'abertos');
       $tabs = [
         'todos'      => ['label' => 'Todos os Achados', 'count' => $stats['total']],
         'abertos'    => ['label' => 'Em Aberto', 'count' => $stats['abertos']],

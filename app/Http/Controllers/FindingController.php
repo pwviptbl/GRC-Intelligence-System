@@ -14,7 +14,7 @@ class FindingController extends Controller
     {
         $query = Finding::with(['test.engagement.software', 'duplicadoDe', 'regressedFrom'])->latest();
 
-        $tab = $request->input('tab', 'todos');
+        $tab = $request->input('tab', 'abertos');
 
         if ($tab === 'abertos') {
             $query->whereIn('status', ['aberto', 'confirmado', 'em_tratamento']);

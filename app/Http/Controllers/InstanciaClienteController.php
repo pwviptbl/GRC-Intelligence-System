@@ -112,6 +112,7 @@ class InstanciaClienteController extends Controller
 
         // Buscar achados vinculados a este software/ambiente
         $findings = \App\Models\Finding::query()
+            ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado'])
             ->whereHas('test', function ($q) use ($instancia) {
                 $q->where('ambiente', 'like', "%{$instancia->nome_ambiente}%")
                   ->orWhereHas('engagement', fn ($eq) => $eq->where('software_id', $instancia->software_id));
