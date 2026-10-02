@@ -36,8 +36,8 @@ class WellKnownMcpController extends Controller
             'scopes_supported'      => [$scopeRead, $scopeWrite],
             'bearer_methods_supported' => ['header'],
             'resource_documentation' => $appUrl.'/.well-known/oauth-protected-resource',
-            'resource_name'          => 'GRC Intelligence System MCP API',
-            'resource_description'   => 'API MCP do GRC Intelligence System. Ferramentas de leitura exigem escopo '
+            'resource_name'          => 'Bastion Cyber MCP API',
+            'resource_description'   => 'API MCP do Bastion Cyber. Ferramentas de leitura exigem escopo '
                 .$scopeRead.'; ferramentas de escrita exigem escopo '.$scopeWrite.'.',
         ];
 

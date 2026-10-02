@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GRC Intelligence System</title>
+  <title>{{ config('app.name', 'Bastion Cyber') }}</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
-  <meta name="description" content="Sistema de Governança, Risco e Conformidade" />
+  <meta name="description" content="Bastion Cyber — Plataforma de Segurança de Aplicações, Perímetro e Governança" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -212,9 +212,15 @@
     <aside class="sidebar" :class="{ 'mobile-open': sidebarOpen }">
       <button type="button" class="sidebar-close" @click="sidebarOpen = false" aria-label="Fechar menu" title="Fechar menu">×</button>
       <div class="logo">
-        <a href="{{ route('dashboard') }}" style="text-decoration:none; color:inherit; display:block; transition:opacity .15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Ir para o Dashboard (Início)">
-          <h1 style="margin:0; font-size:18px; font-weight:800; color:var(--cyan); letter-spacing:0.5px;">GRC</h1>
-          <p style="margin:2px 0 0; font-size:11px; color:var(--text-3); text-decoration:none;">{{ config('app.company') }}</p>
+        <a href="{{ route('dashboard') }}" style="text-decoration:none; color:inherit; display:block; transition:opacity .15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'" title="Ir para o Dashboard (Início)">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <span style="font-size:22px; filter:drop-shadow(0 0 8px rgba(0,229,255,0.4));">🛡️</span>
+            <div>
+              <div style="font-size:17px; font-weight:900; color:var(--cyan); letter-spacing:1px; line-height:1.1; font-family:var(--font);">BASTION</div>
+              <div style="font-size:9px; color:var(--text-3); text-transform:uppercase; letter-spacing:1.8px; font-weight:700;">CYBER</div>
+            </div>
+          </div>
+          <p style="margin:6px 0 0; font-size:10px; color:var(--text-3); text-decoration:none; border-top:1px solid rgba(255,255,255,0.06); padding-top:4px;">{{ config('app.company') }}</p>
         </a>
       </div>
       <nav @click="if ($event.target.closest('a') && window.innerWidth <= 900) sidebarOpen = false">

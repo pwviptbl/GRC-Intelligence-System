@@ -119,7 +119,7 @@
 </head>
 <body>
   <div class="footer">
-    GRC Intelligence System — Relatório de Vulnerabilidades e Gestão de Segurança da Informação · Gerado em {{ date('d/m/Y H:i') }}
+    Bastion Cyber — Relatório de Segurança e Vulnerabilidades e Gestão de Segurança da Informação · Gerado em {{ date('d/m/Y H:i') }}
   </div>
 
   <table class="header-table">

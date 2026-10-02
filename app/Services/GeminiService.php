@@ -230,7 +230,7 @@ class GeminiService
         $tools = json_encode($this->toolRegistry->listTools(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         return <<<EOD
-Você é o assistente de IA do **GRC Intelligence System**, ferramenta da $company para Governança, Risco e Conformidade.
+Você é o assistente de IA do **Bastion Cyber**, plataforma da $company para Segurança de Aplicações, Perímetro e Governança.
 Seu papel é ajudar o Analista de Segurança a consultar dados GRC, criar registros pelas ferramentas permitidas e produzir análises de risco.
 
 ## Ferramentas disponíveis

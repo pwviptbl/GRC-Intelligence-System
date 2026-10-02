@@ -69,7 +69,7 @@ class GrcMcpProtocol
             ],
             'serverInfo' => [
                 'name' => 'grc-intelligence-system',
-                'title' => 'GRC Intelligence System',
+                'title' => 'Bastion Cyber',
                 'version' => $this->configValue('app.version', 'dev'),
                 'websiteUrl' => $this->configValue('app.url'),
             ],
