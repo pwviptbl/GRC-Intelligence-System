@@ -130,6 +130,61 @@
 </style>
 @endif
 
+<!-- Card Postura de Segurança & Conformidade da Instância -->
+@php
+    $score = $instancia->security_score;
+    $cycle = $instancia->test_cycle_status;
+@endphp
+<div class="easm-card" style="border-left: 4px solid {{ $score['cor'] }}; margin-bottom: 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:16px;">
+        <div>
+            <h4 style="margin:0 0 6px 0;">
+                🛡️ Postura de Segurança & Ciclo de Auditoria da Instância
+            </h4>
+            <div style="font-size:12px; color:var(--text-3);">
+                Avaliação combinada de vulnerabilidades de código (branch <code style="color:#a78bfa;">{{ $instancia->branch ?: 'main' }}</code>) e superfície perimétrica (SSL + portas).
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div style="text-align:right;">
+                <div style="font-size:10px; color:var(--text-3); text-transform:uppercase; font-weight:700;">Score Integrado</div>
+                <div style="font-size:22px; font-weight:800; color:{{ $score['cor'] }}; line-height:1.1;">
+                    {{ $score['grade'] }} · {{ $score['score'] }}<span style="font-size:13px; font-weight:500;">pts</span>
+                </div>
+            </div>
+            <div style="height:34px; width:1px; background:rgba(255,255,255,0.1);"></div>
+            <div>
+                <span style="display:inline-block; font-size:12px; font-weight:600; padding:4px 10px; border-radius:6px; background:{{ $cycle['cor'] }}22; color:{{ $cycle['cor'] }}; border:1px solid {{ $cycle['cor'] }}44;">
+                    {{ $cycle['label'] }}
+                </span>
+                <div style="font-size:10px; color:var(--text-3); margin-top:3px;">
+                    Ciclo de Testes ({{ $instancia->software?->ciclo_testes_meses ?? 6 }}m)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="padding:12px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; font-size:12px;">
+        <div style="color:var(--text-2); margin-bottom:6px;">
+            <strong>Diagnóstico de Conformidade:</strong> {{ $cycle['descricao'] }}
+        </div>
+        @if(!empty($score['penalidades']))
+            <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.08);">
+                <div style="color:var(--text-3); font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Deduções Ativas na Nota:</div>
+                <ul style="margin:0; padding-left:18px; color:var(--red); font-size:11px; line-height:1.6;">
+                    @foreach($score['penalidades'] as $pen)
+                        <li>{{ $pen }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @else
+            <div style="color:var(--green); font-size:11px; margin-top:4px;">
+                ✓ Nenhuma dedução ativa. Todas as validações técnicas e perimétricas estão em conformidade.
+            </div>
+        @endif
+    </div>
+</div>
+
 <!-- Grid de Resumo de Superfície -->
 <div class="easm-card">
     <h4>📋 Perfil de Exposição e Infraestrutura</h4>
@@ -266,6 +321,70 @@
             <tr>
                 <td colspan="5" style="text-align: center; color: var(--text-3); padding: 25px;">
                     Nenhuma porta aberta detectada nas últimas varreduras.
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
+<!-- Card Testes de Segurança Aplicáveis -->
+<div class="easm-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+        <h4 style="margin:0;">🧪 Baterias de Testes & Pentests Cobertos</h4>
+        <a href="{{ route('engagements.create', ['software_id' => $instancia->software_id]) }}" class="btn-secondary" style="font-size:11px; padding:4px 10px; text-decoration:none;">
+            + Novo Engajamento
+        </a>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Engajamento / Teste</th>
+                <th>Tipo</th>
+                <th>Branch Validada</th>
+                <th>Período</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($applicableTests ?? [] as $test)
+            <tr>
+                <td style="font-weight:600; color:var(--text-1);">
+                    <a href="{{ route('engagements.show', $test->engagement_id) }}" style="color:var(--cyan); text-decoration:none;">
+                        {{ $test->engagement?->nome ?? 'Engajamento #' . $test->engagement_id }}
+                    </a>
+                    <div style="font-size:11px; color:var(--text-3); font-weight:400; margin-top:2px;">
+                        {{ $test->titulo }}
+                    </div>
+                </td>
+                <td style="text-transform:uppercase; font-size:11px; font-weight:600; color:var(--text-2);">
+                    {{ $test->tipo_teste }}
+                </td>
+                <td>
+                    <span class="branch-badge">{{ $test->engagement?->branch_testada ?: ($test->engagement?->versao_testada ?: 'main') }}</span>
+                    @if($test->engagement?->auto_propagar_branch)
+                        <span style="font-size:10px; color:var(--green); margin-left:4px;" title="Propagado automaticamente por correspondência de branch">✓ branch</span>
+                    @endif
+                </td>
+                <td style="font-size:11px; color:var(--text-3);">
+                    {{ $test->data_fim ? $test->data_fim->format('d/m/Y') : ($test->data_inicio ? $test->data_inicio->format('d/m/Y') : $test->created_at->format('d/m/Y')) }}
+                </td>
+                <td>
+                    <span style="font-size:11px; font-weight:600; color:{{ $test->status === 'concluido' ? 'var(--green)' : ($test->status === 'em_andamento' ? 'var(--cyan)' : 'var(--text-3)') }};">
+                        {{ ucfirst($test->status) }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ route('engagement-tests.show', $test) }}" style="color:#38bdf8; font-size:12px; text-decoration:none;">
+                        Ver Teste ➔
+                    </a>
+                </td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="6" style="text-align:center; color:var(--text-3); padding:20px;">
+                    Nenhum teste de segurança registrado para a branch <code>{{ $instancia->branch }}</code> deste ambiente.
                 </td>
             </tr>
             @endforelse

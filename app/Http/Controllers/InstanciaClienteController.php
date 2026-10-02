@@ -110,18 +110,20 @@ class InstanciaClienteController extends Controller
     {
         $instancia->load(['cliente', 'software', 'latestSslCert', 'portasServicos']);
 
-        // Buscar achados vinculados a este software/ambiente
-        $findings = \App\Models\Finding::query()
+        // Buscar achados e testes específicos aplicáveis a esta instância/branch
+        $findings = $instancia->applicableFindings()
             ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado'])
-            ->whereHas('test', function ($q) use ($instancia) {
-                $q->where('ambiente', 'like', "%{$instancia->nome_ambiente}%")
-                  ->orWhereHas('engagement', fn ($eq) => $eq->where('software_id', $instancia->software_id));
-            })
             ->latest()
-            ->take(15)
+            ->take(20)
             ->get();
 
-        return view('instancias.show', compact('instancia', 'findings'));
+        $applicableTests = $instancia->applicableTests()
+            ->with(['engagement'])
+            ->latest()
+            ->take(10)
+            ->get();
+
+        return view('instancias.show', compact('instancia', 'findings', 'applicableTests'));
     }
 
     public function scan(InstanciaCliente $instancia)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Engagement;
 use App\Models\Software;
+use App\Models\InstanciaCliente;
 use Illuminate\Http\Request;
 
 class EngagementController extends Controller
@@ -40,21 +41,30 @@ class EngagementController extends Controller
     {
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
         $selectedSoftwareId = $request->input('software_id');
-        return view('engagements.create', compact('softwares', 'selectedSoftwareId'));
+        $instancias = InstanciaCliente::with(['cliente', 'software'])->orderBy('nome_ambiente')->get();
+        return view('engagements.create', compact('softwares', 'selectedSoftwareId', 'instancias'));
     }
 
     public function store(Request $request)
     {
         $validated = $this->validateEngagement($request);
-        Engagement::create($validated);
+        $instanciaIds = $request->input('instancia_ids', []);
+        $validated['auto_propagar_branch'] = $request->boolean('auto_propagar_branch', true);
 
-        return redirect()->route('engagements.index')
-            ->with('success', 'Engajamento criado com sucesso!');
+        $engagement = Engagement::create($validated);
+
+        if (!empty($instanciaIds)) {
+            $engagement->instancias()->sync($instanciaIds);
+        }
+        $engagement->syncInstanciasPorBranch();
+
+        return redirect()->route('engagements.show', $engagement)
+            ->with('success', 'Engajamento criado e propagado para os ambientes com sucesso!');
     }
 
     public function show(Engagement $engagement)
     {
-        $engagement->load(['software', 'tests.findings']);
+        $engagement->load(['software', 'tests.findings', 'instancias.cliente']);
 
         $findingStats = [
             'total'     => 0,
@@ -88,17 +98,25 @@ class EngagementController extends Controller
 
     public function edit(Engagement $engagement)
     {
+        $engagement->load('instancias');
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
-        return view('engagements.edit', compact('engagement', 'softwares'));
+        $instancias = InstanciaCliente::with(['cliente', 'software'])->orderBy('nome_ambiente')->get();
+        return view('engagements.edit', compact('engagement', 'softwares', 'instancias'));
     }
 
     public function update(Request $request, Engagement $engagement)
     {
         $validated = $this->validateEngagement($request);
+        $instanciaIds = $request->input('instancia_ids', []);
+        $validated['auto_propagar_branch'] = $request->boolean('auto_propagar_branch', true);
+
         $engagement->update($validated);
 
+        $engagement->instancias()->sync($instanciaIds);
+        $engagement->syncInstanciasPorBranch();
+
         return redirect()->route('engagements.show', $engagement)
-            ->with('success', 'Engajamento atualizado com sucesso!');
+            ->with('success', 'Engajamento e ambientes vinculados atualizados com sucesso!');
     }
 
     public function destroy(Engagement $engagement)
@@ -111,17 +129,21 @@ class EngagementController extends Controller
     protected function validateEngagement(Request $request): array
     {
         return $request->validate([
-            'software_id'    => ['required', 'integer', 'exists:software,id'],
-            'nome'           => ['required', 'string', 'max:255'],
-            'tipo'           => ['required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
-            'descricao'      => ['nullable', 'string'],
-            'versao_testada' => ['nullable', 'string', 'max:100'],
-            'ambiente'       => ['nullable', 'string', 'max:100'],
-            'lead'           => ['nullable', 'string', 'max:255'],
-            'data_inicio'    => ['nullable', 'date'],
-            'data_fim'       => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'status'         => ['required', 'in:planejado,ativo,concluido,cancelado'],
-            'notas'          => ['nullable', 'string'],
+            'software_id'          => ['required', 'integer', 'exists:software,id'],
+            'nome'                 => ['required', 'string', 'max:255'],
+            'tipo'                 => ['required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
+            'descricao'            => ['nullable', 'string'],
+            'versao_testada'       => ['nullable', 'string', 'max:100'],
+            'branch_testada'       => ['nullable', 'string', 'max:100'],
+            'auto_propagar_branch' => ['nullable', 'boolean'],
+            'instancia_ids'        => ['nullable', 'array'],
+            'instancia_ids.*'      => ['integer', 'exists:instancia_clientes,id'],
+            'ambiente'             => ['nullable', 'string', 'max:100'],
+            'lead'                 => ['nullable', 'string', 'max:255'],
+            'data_inicio'          => ['nullable', 'date'],
+            'data_fim'             => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'status'               => ['required', 'in:planejado,ativo,concluido,cancelado'],
+            'notas'                => ['nullable', 'string'],
         ], [
             'nome.required'        => 'O nome do engajamento é obrigatório.',
             'software_id.required' => 'Selecione o sistema (ativo) para este engajamento.',

@@ -191,12 +191,38 @@
                     <span style="font-family:var(--mono); color:var(--text-1);">v{{ $engagement->versao_testada }}</span>
                 </div>
             @endif
+            @if($engagement->branch_testada)
+                <div class="engagement-meta-chip">
+                    <span>🌿 Branch Testada:</span>
+                    <span class="branch-badge">{{ $engagement->branch_testada }}</span>
+                    @if($engagement->auto_propagar_branch)
+                        <span style="font-size:10px; color:var(--green); font-weight:600;" title="Propagação automática ativa para todos os ambientes na mesma branch">⚡ Auto-Propagação Ativa</span>
+                    @endif
+                </div>
+            @endif
             @if($engagement->ambiente)
                 <div class="engagement-meta-chip">
-                    <span>🌐 Ambiente:</span>
+                    <span>🌐 Referência:</span>
                     <span style="color:var(--text-1);">{{ $engagement->ambiente }}</span>
                 </div>
             @endif
+            @php
+                $instanciasCobertas = $engagement->instancias;
+                if ($engagement->auto_propagar_branch && !empty($engagement->branch_testada)) {
+                    $autoInstancias = \App\Models\InstanciaCliente::with('cliente')
+                        ->where('software_id', $engagement->software_id)
+                        ->where('branch', $engagement->branch_testada)
+                        ->get();
+                    $instanciasCobertas = $instanciasCobertas->merge($autoInstancias)->unique('id');
+                }
+                $instanciasTooltip = $instanciasCobertas->map(fn($i) => ($i->cliente?->nome ?? 'Cliente') . ' (' . $i->nome_ambiente . ' [' . ($i->branch ?: 'main') . '])')->join(' | ');
+            @endphp
+            <div class="engagement-meta-chip" title="{{ $instanciasTooltip ?: 'Nenhum ambiente vinculado' }}">
+                <span>👥 Ambientes Cobertos:</span>
+                <strong style="color:{{ $instanciasCobertas->isNotEmpty() ? 'var(--green)' : 'var(--text-3)' }};">
+                    {{ $instanciasCobertas->count() }} ambiente(s)
+                </strong>
+            </div>
         </div>
     </div>
 

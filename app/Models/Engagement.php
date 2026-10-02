@@ -39,6 +39,8 @@ class Engagement extends Model
         "tipo",
         "descricao",
         "versao_testada",
+        "branch_testada",
+        "auto_propagar_branch",
         "ambiente",
         "lead",
         "data_inicio",
@@ -51,6 +53,7 @@ class Engagement extends Model
         "data_inicio" => "date",
         "data_fim"    => "date",
         "software_id" => "integer",
+        "auto_propagar_branch" => "boolean",
     ];
 
     public function software(): BelongsTo
@@ -61,6 +64,23 @@ class Engagement extends Model
     public function tests(): HasMany
     {
         return $this->hasMany(EngagementTest::class, "engagement_id");
+    }
+
+    public function instancias(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(InstanciaCliente::class, 'engagement_instancias', 'engagement_id', 'instancia_cliente_id')->withTimestamps();
+    }
+
+    public function syncInstanciasPorBranch(): void
+    {
+        if ($this->auto_propagar_branch && !empty($this->branch_testada)) {
+            $instanciaIds = InstanciaCliente::where('software_id', $this->software_id)
+                ->where('branch', $this->branch_testada)
+                ->pluck('id')
+                ->toArray();
+
+            $this->instancias()->syncWithoutDetaching($instanciaIds);
+        }
     }
 
     public function findingsCount(): int

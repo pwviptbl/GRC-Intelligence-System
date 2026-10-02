@@ -225,6 +225,7 @@
                     <th>Exposição</th>
                     <th>Certificado SSL</th>
                     <th>Portas Abertas</th>
+                    <th style="white-space:nowrap;">Postura & Testes</th>
                     <th>Último Scan</th>
                     @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <th style="text-align: right;">Ações</th>
@@ -312,6 +313,23 @@
                         @else
                             <span style="color: var(--text-3); font-size: 11px;">Nenhuma porta detectada</span>
                         @endif
+                    </td>
+
+                    <!-- Postura & Testes -->
+                    <td style="white-space: nowrap;">
+                        @php
+                            $score = $i->security_score;
+                            $cycle = $i->test_cycle_status;
+                            $tooltip = !empty($score['penalidades']) ? implode(" | ", $score['penalidades']) : 'Ambiente em plena conformidade técnica e perimétrica.';
+                        @endphp
+                        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                            <span style="padding:2px 7px; border-radius:4px; font-size:11px; font-weight:700; background:{{ $score['cor'] }}22; color:{{ $score['cor'] }}; border:1px solid {{ $score['cor'] }}55;" title="{{ $tooltip }}">
+                                {{ $score['grade'] }} · {{ $score['score'] }}pts
+                            </span>
+                            <span style="font-size:10px; padding:2px 6px; border-radius:4px; background:{{ $cycle['cor'] }}18; color:{{ $cycle['cor'] }}; border:1px solid {{ $cycle['cor'] }}33;" title="{{ $cycle['descricao'] }}">
+                                {{ $cycle['label'] }}
+                            </span>
+                        </div>
                     </td>
 
                     <!-- Último Scan -->
