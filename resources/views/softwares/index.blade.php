@@ -191,7 +191,6 @@
                     <th>Dados</th>
                     <th>Criticidade</th>
                     <th>Autenticação</th>
-                    <th>Postura & Ciclo</th>
                     <th>Repositório</th>
                     @if($canManageSoftware)
                     <th>Ações</th>
@@ -228,18 +227,6 @@
                     <td style="font-size:12px; color:var(--text-2)">{{ $s->dados_sensibilidade_label }}</td>
                     <td style="font-size:12px; color:var(--text-2)">{{ $s->criticidade_operacional_label }}</td>
                     <td style="font-size:12px; color:var(--text-2)">{{ $s->autenticacao_label }}</td>
-                    <td>
-                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                            @php($score = $s->security_score)
-                            <span style="padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;background:{{ $score['cor'] }}22;color:{{ $score['cor'] }};border:1px solid {{ $score['cor'] }}55">
-                                {{ $score['grade'] }} · {{ $score['score'] }}pts
-                            </span>
-                            @php($cycle = $s->test_cycle_status)
-                            <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:{{ $cycle['cor'] }}18;color:{{ $cycle['cor'] }};border:1px solid {{ $cycle['cor'] }}33" title="{{ $cycle['descricao'] }}">
-                                {{ $cycle['label'] }}
-                            </span>
-                        </div>
-                    </td>
                     <td>
                         @if($s->git_url)
                             <a href="{{ $s->git_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);font-size:12px;display:inline-flex;align-items:center;gap:4px;text-decoration:none;" title="{{ $s->git_url }}">
