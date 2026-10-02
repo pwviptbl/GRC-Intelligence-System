@@ -570,6 +570,40 @@
         search: '',
         statusFilter: 'all',
         sistemas: {{ Js::from($cobertura['sistemas']) }},
+        getTierStyle(item) {
+            const tier = item.tier_sugerido || (item.tier_sugerido_label === 'Tier 1' ? 1 : (item.tier_sugerido_label === 'Tier 2' ? 2 : (item.tier_sugerido_label === 'Tier 3' ? 3 : null)));
+            const nivel = item.classificacao_nivel;
+            if (tier === 1 || nivel === 'Alta') {
+                return {
+                    bg: 'rgba(239, 68, 68, 0.15)',
+                    color: '#f87171',
+                    border: 'rgba(239, 68, 68, 0.35)',
+                    dot: '#ef4444'
+                };
+            }
+            if (tier === 2 || nivel === 'Média') {
+                return {
+                    bg: 'rgba(245, 158, 11, 0.15)',
+                    color: '#fbbf24',
+                    border: 'rgba(245, 158, 11, 0.35)',
+                    dot: '#f59e0b'
+                };
+            }
+            if (tier === 3 || nivel === 'Baixa') {
+                return {
+                    bg: 'rgba(59, 130, 246, 0.15)',
+                    color: '#60a5fa',
+                    border: 'rgba(59, 130, 246, 0.35)',
+                    dot: '#3b82f6'
+                };
+            }
+            return {
+                bg: 'rgba(107, 114, 128, 0.15)',
+                color: '#9ca3af',
+                border: 'rgba(107, 114, 128, 0.3)',
+                dot: '#6b7280'
+            };
+        },
         get filteredSistemas() {
             return this.sistemas.filter(s => {
                 const matchSearch = !this.search || s.nome.toLowerCase().includes(this.search.toLowerCase()) || (s.tecnologia && s.tecnologia.toLowerCase().includes(this.search.toLowerCase()));
@@ -599,7 +633,7 @@
                 <thead>
                     <tr style="border-bottom:1px solid var(--border);text-align:left;color:var(--text-3);font-size:11px;text-transform:uppercase">
                         <th style="padding:8px 10px">Sistema</th>
-                        <th style="padding:8px 10px">Criticidade / Nível</th>
+                        <th style="padding:8px 10px">Criticidade</th>
                         <th style="padding:8px 10px;text-align:center">Módulos</th>
                         <th style="padding:8px 10px;text-align:center">Cobertos</th>
                         <th style="padding:8px 10px;text-align:center">Lacunas</th>
@@ -616,7 +650,10 @@
                                 <div style="font-size:11px;color:var(--text-3)" x-text="item.tecnologia || 'Tecnologia não inf.'"></div>
                             </td>
                             <td style="padding:10px">
-                                <span class="tech-badge" x-text="item.tier_sugerido_label"></span>
+                                <span :style="'display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; white-space:nowrap; background:' + getTierStyle(item).bg + '; color:' + getTierStyle(item).color + '; border:1px solid ' + getTierStyle(item).border">
+                                    <span :style="'font-size:8px; color:' + getTierStyle(item).dot">●</span>
+                                    <span x-text="item.tier_sugerido_label || 'N/D'"></span>
+                                </span>
                             </td>
                             <td style="padding:10px;text-align:center;color:var(--text-2)" x-text="item.total_modulos"></td>
                             <td style="padding:10px;text-align:center;font-weight:600;color:var(--green)" x-text="item.modulos_cobertos"></td>

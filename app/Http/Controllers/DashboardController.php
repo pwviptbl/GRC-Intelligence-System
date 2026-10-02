@@ -149,6 +149,7 @@ class DashboardController extends Controller
                 'nome' => $software->nome,
                 'tecnologia' => $software->tecnologia,
                 'classificacao_nivel' => $software->classificacao_nivel,
+                'tier_sugerido' => $software->tier_sugerido,
                 'tier_sugerido_label' => $software->tier_sugerido_label,
                 'total_modulos' => $modulosCount,
                 'modulos_cobertos' => $modulosComAtividade,
