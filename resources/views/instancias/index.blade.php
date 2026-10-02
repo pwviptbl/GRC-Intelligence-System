@@ -316,9 +316,15 @@
 
                     <!-- Último Scan -->
                     <td>
-                        <span style="font-size: 11px; color: var(--text-2);">
-                            {{ $i->ultimo_scan_em ? $i->ultimo_scan_em->format('d/m/Y H:i') : 'Nunca' }}
-                        </span>
+                        @if($i->scan_status === 'em_andamento')
+                            <span style="font-size: 11px; color: #38bdf8; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                <span style="animation: spin 1.5s linear infinite; display: inline-block;">⚙️</span> Escaneando...
+                            </span>
+                        @else
+                            <span style="font-size: 11px; color: var(--text-2);">
+                                {{ $i->ultimo_scan_em ? $i->ultimo_scan_em->format('d/m/Y H:i') : 'Nunca' }}
+                            </span>
+                        @endif
                     </td>
 
                     <!-- Ações -->
@@ -333,9 +339,15 @@
                             <!-- Botão Escanear -->
                             <form action="{{ route('instancias.scan', $i) }}" method="POST" style="margin: 0;">
                                 @csrf
-                                <button type="submit" class="btn-secondary" style="padding: 5px 8px; font-size: 11px; border-radius: 6px;" title="Executar Varredura EASM Agora">
-                                    🔍 Escanear
-                                </button>
+                                @if($i->scan_status === 'em_andamento')
+                                    <button type="button" disabled class="btn-secondary" style="padding: 5px 8px; font-size: 11px; border-radius: 6px; opacity: 0.6; cursor: not-allowed;" title="Varredura em andamento em segundo plano">
+                                        ⏳
+                                    </button>
+                                @else
+                                    <button type="submit" class="btn-secondary" style="padding: 5px 8px; font-size: 11px; border-radius: 6px;" title="Executar Varredura EASM em Segundo Plano">
+                                        🔍 Escanear
+                                    </button>
+                                @endif
                             </form>
 
                             <!-- Editar -->

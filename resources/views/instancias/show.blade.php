@@ -71,12 +71,64 @@
     <div style="display: flex; gap: 10px; align-items: center;">
         <form action="{{ route('instancias.scan', $instancia) }}" method="POST" style="margin: 0;">
             @csrf
-            <button type="submit" class="btn-save" style="padding: 10px 18px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
-                🔍 Executar Varredura Agora
-            </button>
+            @if($instancia->scan_status === 'em_andamento')
+                <button type="button" disabled class="btn-secondary" style="padding: 10px 18px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; opacity: 0.7; cursor: not-allowed;">
+                    ⏳ Varredura em Andamento...
+                </button>
+            @else
+                <button type="submit" class="btn-save" style="padding: 10px 18px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
+                    🔍 Executar Varredura (Background)
+                </button>
+            @endif
         </form>
     </div>
 </div>
+
+
+@if($instancia->scan_status === 'em_andamento')
+<div x-data="{
+    pollInterval: null,
+    init() {
+        this.pollInterval = setInterval(async () => {
+            try {
+                const res = await fetch('{{ route('instancias.scan_status', $instancia) }}');
+                const data = await res.json();
+                if (data.scan_status !== 'em_andamento') {
+                    clearInterval(this.pollInterval);
+                    location.reload();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }, 3000);
+    }
+}" style="background: rgba(14, 165, 233, 0.12); border: 1px solid rgba(14, 165, 233, 0.4); border-radius: 10px; padding: 14px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; animation: pulse 2s infinite;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 20px; animation: spin 1.5s linear infinite; display: inline-block;">⚙️</span>
+        <div>
+            <div style="font-weight: 700; color: #38bdf8; font-size: 14px;">
+                Varredura EASM em Execução (Segundo Plano)
+            </div>
+            <div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">
+                Inspecionando portas abertas, resolução de IP e validade do certificado SSL... Esta página será atualizada automaticamente assim que terminar.
+            </div>
+        </div>
+    </div>
+    <span style="font-size: 11px; background: rgba(14, 165, 233, 0.2); color: #38bdf8; padding: 4px 10px; border-radius: 6px; font-weight: 600;">
+        ⏳ Processando...
+    </span>
+</div>
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+@endif
 
 <!-- Grid de Resumo de Superfície -->
 <div class="easm-card">

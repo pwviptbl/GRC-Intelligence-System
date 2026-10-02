@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\Software;
 use App\Services\EasmService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Process;
 
 class InstanciaClienteController extends Controller
 {
@@ -122,21 +123,30 @@ class InstanciaClienteController extends Controller
         return view('instancias.show', compact('instancia', 'findings'));
     }
 
-    public function scan(InstanciaCliente $instancia, EasmService $easmService)
+    public function scan(InstanciaCliente $instancia)
     {
-        try {
-            $resultado = $easmService->scanInstance($instancia);
+        $instancia->update(['scan_status' => 'em_andamento']);
 
-            $msg = "Varredura EASM concluída para este ambiente.";
-            if ($resultado['ssl']) {
-                $msg .= " SSL: {$resultado['ssl']->status_certificado} ({$resultado['ssl']->dias_restantes}d restantes).";
-            }
-            $msg .= " Portas abertas encontradas: " . count($resultado['portas']) . ".";
+        // Dispara o comando Artisan em segundo plano (não bloqueia a requisição HTTP)
+        $artisan = base_path('artisan');
+        Process::path(base_path())->start("php {$artisan} easm:scan --id={$instancia->id}");
 
-            return redirect()->back()->with('success', $msg);
-        } catch (\Throwable $e) {
-            return redirect()->back()->with('error', 'Falha ao executar varredura: ' . $e->getMessage());
-        }
+        return redirect()->back()->with(
+            'success',
+            '⚡ Varredura EASM iniciada em segundo plano! A página atualizará os dados assim que a coleta for concluída.'
+        );
+    }
+
+    public function scanStatus(InstanciaCliente $instancia)
+    {
+        return response()->json([
+            'scan_status' => $instancia->scan_status,
+            'ultimo_scan_em' => $instancia->ultimo_scan_em ? $instancia->ultimo_scan_em->format('d/m/Y H:i') : null,
+            'ssl_status' => $instancia->latestSslCert ? $instancia->latestSslCert->status_certificado : null,
+            'dias_restantes' => $instancia->latestSslCert ? $instancia->latestSslCert->dias_restantes : null,
+            'portas_count' => $instancia->portasAbertas()->count(),
+            'endereco_ip' => $instancia->endereco_ip,
+        ]);
     }
 
     public function print(Request $request)

@@ -92,6 +92,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
         Route::post('/instancias/{instancia}/scan', [InstanciaClienteController::class, 'scan'])->name('instancias.scan');
+        Route::get('/instancias/{instancia}/scan-status', [InstanciaClienteController::class, 'scanStatus'])->name('instancias.scan_status');
 
         Route::get('/politicas', [PoliticaController::class, 'index'])->name('politicas.index');
         Route::get('/politicas/export/zip', [PoliticaController::class, 'exportZip'])->name('politicas.export.zip');

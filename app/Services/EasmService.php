@@ -34,25 +34,38 @@ class EasmService
      */
     public function scanInstance(InstanciaCliente $instancia): array
     {
+        $instancia->update(['scan_status' => 'em_andamento']);
+
         $resultados = [
             'ssl' => null,
             'portas' => [],
             'findings_gerados' => 0,
         ];
 
-        // 1. Verificar Certificado SSL se tiver URL ou domínio
-        if ($instancia->url_principal || $instancia->endereco_ip) {
-            $resultados['ssl'] = $this->checkSsl($instancia);
-        }
+        try {
+            // 1. Resolver Host e auto-preencher IP se vazio
+            $targetHost = $this->resolveTargetHost($instancia);
 
-        // 2. Verificar Portas de Perímetro
-        $targetHost = $this->resolveTargetHost($instancia);
-        if ($targetHost) {
-            $resultados['portas'] = $this->checkPorts($instancia, $targetHost);
-        }
+            // 2. Verificar Certificado SSL
+            if ($instancia->url_principal || $instancia->endereco_ip || $targetHost) {
+                $resultados['ssl'] = $this->checkSsl($instancia);
+            }
 
-        // 3. Atualizar carimbo de data da última varredura
-        $instancia->update(['ultimo_scan_em' => now()]);
+            // 3. Verificar Portas de Perímetro
+            if ($targetHost) {
+                $resultados['portas'] = $this->checkPorts($instancia, $targetHost);
+            }
+
+            // 4. Concluir com sucesso
+            $instancia->update([
+                'scan_status' => 'concluido',
+                'ultimo_scan_em' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Erro no scan EASM da instancia #{$instancia->id}: " . $e->getMessage());
+            $instancia->update(['scan_status' => 'falha']);
+            throw $e;
+        }
 
         return $resultados;
     }
@@ -62,14 +75,27 @@ class EasmService
      */
     protected function resolveTargetHost(InstanciaCliente $instancia): ?string
     {
+        $host = null;
         if ($instancia->url_principal) {
             $parsed = parse_url($instancia->url_principal);
             if (!empty($parsed['host'])) {
-                return $parsed['host'];
+                $host = $parsed['host'];
             }
         }
 
-        return $instancia->endereco_ip;
+        if (!$host && $instancia->endereco_ip) {
+            $host = $instancia->endereco_ip;
+        }
+
+        // Se encontrou o host mas a instância não tem o IP cadastrado, tenta resolver e salvar
+        if ($host && empty($instancia->endereco_ip)) {
+            $ip = @gethostbyname($host);
+            if ($ip && $ip !== $host && filter_var($ip, FILTER_VALIDATE_IP)) {
+                $instancia->update(['endereco_ip' => $ip]);
+            }
+        }
+
+        return $host;
     }
 
     /**
@@ -182,7 +208,7 @@ class EasmService
         $portasEncontradas = [];
 
         foreach (self::DEFAULT_PORTS as $port => $info) {
-            $connection = @fsockopen($host, $port, $errno, $errstr, 1.2);
+            $connection = @fsockopen($host, $port, $errno, $errstr, 0.6);
 
             if (is_resource($connection)) {
                 fclose($connection);

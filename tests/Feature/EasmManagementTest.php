@@ -204,6 +204,6 @@ class EasmManagementTest extends TestCase
         $response->assertSessionHas('success');
 
         $instancia->refresh();
-        $this->assertNotNull($instancia->ultimo_scan_em);
+        $this->assertEquals('em_andamento', $instancia->scan_status);
     }
 }

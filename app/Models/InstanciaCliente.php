@@ -18,6 +18,7 @@ class InstanciaCliente extends Model
         'endereco_ip',
         'infra_provedor',
         'status_exposicao',
+        'scan_status',
         'ultimo_scan_em',
     ];
 
