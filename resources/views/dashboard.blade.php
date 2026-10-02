@@ -34,6 +34,40 @@
         text-decoration: none;
     }
 
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border-radius: 6px;
+        font-family: var(--font);
+        background: rgba(255, 255, 255, .06);
+        border: 1px solid var(--border);
+        color: var(--text-1) !important;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all .15s ease;
+        white-space: nowrap;
+    }
+
+    .btn-secondary:hover {
+        background: var(--bg-hover);
+        color: var(--cyan) !important;
+        border-color: var(--border-glow);
+    }
+
+    html[data-theme="light"] .btn-secondary {
+        background: #ffffff;
+        border-color: #cbd5e1;
+        color: #1e293b !important;
+    }
+
+    html[data-theme="light"] .btn-secondary:hover {
+        background: #f1f5f9;
+        color: var(--cyan) !important;
+        border-color: #94a3b8;
+    }
+
     .dashboard-ai {
         padding: 20px;
         margin-bottom: 25px;

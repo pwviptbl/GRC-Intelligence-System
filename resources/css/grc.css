@@ -101,6 +101,18 @@
       background: #f1f5f9;
     }
 
+    html[data-theme="light"] .btn-secondary {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      color: #1e293b !important;
+    }
+
+    html[data-theme="light"] .btn-secondary:hover {
+      background: #f1f5f9;
+      color: var(--cyan) !important;
+      border-color: #94a3b8;
+    }
+
     html[data-theme="light"] .nav-folder:hover {
       background: rgba(0, 0, 0, 0.04);
     }
@@ -606,6 +618,31 @@
 
     .btn-add:hover {
       background: rgba(0, 255, 159, .15);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: var(--font);
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid var(--border);
+      color: var(--text-1) !important;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+      color: var(--cyan) !important;
+      border-color: var(--border-glow);
     }
 
     .data-table {
