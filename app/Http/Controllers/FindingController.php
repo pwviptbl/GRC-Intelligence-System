@@ -61,6 +61,20 @@ class FindingController extends Controller
             $query->where('is_regression', true);
         }
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('titulo', 'like', "%{$search}%")
+                  ->orWhere('descricao', 'like', "%{$search}%")
+                  ->orWhere('cve_id', 'like', "%{$search}%")
+                  ->orWhere('cwe_id', 'like', "%{$search}%")
+                  ->orWhere('endpoint', 'like', "%{$search}%")
+                  ->orWhere('ativo_afetado', 'like', "%{$search}%")
+                  ->orWhere('severidade', 'like', "%{$search}%")
+                  ->orWhereHas('test.engagement.software', fn($sq) => $sq->where('nome', 'like', "%{$search}%"));
+            });
+        }
+
                 $findings  = $query->paginate(25)->withQueryString();
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
         $engagements = Engagement::with('software:id,nome')->orderBy('nome')->get();

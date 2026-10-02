@@ -43,32 +43,32 @@
         </div>
     @endif
 
-    {{-- Cards de Métricas Estilo DefectDojo --}}
+    {{-- Cards de Métricas Estilo DefectDojo (Clicáveis para Filtrar Imediatamente) --}}
     <div class="stats-row" style="grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); margin-bottom:20px;">
-        <div class="stat-card" style="background:rgba(255,255,255,.02); border:1px solid var(--border);">
+        <a href="{{ route('findings.index', ['tab' => 'todos']) }}" class="stat-card" style="background:rgba(255,255,255,.02); border:1px solid var(--border); text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s;" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='var(--border-glow)'" onmouseout="this.style.transform='translateY(0)';this.style.borderColor='var(--border)'" title="Ver todos os achados">
             <div class="stat-label" style="color:var(--text-3)">Total Achados</div>
             <div class="stat-value" style="color:var(--text-1)">{{ $stats['total'] }}</div>
-        </div>
-        <div class="stat-card" style="background:rgba(255,83,112,.08); border:1px solid rgba(255,83,112,.25);">
-            <div class="stat-label" style="color:var(--red)">🔴 Críticos</div>
+        </a>
+        <a href="{{ route('findings.index', ['severidade' => 'critico']) }}" class="stat-card" style="background:rgba(255,83,112,.08); border:1px solid rgba(255,83,112,{{ request('severidade') === 'critico' ? '.7' : '.25' }}); text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s; box-shadow:{{ request('severidade') === 'critico' ? '0 0 12px rgba(255,83,112,.3)' : 'none' }};" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='rgba(255,83,112,.6)'" onmouseout="this.style.transform='translateY(0)';this.style.borderColor='rgba(255,83,112,{{ request('severidade') === 'critico' ? '.7' : '.25' }})'" title="Clique para filtrar apenas os Achados Críticos">
+            <div class="stat-label" style="color:var(--red); font-weight:700;">🔴 Críticos (Filtrar)</div>
             <div class="stat-value" style="color:var(--red)">{{ $stats['criticos'] }}</div>
-        </div>
-        <div class="stat-card" style="background:rgba(255,150,50,.08); border:1px solid rgba(255,150,50,.25);">
+        </a>
+        <a href="{{ route('findings.index', ['tab' => 'abertos']) }}" class="stat-card" style="background:rgba(255,150,50,.08); border:1px solid rgba(255,150,50,.25); text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s;" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='rgba(255,150,50,.6)'" onmouseout="this.style.transform='translateY(0)';this.style.borderColor='rgba(255,150,50,.25)'" title="Ver achados em aberto e em tratamento">
             <div class="stat-label" style="color:#ff9632">🟠 Em Aberto</div>
             <div class="stat-value" style="color:#ff9632">{{ $stats['abertos'] }}</div>
-        </div>
-        <div class="stat-card" style="background:{{ $stats['regressoes'] > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,.02)' }}; border:1px solid {{ $stats['regressoes'] > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)' }};">
+        </a>
+        <a href="{{ route('findings.index', ['tab' => 'regressoes']) }}" class="stat-card" style="background:{{ $stats['regressoes'] > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,.02)' }}; border:1px solid {{ $stats['regressoes'] > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)' }}; text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" title="Ver vulnerabilidades reabertas / regressões">
             <div class="stat-label" style="color:{{ $stats['regressoes'] > 0 ? '#ef4444' : 'var(--text-3)' }}">⚠️ Regressões</div>
             <div class="stat-value" style="color:{{ $stats['regressoes'] > 0 ? '#ef4444' : 'var(--text-1)' }}">{{ $stats['regressoes'] }}</div>
-        </div>
-        <div class="stat-card" style="background:rgba(139,92,246,.08); border:1px solid rgba(139,92,246,.25);">
+        </a>
+        <a href="{{ route('findings.index', ['tab' => 'duplicados']) }}" class="stat-card" style="background:rgba(139,92,246,.08); border:1px solid rgba(139,92,246,.25); text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" title="Ver achados duplicados">
             <div class="stat-label" style="color:#a78bfa">🔗 Duplicados</div>
             <div class="stat-value" style="color:#a78bfa">{{ $stats['duplicados'] }}</div>
-        </div>
-        <div class="stat-card" style="background:{{ $stats['atrasados'] > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,.02)' }}; border:1px solid {{ $stats['atrasados'] > 0 ? 'rgba(239,68,68,0.3)' : 'var(--border)' }};">
+        </a>
+        <a href="{{ route('findings.index', ['sla_status' => 'atrasado']) }}" class="stat-card" style="background:{{ $stats['atrasados'] > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,.02)' }}; border:1px solid {{ $stats['atrasados'] > 0 ? 'rgba(239,68,68,0.3)' : 'var(--border)' }}; text-decoration:none; cursor:pointer; display:block; transition:transform .15s, border-color .15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" title="Ver achados com SLA de correção estourado">
             <div class="stat-label" style="color:{{ $stats['atrasados'] > 0 ? 'var(--red)' : 'var(--text-3)' }}">⏳ SLA Atrasado</div>
             <div class="stat-value" style="color:{{ $stats['atrasados'] > 0 ? 'var(--red)' : 'var(--text-1)' }}">{{ $stats['atrasados'] }}</div>
-        </div>
+        </a>
     </div>
 
     {{-- Abas de Navegação Estilo DefectDojo --}}
