@@ -6,7 +6,7 @@ use App\Models\ControleEvento;
 use App\Models\Incidente;
 use App\Models\Politica;
 use App\Models\Procedimento;
-use App\Models\Risco;
+use App\Models\Finding;
 use App\Models\Software;
 use App\Models\TierPolitica;
 use Illuminate\Support\Facades\Schema;
@@ -20,7 +20,7 @@ class GrcContextService
             'softwares' => $this->softwares(),
             'acoes_por_tier' => $this->tierPoliticas(),
             'calendario_controles' => $this->calendarioControles(),
-            'riscos_abertos' => $this->riscosAbertos(),
+            'vulnerabilidades_abertas' => $this->findingsAbertos(),
             'incidentes_recentes' => $this->incidentesRecentes(),
             'planos_acao_abertos' => $this->planosAbertos(),
             'politicas' => $this->politicas(),
@@ -81,7 +81,7 @@ class GrcContextService
         }
 
         return ControleEvento::query()
-            ->with(['software:id,nome', 'risco:id,titulo,criticidade'])
+            ->with(['software:id,nome'])
             ->orderByDesc('data_prevista')
             ->take(30)
             ->get([
@@ -112,23 +112,20 @@ class GrcContextService
                     'data_limite' => optional($evento->data_limite)->format('Y-m-d'),
                     'prioridade' => $evento->prioridade,
                     'status' => $evento->status,
-                    'risco' => $evento->risco ? [
-                        'titulo' => $evento->risco->titulo,
-                        'criticidade' => $evento->risco->criticidade,
-                    ] : null,
+
                 ];
             })
             ->values()
             ->all();
     }
 
-    protected function riscosAbertos(): array
+    protected function findingsAbertos(): array
     {
-        return Risco::query()
-            ->where('status', '!=', 'fechado')
+        return Finding::query()
+            ->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
             ->orderByDesc('updated_at')
             ->take(20)
-            ->get(['titulo', 'criticidade', 'probabilidade', 'status', 'responsavel', 'software_id'])
+            ->get(['titulo', 'severidade', 'status'])
             ->toArray();
     }
 

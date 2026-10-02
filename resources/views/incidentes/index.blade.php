@@ -54,8 +54,8 @@
     showViewModal: false,
     editMode: false,
     formAction: '{{ route('incidentes.store') }}',
-    form: { id: '', titulo: '', descricao: '', severidade: 'Media', status: 'aberto', detectado_por: '', data_deteccao: '{{ date('Y-m-d') }}', risco_id: '', software_id: '', cliente_id: '', licoes_aprendidas: '' },
-    viewInc: { software: null, cliente: null, risco: null, evidencias: [] },
+    form: { id: '', titulo: '', descricao: '', severidade: 'Media', status: 'aberto', detectado_por: '', data_deteccao: '{{ date('Y-m-d') }}', software_id: '', cliente_id: '', licoes_aprendidas: '' },
+    viewInc: { software: null, cliente: null, evidencias: [] },
     showEvidModal: false,
 
     async openEvid(id) {
@@ -99,7 +99,7 @@
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', titulo: '', descricao: '', severidade: 'Media', status: 'aberto', detectado_por: '', data_deteccao: '{{ date('Y-m-d') }}', risco_id: '', software_id: '', cliente_id: '', licoes_aprendidas: '' };
+        this.form = { id: '', titulo: '', descricao: '', severidade: 'Media', status: 'aberto', detectado_por: '', data_deteccao: '{{ date('Y-m-d') }}', software_id: '', cliente_id: '', licoes_aprendidas: '' };
         this.formAction = '{{ route('incidentes.store') }}';
         this.showModal = true;
     },
@@ -238,7 +238,7 @@
                 <div><label class="label-mini">Status</label><div class="view-val" x-text="viewInc.status"></div></div>
                 <div><label class="label-mini">Detectado Em</label><div class="view-val" x-text="viewInc.data_deteccao"></div></div>
                 <div><label class="label-mini">Detectado Por</label><div class="view-val" x-text="viewInc.detectado_por || '-'"></div></div>
-                <div><label class="label-mini">Risco Mapeado</label><div class="view-val" x-text="viewInc.risco ? '#' + viewInc.risco.id + ' - ' + viewInc.risco.titulo : 'Não vinculado'"></div></div>
+                
                 <div><label class="label-mini">Software</label><div class="view-val" x-text="viewInc.software ? viewInc.software.nome : 'Não informado'"></div></div>
                 <div><label class="label-mini">Cliente</label><div class="view-val" x-text="viewInc.cliente ? viewInc.cliente.nome : 'Interno / Geral'"></div></div>
             </div>
@@ -325,15 +325,6 @@
                                     @endforeach
                                 </select>
                             </div>
-                        </div>
-                        <div class="form-group" style="margin-top:10px">
-                            <label>Risco Relacionado</label>
-                            <select name="risco_id" x-model="form.risco_id" class="form-select">
-                                <option value="">Novo Risco / Não Mapeado</option>
-                                @foreach($riscos as $r)
-                                    <option value="{{ $r->id }}">#{{ $r->id }} - {{ $r->titulo }}</option>
-                                @endforeach
-                            </select>
                         </div>
                         <div class="form-group" style="margin-top:10px">
                             <label>Lições Aprendidas</label>

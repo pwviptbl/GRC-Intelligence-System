@@ -9,13 +9,12 @@ class PlanoAcaoController extends Controller
 {
     public function index()
     {
-        $acoes = PlanoAcao::with(['items.evidencias', 'software', 'cliente', 'risco'])->latest()->get();
+        $acoes = PlanoAcao::with(['items.evidencias', 'software', 'cliente'])->latest()->get();
         $clientes = \App\Models\Cliente::orderBy('nome')->get();
         $softwares = \App\Models\Software::orderBy('nome')->get();
-        $riscos = \App\Models\Risco::orderBy('titulo')->get();
         $procedimentos = \App\Models\Procedimento::orderBy('titulo')->get(['id', 'titulo', 'tipo']);
 
-        return view('plano_acoes.index', compact('acoes', 'clientes', 'softwares', 'riscos', 'procedimentos'));
+        return view('plano_acoes.index', compact('acoes', 'clientes', 'softwares', 'procedimentos'));
     }
 
     public function show(PlanoAcao $plano_aco)

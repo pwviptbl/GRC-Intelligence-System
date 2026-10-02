@@ -83,7 +83,6 @@ class CalendarioControleController extends Controller
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
             'kanbanMode' => true,
             'clientes' => \App\Models\Cliente::query()->orderBy('nome')->get(),
-            'riscos' => \App\Models\Risco::query()->orderBy('titulo')->get(),
             'procedimentos' => Procedimento::query()->orderBy('titulo')->get(['id', 'titulo', 'tipo']),
             'usuariosOperacionais' => $usuariosOperacionais,
             'usuariosFiltro' => User::query()->where('active', true)->orderBy('name')->get(),
@@ -99,7 +98,6 @@ class CalendarioControleController extends Controller
             'descricao' => ['nullable', 'string', 'max:5000'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'responsavel_planejado' => ['nullable', 'string', 'max:255'],
             'executor_id' => ['nullable', 'integer', 'exists:users,id'],
             'revisor_id' => ['nullable', 'integer', 'different:executor_id', 'exists:users,id'],
@@ -114,7 +112,6 @@ class CalendarioControleController extends Controller
         ControleEvento::create([
             'software_id' => $data['software_id'] ?? null,
             'cliente_id' => $data['cliente_id'] ?? null,
-            'risco_id' => $data['risco_id'] ?? null,
             'acao_controle_snapshot' => $data['titulo'],
             'descricao' => $data['descricao'] ?? null,
             'responsavel_planejado' => $data['responsavel_planejado'] ?? null,
@@ -138,7 +135,6 @@ class CalendarioControleController extends Controller
         return response()->json($calendario_controle->load([
             'software:id,nome',
             'cliente:id,nome',
-            'risco:id,titulo',
             'executor:id,name,nivel_operacional,capacidade_semanal_horas',
             'revisor:id,name,nivel_operacional',
             'etapas.evidencias',
@@ -458,7 +454,6 @@ class CalendarioControleController extends Controller
             'criterios_aceite'    => 'nullable|string|max:5000',
             'software_id'         => 'nullable|integer|exists:software,id',
             'cliente_id'          => 'nullable|integer|exists:clientes,id',
-            'risco_id'            => 'nullable|integer|exists:riscos,id',
             'responsavel_planejado' => 'nullable|string|max:255',
             'executor_id'          => 'nullable|integer|exists:users,id',
             'revisor_id'           => 'nullable|integer|different:executor_id|exists:users,id',
@@ -664,7 +659,7 @@ class CalendarioControleController extends Controller
     protected function filteredOperationalQuery(Request $request)
     {
         $query = ControleEvento::query()
-            ->with(['software', 'cliente', 'risco', 'tierPolitica', 'executor', 'revisor', 'etapas.evidencias'])
+            ->with(['software', 'cliente', 'tierPolitica', 'executor', 'revisor', 'etapas.evidencias'])
             ->withCount([
                 'etapas',
                 'notas',
@@ -745,7 +740,7 @@ class CalendarioControleController extends Controller
     protected function filteredSuggestionsQuery(Request $request)
     {
         $query = ControleEvento::query()
-            ->with(['software', 'risco', 'tierPolitica'])
+            ->with(['software', 'tierPolitica'])
             ->where('status', 'sugestao')
             ->orderBy('tier')
             ->orderByRaw("CASE prioridade
@@ -784,7 +779,7 @@ class CalendarioControleController extends Controller
     protected function filteredTriageQuery(Request $request)
     {
         $query = ControleEvento::query()
-            ->with(['software', 'risco', 'tierPolitica'])
+            ->with(['software', 'tierPolitica'])
             ->where('status', 'triagem')
             ->orderByRaw('COALESCE(score_impacto, 0) DESC')
             ->orderByRaw('COALESCE(score_exposicao, 0) DESC')
@@ -814,7 +809,7 @@ class CalendarioControleController extends Controller
     protected function filteredPrintQuery(Request $request)
     {
         $query = ControleEvento::query()
-            ->with(['software', 'risco', 'tierPolitica'])
+            ->with(['software', 'tierPolitica'])
             ->orderBy('tier')
             ->orderByRaw("CASE prioridade
                 WHEN 'Crítica' THEN 1

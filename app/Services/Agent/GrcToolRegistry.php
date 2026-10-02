@@ -10,7 +10,7 @@ use App\Models\InstanciaCliente;
 use App\Models\LgpdItem;
 use App\Models\Politica;
 use App\Models\Procedimento;
-use App\Models\Risco;
+use App\Models\Finding;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
@@ -87,18 +87,6 @@ class GrcToolRegistry
                 [
                     'disponivel' => ['type' => 'boolean'],
                     'nivel_operacional' => ['type' => 'string', 'enum' => ['junior', 'pleno', 'especialista']],
-                ]
-            ),
-            $this->tool(
-                'list_risks',
-                'Lista riscos com filtros opcionais.',
-                self::RISK_READ,
-                [
-                    'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
-                    'criticidade' => ['type' => 'string', 'enum' => ['Critico', 'Alto', 'Medio', 'Baixo']],
-                    'software_id' => ['type' => 'integer'],
-                    'cliente_id' => ['type' => 'integer'],
-                    'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100],
                 ]
             ),
             $this->tool(
@@ -289,47 +277,6 @@ class GrcToolRegistry
                 ['software_id']
             ),
             $this->tool(
-                'create_risk',
-                'Cria um risco ou vulnerabilidade no inventario GRC.',
-                self::RISK_WRITE,
-                [
-                    'titulo' => ['type' => 'string'],
-                    'descricao' => ['type' => 'string'],
-                    'probabilidade' => ['type' => 'string', 'enum' => ['Alta', 'Media', 'Baixa']],
-                    'impacto' => ['type' => 'string', 'enum' => ['Alto', 'Medio', 'Baixo']],
-                    'cvss_score' => ['type' => 'number', 'minimum' => 0, 'maximum' => 10],
-                    'cve_id' => ['type' => 'string'],
-                    'responsavel' => ['type' => 'string'],
-                    'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
-                    'origem' => ['type' => 'string'],
-                    'ativo_afetado' => ['type' => 'string'],
-                    'plano_acao' => ['type' => 'string'],
-                    'software_id' => ['type' => 'integer'],
-                    'software_modulo_id' => ['type' => 'integer'],
-                    'atividade_id' => ['type' => 'integer'],
-                    'cliente_id' => ['type' => 'integer'],
-                    'data_limite_correcao' => ['type' => 'string'],
-                ],
-                ['titulo', 'descricao']
-            ),
-            $this->tool(
-                'update_risk',
-                'Atualiza os campos informados de um risco existente.',
-                self::RISK_WRITE,
-                array_merge(['risk_id' => ['type' => 'integer']], $this->riskInputSchema()),
-                ['risk_id']
-            ),
-            $this->tool(
-                'update_risk_status',
-                'Atualiza o status de um risco existente.',
-                self::RISK_WRITE,
-                [
-                    'risk_id' => ['type' => 'integer'],
-                    'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
-                ],
-                ['risk_id', 'status']
-            ),
-            $this->tool(
                 'create_policy',
                 'Cria uma politica de governanca.',
                 self::RISK_WRITE,
@@ -385,7 +332,6 @@ class GrcToolRegistry
                     'licoes_aprendidas' => ['type' => 'string'],
                     'software_id' => ['type' => 'integer'],
                     'cliente_id' => ['type' => 'integer'],
-                    'risco_id' => ['type' => 'integer'],
                 ],
                 ['titulo', 'descricao', 'severidade', 'status', 'data_deteccao', 'detectado_por']
             ),
@@ -429,7 +375,6 @@ class GrcToolRegistry
                     'origem' => ['type' => 'string'],
                     'software_id' => ['type' => 'integer'],
                     'cliente_id' => ['type' => 'integer'],
-                    'risco_id' => ['type' => 'integer'],
                 ],
                 ['titulo', 'descricao', 'prioridade', 'status']
             ),
@@ -474,7 +419,6 @@ class GrcToolRegistry
                 'activity_catalog_coverage' => $this->activityCatalogCoverage(),
                 'list_module_coverage' => $this->listModuleCoverage($payload),
                 'list_team_members' => $this->listTeamMembers($payload),
-                'list_risks' => $this->listRisks($payload),
                 'list_policies' => $this->listPolicies($payload),
                 'list_tier_policies' => $this->listTierPolicies($payload),
                 'list_procedures' => $this->listProcedures($payload),
@@ -488,9 +432,6 @@ class GrcToolRegistry
                 'assign_activities_to_module' => $this->assignActivitiesToModule($payload, $dryRun),
                 'create_software' => $this->createSoftware($payload, $dryRun),
                 'update_software' => $this->updateSoftware($payload, $dryRun),
-                'create_risk' => $this->createRisk($payload, $dryRun),
-                'update_risk' => $this->updateRisk($payload, $dryRun),
-                'update_risk_status' => $this->updateRiskStatus($payload, $dryRun),
                 'create_policy' => $this->createPolicy($payload, $dryRun),
                 'update_policy' => $this->updatePolicy($payload, $dryRun),
                 'create_tier_policy' => $this->createTierPolicy($payload, $dryRun),
@@ -546,11 +487,11 @@ class GrcToolRegistry
                 'softwares' => Software::count(),
                 'instancias' => InstanciaCliente::count(),
             ],
-            'riscos' => [
-                'criticos_abertos' => Risco::where('criticidade', 'Critico')->where('status', '!=', 'fechado')->count(),
-                'altos_abertos' => Risco::where('criticidade', 'Alto')->where('status', '!=', 'fechado')->count(),
-                'total_abertos' => Risco::where('status', '!=', 'fechado')->count(),
-                'total' => Risco::count(),
+            'vulnerabilidades' => [
+                'criticos_abertos' => Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count(),
+                'altos_abertos' => Finding::where('severidade', 'alto')->where('status', '!=', 'fechado')->count(),
+                'total_abertos' => Finding::where('status', '!=', 'fechado')->count(),
+                'total' => Finding::count(),
             ],
             'incidentes' => [
                 'abertos' => Incidente::where('status', '!=', 'fechado')->count(),
@@ -568,34 +509,6 @@ class GrcToolRegistry
                 'percentual' => round(($lgpdConforme / $lgpdTotal) * 100),
             ],
         ];
-    }
-
-    protected function listRisks(array $payload): array
-    {
-        $data = $this->validate($payload, [
-            'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
-            'criticidade' => ['nullable', 'in:Critico,Alto,Medio,Baixo'],
-            'software_id' => ['nullable', 'integer', 'exists:software,id'],
-            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
-        $query = Risco::query()
-            ->with(['software:id,nome', 'cliente:id,nome'])
-            ->latest();
-
-        foreach (['status', 'criticidade', 'software_id', 'cliente_id'] as $field) {
-            if (! empty($data[$field])) {
-                $query->where($field, $data[$field]);
-            }
-        }
-
-        return $query
-            ->limit((int) ($data['limit'] ?? 20))
-            ->get()
-            ->map(fn (Risco $risco) => $this->riskPayload($risco))
-            ->values()
-            ->all();
     }
 
     protected function listPolicies(array $payload): array
@@ -675,7 +588,7 @@ class GrcToolRegistry
             'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $query = Incidente::query()->with(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo'])->latest();
+        $query = Incidente::query()->with(['software:id,nome', 'cliente:id,nome'])->latest();
         foreach (['status', 'severidade', 'software_id', 'cliente_id'] as $field) {
             if (! empty($data[$field])) {
                 $query->where($field, $data[$field]);
@@ -857,7 +770,7 @@ class GrcToolRegistry
         ]);
 
         $query = ControleEvento::query()
-            ->with(['software:id,nome', 'risco:id,titulo,criticidade', 'executor:id,name', 'revisor:id,name'])
+            ->with(['software:id,nome', 'executor:id,name', 'revisor:id,name'])
             ->orderBy('tier')
             ->orderByRaw("CASE prioridade WHEN 'Critica' THEN 1 WHEN 'Crítica' THEN 1 WHEN 'Alta' THEN 2 WHEN 'Media' THEN 3 WHEN 'Média' THEN 3 WHEN 'Baixa' THEN 4 ELSE 5 END")
             ->orderBy('data_prevista');
@@ -912,60 +825,6 @@ class GrcToolRegistry
             'disponivel_para_tarefas' => $user->disponivel_para_tarefas,
             'areas_atuacao' => $user->areas_atuacao,
         ])->all();
-    }
-
-    protected function createRisk(array $payload, bool $dryRun): array
-    {
-        $data = $this->validate($payload, [
-            'titulo' => ['required', 'string', 'max:255'],
-            'descricao' => ['required', 'string'],
-            'origem' => ['nullable', 'string', 'max:255'],
-            'categoria' => ['nullable', 'string', 'max:255'],
-            'severidade' => ['nullable', 'string', 'max:255'],
-            'ativo_afetado' => ['nullable', 'string', 'max:255'],
-            'probabilidade' => ['nullable', 'in:Alta,Media,Baixa,Média'],
-            'impacto' => ['nullable', 'in:Alto,Medio,Baixo,Médio'],
-            'cvss_score' => ['nullable', 'numeric', 'min:0', 'max:10'],
-            'cve_id' => ['nullable', 'string', 'max:50'],
-            'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
-            'plano_acao' => ['nullable', 'string'],
-            'responsavel' => ['nullable', 'string', 'max:255'],
-            'software_id' => ['nullable', 'integer', 'exists:software,id'],
-            'software_modulo_id' => ['nullable', 'integer', 'exists:software_modulos,id'],
-            'atividade_id' => ['nullable', 'integer', 'exists:atividades,id'],
-            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'data_limite_correcao' => ['nullable', 'date'],
-        ]);
-
-        $probabilidade = $data['probabilidade'] ?? 'Alta';
-        $impacto = $data['impacto'] ?? 'Alto';
-        if ($probabilidade === 'Média') $probabilidade = 'Media';
-        if ($impacto === 'Médio') $impacto = 'Medio';
-
-        $data = array_merge([
-            'origem' => 'Tecnico',
-            'ativo_afetado' => '',
-            'status' => 'aberto',
-            'plano_acao' => '',
-            'probabilidade' => $probabilidade,
-            'impacto' => $impacto,
-            'responsavel' => $data['responsavel'] ?? 'Analista de Segurança da Informação',
-        ], $data);
-        $data['criticidade'] = $data['severidade'] ?? $this->calculateRiskCriticality($data['probabilidade'], $data['impacto']);
-        unset($data['categoria'], $data['severidade']);
-
-        // Auto SLA calculation
-        $slaDias = Risco::DEFAULT_SLA_DAYS[$data['criticidade']] ?? 90;
-        $data['sla_dias'] = $slaDias;
-        if (empty($data['data_limite_correcao'])) {
-            $data['data_limite_correcao'] = now()->addDays($slaDias)->toDateString();
-        }
-
-        if ($dryRun) {
-            return ['would_create' => $data];
-        }
-
-        return $this->riskPayload(Risco::create($data)->load(['software:id,nome', 'modulo:id,nome', 'cliente:id,nome']));
     }
 
     protected function createActivity(array $payload, bool $dryRun): array
@@ -1318,55 +1177,6 @@ class GrcToolRegistry
         return $data;
     }
 
-    protected function updateRisk(array $payload, bool $dryRun): array
-    {
-        $rules = $this->riskValidationRules();
-        $rules['risk_id'] = ['required', 'integer', 'exists:riscos,id'];
-        $data = $this->validate($payload, $rules);
-        $risco = Risco::query()->findOrFail($data['risk_id']);
-        unset($data['risk_id']);
-        $this->requireChanges($data);
-
-        if (isset($data['probabilidade']) || isset($data['impacto'])) {
-            $data['criticidade'] = $this->calculateRiskCriticality(
-                $data['probabilidade'] ?? $risco->probabilidade,
-                $data['impacto'] ?? $risco->impacto
-            );
-        }
-
-        if ($dryRun) {
-            return ['would_update' => ['id' => $risco->id, 'changes' => $data]];
-        }
-
-        $risco->update($data);
-
-        return $this->riskPayload($risco->refresh()->load(['software:id,nome', 'cliente:id,nome']));
-    }
-
-    protected function updateRiskStatus(array $payload, bool $dryRun): array
-    {
-        $data = $this->validate($payload, [
-            'risk_id' => ['required', 'integer', 'exists:riscos,id'],
-            'status' => ['required', 'in:'.implode(',', $this->riskStatuses())],
-        ]);
-
-        $risco = Risco::query()->findOrFail($data['risk_id']);
-        $preview = [
-            'id' => $risco->id,
-            'titulo' => $risco->titulo,
-            'status_atual' => $risco->status,
-            'novo_status' => $data['status'],
-        ];
-
-        if ($dryRun) {
-            return ['would_update' => $preview];
-        }
-
-        $risco->update(['status' => $data['status']]);
-
-        return $this->riskPayload($risco->refresh()->load(['software:id,nome', 'cliente:id,nome']));
-    }
-
     protected function createPolicy(array $payload, bool $dryRun): array
     {
         $data = $this->validate($payload, $this->policyValidationRules(true));
@@ -1479,7 +1289,6 @@ class GrcToolRegistry
             'detectado_por' => ['required', 'string', 'max:255'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'licoes_aprendidas' => ['nullable', 'string'],
         ]);
 
@@ -1490,7 +1299,7 @@ class GrcToolRegistry
         }
 
         return $this->incidentPayload(Incidente::create($data)
-            ->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']));
+            ->load(['software:id,nome', 'cliente:id,nome', ]));
     }
 
     protected function updateIncident(array $payload, bool $dryRun): array
@@ -1509,7 +1318,7 @@ class GrcToolRegistry
         $incidente->update($data);
 
         return $this->incidentPayload($incidente->refresh()
-            ->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']));
+            ->load(['software:id,nome', 'cliente:id,nome', ]));
     }
 
     protected function createControlEvent(array $payload, bool $dryRun): array
@@ -1547,7 +1356,7 @@ class GrcToolRegistry
         }
 
         return $this->controlEventPayload(ControleEvento::create($data)
-            ->load(['software:id,nome', 'risco:id,titulo,criticidade']));
+            ->load(['software:id,nome']));
     }
 
     protected function updateControlEvent(array $payload, bool $dryRun): array
@@ -1588,7 +1397,7 @@ class GrcToolRegistry
         $evento->update($data);
 
         return $this->controlEventPayload($evento->refresh()
-            ->load(['software:id,nome', 'risco:id,titulo,criticidade']));
+            ->load(['software:id,nome']));
     }
 
     protected function createActionPlan(array $payload, bool $dryRun): array
@@ -1602,7 +1411,6 @@ class GrcToolRegistry
             'origem' => ['nullable', 'string', 'max:255'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
         ]);
 
         $data = array_merge([
@@ -1619,14 +1427,13 @@ class GrcToolRegistry
         $plano = ControleEvento::create([
             'software_id' => $data['software_id'] ?? null,
             'cliente_id' => $data['cliente_id'] ?? null,
-            'risco_id' => $data['risco_id'] ?? null,
             'acao_controle_snapshot' => $data['titulo'],
             'descricao' => $data['descricao'],
             'responsavel_planejado' => $data['responsavel'],
             'prioridade' => $priorityMap[$data['prioridade']] ?? 'Média',
             'status' => $statusMap[$data['status']] ?? 'planejado',
             'origem' => $data['origem'],
-        ])->load(['software:id,nome', 'cliente:id,nome', 'risco:id,titulo']);
+        ])->load(['software:id,nome', 'cliente:id,nome', ]);
 
         return [
             'id' => $plano->id,
@@ -1636,32 +1443,6 @@ class GrcToolRegistry
             'responsavel' => $plano->responsavel_planejado,
             'software' => $plano->software?->nome,
             'cliente' => $plano->cliente?->nome,
-            'risco' => $plano->risco?->titulo,
-        ];
-    }
-
-    protected function riskInputSchema(): array
-    {
-        return [
-            'titulo' => ['type' => 'string'],
-            'descricao' => ['type' => 'string'],
-            'probabilidade' => ['type' => 'string', 'enum' => ['Alta', 'Media', 'Baixa']],
-            'impacto' => ['type' => 'string', 'enum' => ['Alto', 'Medio', 'Baixo']],
-            'responsavel' => ['type' => 'string'],
-            'status' => ['type' => 'string', 'enum' => $this->riskStatuses()],
-            'origem' => ['type' => 'string'],
-            'ativo_afetado' => ['type' => 'string'],
-            'politica_ref' => ['type' => 'string'],
-            'procedimento_ref' => ['type' => 'string'],
-            'plano_acao' => ['type' => 'string'],
-            'software_id' => ['type' => 'integer'],
-            'software_modulo_id' => ['type' => 'integer'],
-            'atividade_id' => ['type' => 'integer'],
-            'cvss_score' => ['type' => 'number', 'minimum' => 0, 'maximum' => 10],
-            'cve_id' => ['type' => 'string'],
-            'data_limite_correcao' => ['type' => 'string'],
-            'tier_politica_id' => ['type' => 'integer'],
-            'cliente_id' => ['type' => 'integer'],
         ];
     }
 
@@ -1725,7 +1506,6 @@ class GrcToolRegistry
             'licoes_aprendidas' => ['type' => 'string'],
             'software_id' => ['type' => 'integer'],
             'cliente_id' => ['type' => 'integer'],
-            'risco_id' => ['type' => 'integer'],
         ];
     }
 
@@ -1753,7 +1533,6 @@ class GrcToolRegistry
             'software_id' => ['type' => 'integer'],
             'tier_policy_id' => ['type' => 'integer'],
             'cliente_id' => ['type' => 'integer'],
-            'risco_id' => ['type' => 'integer'],
             'titulo' => ['type' => 'string'],
             'descricao' => ['type' => 'string'],
             'modulo' => ['type' => 'string'],
@@ -1803,25 +1582,6 @@ class GrcToolRegistry
         ];
     }
 
-    protected function riskValidationRules(): array
-    {
-        return [
-            'titulo' => ['nullable', 'string', 'max:255'],
-            'descricao' => ['nullable', 'string'],
-            'origem' => ['nullable', 'string', 'max:255'],
-            'ativo_afetado' => ['nullable', 'string', 'max:255'],
-            'probabilidade' => ['nullable', 'in:Alta,Media,Baixa'],
-            'impacto' => ['nullable', 'in:Alto,Medio,Baixo'],
-            'status' => ['nullable', 'in:'.implode(',', $this->riskStatuses())],
-            'politica_ref' => ['nullable', 'string', 'max:255'],
-            'procedimento_ref' => ['nullable', 'string', 'max:255'],
-            'plano_acao' => ['nullable', 'string'],
-            'responsavel' => ['nullable', 'string', 'max:255'],
-            'software_id' => ['nullable', 'integer', 'exists:software,id'],
-            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-        ];
-    }
-
     protected function policyValidationRules(bool $creating = false): array
     {
         return [
@@ -1858,7 +1618,6 @@ class GrcToolRegistry
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'tier_politica_id' => ['nullable', 'integer', 'exists:tier_politicas,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'licoes_aprendidas' => ['nullable', 'string'],
         ];
     }
@@ -1912,7 +1671,6 @@ class GrcToolRegistry
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'tier_policy_id' => ['nullable', 'integer', 'exists:tier_politicas,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'titulo' => ['nullable', 'string', 'max:255'],
             'descricao' => ['nullable', 'string', 'max:5000'],
             'modulo' => ['nullable', 'string', 'max:255'],
@@ -2134,29 +1892,6 @@ class GrcToolRegistry
         return $validated;
     }
 
-    protected function riskPayload(Risco $risco): array
-    {
-        return [
-            'id' => $risco->id,
-            'titulo' => $risco->titulo,
-            'criticidade' => $risco->criticidade,
-            'cvss_score' => $risco->cvss_score ? (float) $risco->cvss_score : null,
-            'cve_id' => $risco->cve_id,
-            'probabilidade' => $risco->probabilidade,
-            'impacto' => $risco->impacto,
-            'status' => $risco->status,
-            'origem' => $risco->origem,
-            'responsavel' => $risco->responsavel,
-            'software' => $risco->software?->nome,
-            'modulo' => $risco->modulo?->nome,
-            'cliente' => $risco->cliente?->nome,
-            'sla_dias' => $risco->sla_dias,
-            'data_limite_correcao' => optional($risco->data_limite_correcao)->toDateString(),
-            'sla_status' => $risco->sla_status,
-            'updated_at' => optional($risco->updated_at)->toDateTimeString(),
-        ];
-    }
-
     protected function policyPayload(Politica $politica): array
     {
         return [
@@ -2217,7 +1952,6 @@ class GrcToolRegistry
             'licoes_aprendidas' => $incidente->licoes_aprendidas,
             'software' => $incidente->software?->nome,
             'cliente' => $incidente->cliente?->nome,
-            'risco' => $incidente->risco?->titulo,
             'updated_at' => optional($incidente->updated_at)->toDateTimeString(),
         ];
     }
@@ -2279,28 +2013,7 @@ class GrcToolRegistry
             'prioridade' => $evento->prioridade,
             'status' => $evento->status,
             'observacoes_execucao' => $evento->observacoes_execucao,
-            'risco' => $evento->risco ? [
-                'id' => $evento->risco->id,
-                'titulo' => $evento->risco->titulo,
-                'criticidade' => $evento->risco->criticidade,
-            ] : null,
         ];
-    }
-
-    protected function calculateRiskCriticality(string $probabilidade, string $impacto): string
-    {
-        $matrix = [
-            'Alta' => ['Alto' => 'Critico', 'Medio' => 'Alto', 'Baixo' => 'Medio'],
-            'Media' => ['Alto' => 'Alto', 'Medio' => 'Medio', 'Baixo' => 'Baixo'],
-            'Baixa' => ['Alto' => 'Medio', 'Medio' => 'Baixo', 'Baixo' => 'Baixo'],
-        ];
-
-        return $matrix[$probabilidade][$impacto] ?? 'Medio';
-    }
-
-    protected function riskStatuses(): array
-    {
-        return ['aberto', 'em_tratamento', 'monitorando', 'fechado'];
     }
 
     protected function incidentStatuses(): array

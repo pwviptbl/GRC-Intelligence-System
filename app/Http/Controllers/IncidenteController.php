@@ -12,16 +12,15 @@ class IncidenteController extends Controller
 {
     public function index()
     {
-        $incidentes = Incidente::with(['software', 'cliente', 'risco', 'evidencias'])->latest()->get();
+        $incidentes = Incidente::with(['software', 'cliente', 'evidencias'])->latest()->get();
         $clientes = \App\Models\Cliente::orderBy('nome')->get();
         $softwares = \App\Models\Software::orderBy('nome')->get();
-        $riscos = \App\Models\Risco::orderBy('titulo')->get();
-        return view('incidentes.index', compact('incidentes', 'clientes', 'softwares', 'riscos'));
+        return view('incidentes.index', compact('incidentes', 'clientes', 'softwares'));
     }
 
     public function show(Incidente $incidente)
     {
-        return response()->json($incidente->load(['software', 'cliente', 'risco', 'evidencias']));
+        return response()->json($incidente->load(['software', 'cliente', 'evidencias']));
     }
 
     public function addEvidence(Request $request, Incidente $incidente)
@@ -59,7 +58,6 @@ class IncidenteController extends Controller
         $data['licoes_aprendidas'] = $data['licoes_aprendidas'] ?? '';
         $data['software_id'] = $data['software_id'] ?: null;
         $data['cliente_id'] = $data['cliente_id'] ?: null;
-        $data['risco_id'] = $data['risco_id'] ?: null;
         Incidente::create($data);
         return redirect()->back()->with('success', 'Incidente registrado.');
     }
@@ -70,7 +68,6 @@ class IncidenteController extends Controller
         $data['licoes_aprendidas'] = $data['licoes_aprendidas'] ?? '';
         $data['software_id'] = $data['software_id'] ?: null;
         $data['cliente_id'] = $data['cliente_id'] ?: null;
-        $data['risco_id'] = $data['risco_id'] ?: null;
         $incidente->update($data);
         return redirect()->back()->with('success', 'Incidente atualizado com sucesso!');
     }
@@ -102,7 +99,7 @@ class IncidenteController extends Controller
 
         $zip = new \ZipArchive();
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            abort(500, 'Não foi possível gerar o pacote ZIP.');
+            abort(500, 'Nao foi possivel gerar o pacote ZIP.');
         }
 
         foreach ($incidentes as $index => $inc) {
@@ -140,13 +137,12 @@ class IncidenteController extends Controller
             'detectado_por' => ['required', 'string', 'max:255'],
             'software_id' => ['nullable', 'integer', 'exists:software,id'],
             'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
-            'risco_id' => ['nullable', 'integer', 'exists:riscos,id'],
             'licoes_aprendidas' => ['nullable', 'string'],
         ], [
-            'titulo.required' => 'O título do incidente é obrigatório.',
-            'descricao.required' => 'A descrição do incidente é obrigatória.',
-            'detectado_por.required' => 'O campo detectado por é obrigatório.',
-            'detectado_por.max' => 'O campo detectado por deve ter no máximo 255 caracteres.',
+            'titulo.required' => 'O titulo do incidente e obrigatorio.',
+            'descricao.required' => 'A descricao do incidente e obrigatoria.',
+            'detectado_por.required' => 'O campo detectado por e obrigatorio.',
+            'detectado_por.max' => 'O campo detectado por deve ter no maximo 255 caracteres.',
         ]);
     }
 
@@ -164,7 +160,7 @@ class IncidenteController extends Controller
                 ];
 
                 if (!in_array($extension, $allowedExtensions, true)) {
-                    $fail('Tipo de arquivo não permitido. Envie documento, imagem, log ou arquivo compactado seguro.');
+                    $fail('Tipo de arquivo nao permitido. Envie documento, imagem, log ou arquivo compactado seguro.');
                 }
             },
         ];

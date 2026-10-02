@@ -9,7 +9,7 @@ class Incidente extends Model
     protected $fillable = [
         'titulo', 'descricao', 'severidade', 'status', 
         'detectado_por', 'data_deteccao', 'risco_vinculado', 'licoes_aprendidas',
-        'software_id', 'cliente_id', 'risco_id'
+        'software_id', 'cliente_id'
     ];
 
     public function software()
@@ -20,11 +20,6 @@ class Incidente extends Model
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
-    }
-
-    public function risco()
-    {
-        return $this->belongsTo(Risco::class);
     }
 
     public function timeline()

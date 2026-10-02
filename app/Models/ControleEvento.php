@@ -67,7 +67,6 @@ class ControleEvento extends Model
         'cliente_id',
         'tier_politica_id',
         'atividade_id',
-        'risco_id',
         'tier',
         'acao_controle_snapshot',
         'descricao',
@@ -147,11 +146,6 @@ class ControleEvento extends Model
     public function atividade()
     {
         return $this->belongsTo(Atividade::class);
-    }
-
-    public function risco()
-    {
-        return $this->belongsTo(Risco::class);
     }
 
     public function executor()

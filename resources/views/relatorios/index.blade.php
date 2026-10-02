@@ -188,7 +188,7 @@
                     
                     <div class="reports-sections-grid">
                         <label class="reports-checkbox">
-                            <input type="checkbox" name="secoes[]" value="riscos" checked> Matriz de Riscos
+                            
                         </label>
                         <label class="reports-checkbox">
                             <input type="checkbox" name="secoes[]" value="incidentes" checked> Histórico de Incidentes

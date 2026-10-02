@@ -75,7 +75,6 @@
                 <th>Esforço</th>
                 <th>Prioridade</th>
                 <th>Status</th>
-                <th>Risco</th>
                 <th>Responsável</th>
             </tr>
         </thead>
@@ -94,14 +93,6 @@
                 <td>{{ $evento->esforco ?: 'M' }}</td>
                 <td>{{ $evento->prioridade }}</td>
                 <td class="status-{{ $evento->status }}">{{ $evento->status }}</td>
-                <td>
-                    @if($evento->risco)
-                        {{ $evento->risco->titulo }}<br>
-                        <span style="font-size:11px; color:#666;">{{ $evento->risco->criticidade }}</span>
-                    @else
-                        —
-                    @endif
-                </td>
                 <td>{{ $evento->responsavel_planejado }}</td>
             </tr>
             @empty

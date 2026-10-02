@@ -10,9 +10,9 @@
     showViewModal: false,
     editMode: false,
     formAction: '{{ route('plano_acoes.store') }}',
-    form: { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual', software_id: '', cliente_id: '', risco_id: '' },
+    form: { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual', software_id: '', cliente_id: '' },
     procedimentos: @js($procedimentos),
-    viewAcao: { items: [], software: null, cliente: null, risco: null },
+    viewAcao: { items: [], software: null, cliente: null },
     showItemsModal: false,
     newItemTitle: '',
     selectedProcedimentoId: '',
@@ -175,7 +175,7 @@
 
     openCreate() {
         this.editMode = false;
-        this.form = { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual', software_id: '', cliente_id: '', risco_id: '' };
+        this.form = { id: '', titulo: '', descricao: '', responsavel: '', prioridade: 'media', status: 'pendente', origem: 'Manual', software_id: '', cliente_id: '' };
         this.formAction = '{{ route('plano_acoes.store') }}';
         this.showModal = true;
     },
@@ -279,7 +279,7 @@
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:20px; margin-bottom:20px">
                 <div><label class="label-mini">Software</label><div class="view-val" x-text="viewAcao.software ? viewAcao.software.nome : 'Não informado'"></div></div>
                 <div><label class="label-mini">Cliente</label><div class="view-val" x-text="viewAcao.cliente ? viewAcao.cliente.nome : 'Geral'"></div></div>
-                <div><label class="label-mini">Risco Vinculado</label><div class="view-val" x-text="viewAcao.risco ? '#' + viewAcao.risco.id + ' - ' + viewAcao.risco.titulo : 'Nenhum'"></div></div>
+
             </div>
 
             <div style="margin-bottom:20px">
@@ -379,15 +379,7 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:10px">
-                    <label>Risco Relacionado (Opcional)</label>
-                    <select name="risco_id" x-model="form.risco_id" class="form-select">
-                        <option value="">Nenhum Risco Específico</option>
-                        @foreach($riscos as $r)
-                            <option value="{{ $r->id }}">#{{ $r->id }} - {{ $r->titulo }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top:10px">
                     <div class="form-group">

@@ -61,10 +61,10 @@
                 <span class="score-label">Conformidade LGPD</span>
             </div>
             <div class="score-card">
-                <span class="score-value" style="color: {{ $riscos['criticos'] > 0 ? '#991b1b' : '#166534' }}">
-                    {{ $riscos['criticos'] }}
+                <span class="score-value" style="color: {{ $vulnerabilidades['criticos'] > 0 ? '#991b1b' : '#166534' }}">
+                    {{ $vulnerabilidades['criticos'] }}
                 </span>
-                <span class="score-label">Riscos Críticos Ativos</span>
+                <span class="score-label">Vulnerabilidades Críticas Ativas</span>
             </div>
             <div class="score-card">
                 <span class="score-value" style="color: #0369a1">
@@ -117,12 +117,12 @@
             <div style="font-weight: 800; width: 40px;">{{ $lgpd['percentual'] }}%</div>
         </div>
 
-        @if($riscos['criticos'] > 0 || $incidentes['abertos'] > 0)
+        @if($vulnerabilidades['criticos'] > 0 || $incidentes['abertos'] > 0)
         <div class="alert-box alert-red">
             <div style="font-size: 30px;">⚠️</div>
             <div>
                 <div style="font-weight: 800; font-size: 16px;">ALERTA DE SEGURANÇA</div>
-                <div style="font-size: 13px;">Existem {{ $riscos['criticos'] }} riscos críticos e {{ $incidentes['abertos'] }} incidentes sem resolução. Recomenda-se atenção imediata da diretoria.</div>
+                <div style="font-size: 13px;">Existem {{ $vulnerabilidades['criticos'] }} vulnerabilidades críticas e {{ $incidentes['abertos'] }} incidentes sem resolução. Recomenda-se atenção imediata da diretoria.</div>
             </div>
         </div>
         @else
@@ -130,7 +130,7 @@
             <div style="font-size: 30px;">✅</div>
             <div>
                 <div style="font-weight: 800; font-size: 16px;">AMBIENTE ESTÁVEL</div>
-                <div style="font-size: 13px;">Não há riscos críticos ou incidentes abertos no momento. O programa de conformidade segue conforme o planejado.</div>
+                <div style="font-size: 13px;">Não há vulnerabilidades críticas ou incidentes abertos no momento. O programa de conformidade segue conforme o planejado.</div>
             </div>
         </div>
         @endif

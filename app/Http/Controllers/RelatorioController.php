@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\Software;
-use App\Models\Risco;
 use App\Models\Incidente;
 use App\Models\ControleEvento;
 use App\Models\Politica;
@@ -21,33 +20,28 @@ class RelatorioController extends Controller
 
     public function gerarDossie(Request $request)
     {
-        $queryRiscos = Risco::with(['software', 'cliente']);
-        $queryIncidentes = Incidente::with(['software', 'cliente', 'risco']);
-        $queryPlanos = ControleEvento::with(['etapas.evidencias', 'software', 'cliente', 'risco'])
+        $queryIncidentes = Incidente::with(['software', 'cliente']);
+        $queryPlanos = ControleEvento::with(['etapas.evidencias', 'software', 'cliente'])
             ->whereNotIn('status', ['sugestao', 'triagem', 'dispensado', 'cancelado']);
         
         // Filtro por Data
         if ($request->inicio) {
-            $queryRiscos->where('created_at', '>=', $request->inicio);
             $queryIncidentes->where('created_at', '>=', $request->inicio);
             $queryPlanos->where('created_at', '>=', $request->inicio);
         }
         if ($request->fim) {
-            $queryRiscos->where('created_at', '<=', $request->fim);
             $queryIncidentes->where('created_at', '<=', $request->fim);
             $queryPlanos->where('created_at', '<=', $request->fim);
         }
 
         // Filtro por Software
         if ($request->software_id) {
-            $queryRiscos->where('software_id', $request->software_id);
             $queryIncidentes->where('software_id', $request->software_id);
             $queryPlanos->where('software_id', $request->software_id);
         }
 
         // Filtro por Cliente
         if ($request->cliente_id) {
-            $queryRiscos->where('cliente_id', $request->cliente_id);
             $queryIncidentes->where('cliente_id', $request->cliente_id);
             $queryPlanos->where('cliente_id', $request->cliente_id);
         }
@@ -56,7 +50,6 @@ class RelatorioController extends Controller
             'empresa' => config('app.company'),
             'data_geracao' => now()->format('d/m/Y H:i'),
             'filtros' => $request->all(),
-            'riscos' => $queryRiscos->latest()->get(),
             'incidentes' => $queryIncidentes->latest()->get(),
             'planos' => $queryPlanos->latest()->get(),
             'politicas' => Politica::where('status', 'publicado')->get(),

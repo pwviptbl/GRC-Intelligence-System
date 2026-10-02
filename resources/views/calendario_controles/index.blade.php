@@ -381,7 +381,6 @@
         criterios_aceite: '',
         software_id: '',
         cliente_id: '',
-        risco_id: '',
         responsavel_planejado: '',
         executor_id: '',
         revisor_id: '',
@@ -462,7 +461,6 @@
             criterios_aceite: activity.criterios_aceite ?? '',
             software_id: activity.software_id ?? '',
             cliente_id: activity.cliente_id ?? '',
-            risco_id: activity.risco_id ?? '',
             responsavel_planejado: activity.responsavel_planejado ?? '',
             executor_id: activity.executor_id ?? '',
             revisor_id: activity.revisor_id ?? '',
@@ -833,7 +831,7 @@
                                 <th>Prevista</th>
                                 <th>Esforco</th>
                                 <th>Prioridade</th>
-                                <th>Risco</th>
+                                
                                 <th>Motivo</th>
                             </tr>
                         </thead>
@@ -857,12 +855,7 @@
                                     <td>{{ $sugestao->esforco ?: 'M' }}</td>
                                     <td><span class="badge" :style="priorityStyle('{{ $sugestao->prioridade }}')">{{ $sugestao->prioridade }}</span></td>
                                     <td>
-                                        @if($sugestao->risco)
-                                            <div style="color:var(--text-1)">{{ $sugestao->risco->titulo }}</div>
-                                            <div style="font-size:11px; color:var(--text-3)">{{ $sugestao->risco->criticidade }}</div>
-                                        @else
-                                            <span style="color:var(--text-3)">Sem risco associado</span>
-                                        @endif
+
                                     </td>
                                     <td style="min-width:260px; white-space:pre-line; color:var(--text-2); font-size:12px;">{{ $sugestao->observacoes_geracao ?: 'Sugestao criada a partir da regra de tier.' }}</td>
                                 </tr>
@@ -1240,7 +1233,7 @@
                 <div class="execution-form-grid">
                     <div class="form-group"><label>Software</label><select name="software_id" x-model="executionForm.software_id" class="form-select"><option value="">Atividade geral</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Cliente</label><select name="cliente_id" x-model="executionForm.cliente_id" class="form-select"><option value="">Interno / geral</option>@foreach($clientes as $cliente)<option value="{{ $cliente->id }}">{{ $cliente->nome }}</option>@endforeach</select></div>
-                    <div class="form-group"><label>Risco</label><select name="risco_id" x-model="executionForm.risco_id" class="form-select"><option value="">Sem risco</option>@foreach($riscos as $risco)<option value="{{ $risco->id }}">{{ $risco->titulo }}</option>@endforeach</select></div>
+                    
                 </div>
 
                 <div class="execution-form-grid">
@@ -1373,7 +1366,7 @@
                 <div class="execution-form-grid">
                     <div class="form-group"><label>Software</label><select name="software_id" class="form-select"><option value="">Atividade geral</option>@foreach($softwares as $software)<option value="{{ $software->id }}">{{ $software->nome }}</option>@endforeach</select></div>
                     <div class="form-group"><label>Cliente</label><select name="cliente_id" class="form-select"><option value="">Interno / geral</option>@foreach($clientes as $cliente)<option value="{{ $cliente->id }}">{{ $cliente->nome }}</option>@endforeach</select></div>
-                    <div class="form-group"><label>Risco</label><select name="risco_id" class="form-select"><option value="">Sem risco</option>@foreach($riscos as $risco)<option value="{{ $risco->id }}">{{ $risco->titulo }}</option>@endforeach</select></div>
+                    
                 </div>
                 <div class="execution-form-grid">
                     <div class="form-group"><label>Executor</label><select name="executor_id" class="form-select"><option value="">Sem executor</option>@foreach($usuariosOperacionais as $usuario)<option value="{{ $usuario->id }}">{{ $usuario->name }}</option>@endforeach</select></div>

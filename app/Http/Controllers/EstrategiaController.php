@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Software;
-use App\Models\Risco;
+use App\Models\Finding;
 use App\Models\Incidente;
 use App\Models\ControleEvento;
 use App\Models\Politica;
@@ -21,7 +21,7 @@ class EstrategiaController extends Controller
     {
         // Coleta o contexto completo do sistema
         $softwares = Software::all(['nome', 'tecnologia'])->toArray();
-        $riscos = Risco::where('status', '!=', 'fechado')->get(['titulo', 'criticidade', 'probabilidade'])->toArray();
+        $findings = Finding::where('status', '!=', 'fechado')->get(['titulo', 'severidade', 'status'])->toArray();
         $incidentes = Incidente::latest()->take(5)->get(['titulo', 'severidade', 'status'])->toArray();
         $planos = ControleEvento::whereIn('status', ['planejado', 'pendente', 'em_execucao', 'em_revisao', 'bloqueado', 'atrasado'])
             ->get(['acao_controle_snapshot', 'prioridade', 'status'])
@@ -30,30 +30,30 @@ class EstrategiaController extends Controller
 
         $contexto = "Contexto atual da empresa:\n";
         $contexto .= "- Softwares: " . json_encode($softwares) . "\n";
-        $contexto .= "- Riscos Ativos: " . json_encode($riscos) . "\n";
-        $contexto .= "- Últimos Incidentes: " . json_encode($incidentes) . "\n";
+        $contexto .= "- Vulnerabilidades/Findings Ativos: " . json_encode($findings) . "\n";
+        $contexto .= "- Ultimos Incidentes: " . json_encode($incidentes) . "\n";
         $contexto .= "- Cartoes Pendentes no Kanban: " . json_encode($planos) . "\n";
-        $contexto .= "- Políticas: " . json_encode($politicas) . "\n";
+        $contexto .= "- Politicas: " . json_encode($politicas) . "\n";
 
-        // Detalhes extras fornecidos pelo usuário
+        // Detalhes extras fornecidos pelo usuario
         $detalhes = $request->input('detalhes');
         if (!empty($detalhes)) {
-            $contexto .= "- Observações e Restrições Adicionais do Usuário: " . $detalhes . "\n";
+            $contexto .= "- Observacoes e Restricoes Adicionais do Usuario: " . $detalhes . "\n";
         }
 
         $prompt = $contexto . "\n
-        Aja como um Gerente de Segurança da Informação (CISO) sênior. 
-        Com base nos dados acima e nos detalhes fornecidos pelo usuário, crie um Roadmap Estratégico de Curto Prazo (Próximas 4 semanas).
+        Aja como um Gerente de Seguranca da Informacao (CISO) senior. 
+        Com base nos dados acima e nos detalhes fornecidos pelo usuario, crie um Roadmap Estrategico de Curto Prazo (Proximas 4 semanas).
         
-        Sua resposta deve ser em Português e estruturada em:
-        1. **Análise de Cenário**: Resumo do maior perigo atual.
-        2. **Prioridades Imediatas (Semana 1-2)**: 3 ações críticas e por que fazê-las.
-        3. **Ações Táticas (Semana 3-4)**: 2 ações para melhorar a governança.
-        4. **Sugestão de Pentest**: Qual software deve ser testado primeiro e quais vetores focar (ex: SQLi, Broken Auth).
+        Sua resposta deve ser em Portugues e estruturada em:
+        1. **Analise de Cenario**: Resumo do maior perigo atual.
+        2. **Prioridades Imediatas (Semana 1-2)**: 3 acoes criticas e por que faze-las.
+        3. **Acoes Taticas (Semana 3-4)**: 2 acoes para melhorar a governanca.
+        4. **Sugestao de Pentest**: Qual software deve ser testado primeiro e quais vetores focar (ex: SQLi, Broken Auth).
 
-        Importante: Leve em consideração e adapte suas sugestões e roadmap baseando-se estritamente nas observações e restrições fornecidas pelo usuário (como as limitações de testes DAST, uso de proxies específicos, arquiteturas baseadas em frames/legadas, rotinas extensas, etc.).
+        Importante: Leve em consideracao e adapte suas sugestoes e roadmap baseando-se estritamente nas observacoes e restricoes fornecidas pelo usuario (como as limitacoes de testes DAST, uso de proxies especificos, arquiteturas baseadas em frames/legadas, rotinas extensas, etc.).
 
-        Use um tom profissional, direto e encorajador para um analista que trabalha sozinho. Não use Markdown complexo, apenas negrito e listas.";
+        Use um tom profissional, direto e encorajador para um analista que trabalha sozinho. Nao use Markdown complexo, apenas negrito e listas.";
 
         $roadmap = $gemini->generateGovernance($prompt);
 

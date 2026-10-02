@@ -6,7 +6,6 @@ use App\Models\Cliente;
 use App\Models\Software;
 use App\Models\InstanciaCliente;
 use App\Models\Politica;
-use App\Models\Risco;
 use App\Models\Incidente;
 use App\Models\PlanoAcao;
 use App\Models\PlanoAcaoItem;
@@ -72,15 +71,7 @@ class DatabaseSeeder extends Seeder
             'versao' => '2.0'
         ]);
 
-        // 5. Riscos
-        $riscos = [
-            ['titulo' => 'Acesso SSH legado', 'descricao' => 'Servidores acessíveis com senha fraca', 'probabilidade' => 'Alta', 'impacto' => 'Alto', 'criticidade' => 'Critico', 'origem' => 'Técnico', 'ativo_afetado' => 'Servidor WS1', 'status' => 'aberto', 'plano_acao' => 'Implementar autenticação via chave SSH e desabilitar senhas.'],
-            ['titulo' => 'Backup sem criptografia', 'descricao' => 'Discos de fita saindo sem criptografia', 'probabilidade' => 'Media', 'impacto' => 'Alto', 'criticidade' => 'Alto', 'origem' => 'Processos', 'ativo_afetado' => 'Storage', 'status' => 'aberto', 'plano_acao' => 'Ativar AES-256 no software de backup.'],
-            ['titulo' => 'Treinamento LGPD atrasado', 'descricao' => 'Colaboradores novos sem treino', 'probabilidade' => 'Alta', 'impacto' => 'Medio', 'criticidade' => 'Medio', 'origem' => 'Pessoas', 'ativo_afetado' => 'RH', 'status' => 'em_tratamento', 'plano_acao' => 'Incluir o treinamento no fluxo de admissão.'],
-        ];
-        foreach ($riscos as $r) {
-            Risco::create($r);
-        }
+        // 5. Riscos migrados para findings/engajamentos
 
         // 6. Incidentes
         Incidente::create([

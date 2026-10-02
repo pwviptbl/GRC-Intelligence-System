@@ -101,35 +101,6 @@
     </div>
     @endif
 
-    @if(in_array('riscos', $filtros['secoes'] ?? []))
-    <div class="section">
-        <div class="section-title">2. Matriz de Riscos Mapeados</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Risco</th>
-                    <th>Criticidade</th>
-                    <th>Software/Ativo</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($riscos as $r)
-                <tr>
-                    <td>
-                        <strong>{{ $r->titulo }}</strong><br>
-                        <small>{{ $r->descricao }}</small>
-                    </td>
-                    <td><span class="badge {{ $r->criticidade == 'Critico' ? 'badge-critico' : 'badge-alto' }}">{{ $r->criticidade }}</span></td>
-                    <td>{{ $r->software?->nome ?? $r->ativo_afetado }}</td>
-                    <td>{{ ucfirst($r->status) }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-    @endif
-
     @if(in_array('incidentes', $filtros['secoes'] ?? []))
     <div class="section">
         <div class="section-title">3. Histórico de Incidentes e Respostas</div>

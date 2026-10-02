@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Atividade;
 use App\Models\ControleEvento;
-use App\Models\Risco;
+use App\Models\Finding;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
@@ -240,7 +240,7 @@ class CalendarioControleService
                 $policy = $candidate['policy'];
                 /** @var Atividade|null $activity */
                 $activity = $candidate['activity'];
-                /** @var Risco|null $risk */
+                /** @var Finding|null $risk */
                 $risk = $candidate['risk'];
                 $tier = $candidate['tier'];
                 $neverTested = $candidate['never_tested'];
@@ -262,7 +262,6 @@ class CalendarioControleService
                     if (in_array($existing->status, ['dispensado', 'cancelado'], true)) {
                         $existing->update([
                             'atividade_id' => $activity?->id,
-                            'risco_id' => $risk?->id,
                             'tier' => $tier,
                             'acao_controle_snapshot' => $activity?->atividade ?: $policy->acao_controle,
                             'frequencia_snapshot' => $frequencySource,
@@ -305,7 +304,6 @@ class CalendarioControleService
                     'software_id' => $software->id,
                     'tier_politica_id' => $policy->id,
                     'atividade_id' => $activity?->id,
-                    'risco_id' => $risk?->id,
                     'tier' => $tier,
                     'acao_controle_snapshot' => $activity?->atividade ?: $policy->acao_controle,
                     'frequencia_snapshot' => $frequencySource,
@@ -447,16 +445,16 @@ class CalendarioControleService
         };
     }
 
-    protected function resolveRelevantRisk(Software $software): ?Risco
+    protected function resolveRelevantRisk(Software $software): ?Finding
     {
-        return Risco::query()
-            ->where('software_id', $software->id)
-            ->whereIn('status', ['aberto', 'em_tratamento', 'monitorando'])
-            ->orderByRaw("CASE criticidade
-                WHEN 'Critico' THEN 4
-                WHEN 'Alto' THEN 3
-                WHEN 'Medio' THEN 2
-                WHEN 'Baixo' THEN 1
+        return Finding::query()
+            ->whereHas('test.engagement', fn ($q) => $q->where('software_id', $software->id))
+            ->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+            ->orderByRaw("CASE severidade
+                WHEN 'critico' THEN 4
+                WHEN 'alto' THEN 3
+                WHEN 'medio' THEN 2
+                WHEN 'baixo' THEN 1
                 ELSE 0
             END DESC")
             ->orderByDesc('updated_at')
@@ -465,23 +463,23 @@ class CalendarioControleService
 
     protected function riskWeight(?string $criticidade): int
     {
-        return match ($criticidade) {
-            'Critico' => 4,
-            'Alto' => 3,
-            'Medio' => 2,
-            'Baixo' => 1,
+        return match (strtolower($criticidade ?? '')) {
+            'critico' => 4,
+            'alto' => 3,
+            'medio' => 2,
+            'baixo' => 1,
             default => 0,
         };
     }
 
-    protected function resolvePriority(int $tier, ?Risco $risk): string
+    protected function resolvePriority(int $tier, ?Finding $risk): string
     {
         if ($risk) {
-            return match ($risk->criticidade) {
-                'Critico' => 'Crítica',
-                'Alto' => 'Alta',
-                'Medio' => 'Média',
-                'Baixo' => 'Baixa',
+            return match (strtolower($risk->severidade ?? '')) {
+                'critico' => 'Crítica',
+                'alto' => 'Alta',
+                'medio' => 'Média',
+                'baixo' => 'Baixa',
                 default => $this->priorityByTier($tier),
             };
         }
@@ -498,7 +496,7 @@ class CalendarioControleService
         };
     }
 
-    protected function priorityWeight(int $tier, ?Risco $risk, bool $neverTested = false): int
+    protected function priorityWeight(int $tier, ?Finding $risk, bool $neverTested = false): int
     {
         // BUG #1 FIX: Tier é fator dominante (escala de milhar).
         // Risco e nunca-testado desempate DENTRO do mesmo tier, nunca cruzam tiers.
@@ -512,12 +510,12 @@ class CalendarioControleService
         $virginBoost = $neverTested ? 500 : 0;
 
         // Risco é fator secundário — max 40 pontos (Critico=4 × 10)
-        $riskWeight = $risk ? $this->riskWeight($risk->criticidade) * 10 : 0;
+        $riskWeight = $risk ? $this->riskWeight($risk->severidade) * 10 : 0;
 
         return $tierWeight + $virginBoost + $riskWeight;
     }
 
-    protected function buildGenerationNotes(Software $software, ?Risco $risk, bool $neverTested = false, ?Atividade $activity = null, ?string $modulo = null): string
+    protected function buildGenerationNotes(Software $software, ?Finding $risk, bool $neverTested = false, ?Atividade $activity = null, ?string $modulo = null): string
     {
         $notes = [
             "Classificacao do software: {$software->classificacao_label}",
@@ -543,7 +541,7 @@ class CalendarioControleService
         }
 
         if ($risk) {
-            $notes[] = "Risco associado para priorizacao: {$risk->titulo} ({$risk->criticidade})";
+            $notes[] = "Vulnerabilidade associada para priorizacao: {$risk->titulo} ({$risk->severidade})";
         }
 
         return implode("\n", $notes);

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Atividade;
 use App\Models\ControleEvento;
-use App\Models\Risco;
+use App\Models\Engagement;
+use App\Models\EngagementTest;
+use App\Models\Finding;
 use App\Models\Software;
 use App\Models\TierPolitica;
 use App\Models\User;
@@ -705,19 +707,26 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
     }
 
-    protected function createRisk(Software $software): Risco
+    protected function createRisk(Software $software): Finding
     {
-        return Risco::create([
+        $eng = Engagement::create([
+            'software_id' => $software->id,
+            'nome' => 'Auditoria Pentest',
+            'tipo' => 'pentest',
+            'status' => 'ativo',
+        ]);
+        $test = EngagementTest::create([
+            'engagement_id' => $eng->id,
+            'titulo' => 'Teste de Autenticacao',
+            'tipo_teste' => 'dast',
+            'status' => 'concluido',
+        ]);
+        return Finding::create([
+            'test_id' => $test->id,
             'titulo' => 'Risco alto no portal',
             'descricao' => 'Falha recorrente em autenticacao.',
-            'origem' => 'Tecnico',
-            'ativo_afetado' => 'Portal',
-            'software_id' => $software->id,
-            'probabilidade' => 'Alta',
-            'impacto' => 'Alto',
-            'criticidade' => 'Critico',
+            'severidade' => 'critico',
             'status' => 'aberto',
-            'responsavel' => 'Time GRC',
         ]);
     }
 }

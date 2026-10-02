@@ -95,11 +95,6 @@ class Software extends Model
         return $this->hasMany(Engagement::class);
     }
 
-    public function riscos()
-    {
-        return $this->hasMany(Risco::class);
-    }
-
     public function controleEventos()
     {
         return $this->hasMany(ControleEvento::class);

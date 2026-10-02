@@ -681,20 +681,20 @@
         </div>
     </div>
 
-    <!-- Row 2: Riscos e Incidentes -->
+    <!-- Row 2: Vulnerabilidades e Incidentes -->
     <div class="dashboard-grid">
         <div class="table-card dashboard-panel">
-            <div class="dashboard-panel-title">⚠️ Riscos Abertos</div>
+            <div class="dashboard-panel-title">🔍 Vulnerabilidades (Findings)</div>
             <div class="dashboard-badges">
-                <span class="badge" style="background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)">{{ $riscos['criticos'] }} Críticos</span>
-                <span class="badge" style="background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)">{{ $riscos['altos'] }} Altos</span>
-                <span class="badge" style="background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)">{{ $riscos['medios'] }} Médios</span>
-                <span class="badge" style="background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)">{{ $riscos['baixos'] }} Baixos</span>
+                <span class="badge" style="background:rgba(255,83,112,.12);color:var(--red);border-color:rgba(255,83,112,.3)">{{ $vulnerabilidades['criticos'] }} Críticos</span>
+                <span class="badge" style="background:rgba(255,150,50,.1);color:#ff9632;border-color:rgba(255,150,50,.3)">{{ $vulnerabilidades['altos'] }} Altos</span>
+                <span class="badge" style="background:rgba(255,215,64,.1);color:var(--yellow);border-color:rgba(255,215,64,.3)">{{ $vulnerabilidades['medios'] }} Médios</span>
+                <span class="badge" style="background:rgba(0,255,159,.1);color:var(--green);border-color:rgba(0,255,159,.3)">{{ $vulnerabilidades['baixos'] }} Baixos</span>
             </div>
-            @foreach($ultimos_riscos as $r)
+            @foreach($ultimos_findings as $f)
             <div class="dashboard-recent-row">
-                <span class="dashboard-recent-title">{{ $r->titulo }}</span>
-                <span class="badge">{{ $r->criticidade }}</span>
+                <span class="dashboard-recent-title">{{ $f->titulo }}</span>
+                <span class="badge">{{ $f->severidade }}</span>
             </div>
             @endforeach
         </div>

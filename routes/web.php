@@ -18,7 +18,6 @@ use App\Http\Controllers\PlanejamentoSemanalController;
 use App\Http\Controllers\ProcedimentoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RelatorioController;
-use App\Http\Controllers\RiscoController;
 use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\EngagementTestController;
 use App\Http\Controllers\FindingController;
@@ -116,11 +115,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // 2. MÓDULOS OPERACIONAIS
     Route::middleware('role:admin,governanca,operacional,auditor')->group(function () {
-        Route::resource('riscos', RiscoController::class);
-        Route::patch('/riscos/{risco}/status', [RiscoController::class, 'updateStatus'])->name('riscos.update_status');
-        Route::get('/riscos/export/zip', [RiscoController::class, 'exportZip'])->name('riscos.export.zip');
-        Route::get('/riscos/export/all', [RiscoController::class, 'printAll'])->name('riscos.export.all');
-        Route::get('/riscos/export/{risco}', [RiscoController::class, 'print'])->name('riscos.export');
+        Route::redirect('/riscos', '/findings')->name('riscos.index');
 
         Route::resource('incidentes', IncidenteController::class)->except(['store', 'update', 'destroy']);
         Route::get('/incidentes/export/zip', [IncidenteController::class, 'exportZip'])->name('incidentes.export.zip');
@@ -188,7 +183,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
         Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');
         Route::post('/procedimentos/suggest', [ProcedimentoController::class, 'suggestIA'])->name('procedimentos.suggest');
-        Route::post('/riscos/analyze', [RiscoController::class, 'analyzeIA'])->name('riscos.analyze');
 
         // --- Gestão de Vulnerabilidades DefectDojo-style ---
         Route::resource('engagements', EngagementController::class);

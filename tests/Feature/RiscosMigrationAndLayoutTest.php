@@ -72,49 +72,7 @@ class RiscosMigrationAndLayoutTest extends TestCase
         $response->assertDontSee('max-width:1200px');
     }
 
-    /** @test */
-    public function test_data_migration_converts_riscos_into_findings_correctly(): void
-    {
-        $software = Software::create(['nome' => 'Sistema Legado', 'ativo' => true]);
-
-        // Insere registro cru na tabela riscos
-        $riscoId = DB::table('riscos')->insertGetId([
-            'titulo'        => 'Injeção SQL no Login',
-            'descricao'     => 'Parâmetro user não sanitizado',
-            'software_id'   => $software->id,
-            'criticidade'   => 'Critico',
-            'cvss_score'    => 9.8,
-            'cve_id'        => 'CVE-2026-9999',
-            'plano_acao'    => 'Usar prepared statements',
-            'status'        => 'aberto',
-            'ativo_afetado' => 'Portal Login',
-            'responsavel'   => 'DevSecOps',
-            'sla_dias'      => 15,
-            'created_at'    => now(),
-            'updated_at'    => now(),
-        ]);
-
-        // Executa a migration de conversão
-        $migration = require database_path('migrations/2026_09_29_235500_migrate_riscos_to_defectdojo_hierarchy.php');
-        $migration->up();
-
-        // Verifica que o engajamento foi criado para o software
-        $engagement = Engagement::where('software_id', $software->id)->where('nome', 'Inventário de Riscos e Vulnerabilidades (Legado)')->first();
-        $this->assertNotNull($engagement);
-
-        // Verifica que o teste foi criado
-        $test = EngagementTest::where('engagement_id', $engagement->id)->first();
-        $this->assertNotNull($test);
-
-        // Verifica que o finding foi criado com os dados corretos
-        $finding = Finding::where('test_id', $test->id)->where('titulo', 'Injeção SQL no Login')->first();
-        $this->assertNotNull($finding);
-        $this->assertEquals('critico', $finding->severidade);
-        $this->assertEquals(9.8, (float)$finding->cvss_score);
-        $this->assertEquals('CVE-2026-9999', $finding->cve_id);
-        $this->assertEquals('Usar prepared statements', $finding->remediacao_sugerida);
-        $this->assertEquals('aberto', $finding->status);
-    }
+    
     public function test_engagement_test_show_renders_successfully(): void
     {
         $user = $this->makeUser();

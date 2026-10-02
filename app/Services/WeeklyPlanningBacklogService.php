@@ -126,7 +126,7 @@ class WeeklyPlanningBacklogService
     public function getBacklogQuery(): Builder
     {
         return ControleEvento::query()
-            ->with(['software:id,nome', 'risco:id,titulo'])
+            ->with(['software:id,nome'])
             ->whereNull('semana_planejada')
             ->whereIn('status', ['planejado', 'pendente', 'atrasado'])
             ->where('origem', '!=', 'tier')

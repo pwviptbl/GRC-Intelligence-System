@@ -7,7 +7,7 @@ use App\Models\Software;
 use App\Models\SoftwareModulo;
 use App\Models\InstanciaCliente;
 use App\Models\Politica;
-use App\Models\Risco;
+use App\Models\Finding;
 use App\Models\Incidente;
 use App\Models\ControleEvento;
 use App\Models\LgpdItem;
@@ -36,11 +36,11 @@ class DashboardController extends Controller
             'politicas_vigentes' => Politica::where('status', 'publicado')->count(),
         ];
 
-        $riscos = [
-            'criticos' => Risco::where('criticidade', 'Critico')->where('status', '!=', 'fechado')->count(),
-            'altos' => Risco::where('criticidade', 'Alto')->where('status', '!=', 'fechado')->count(),
-            'medios' => Risco::where('criticidade', 'Medio')->where('status', '!=', 'fechado')->count(),
-            'baixos' => Risco::where('criticidade', 'Baixo')->where('status', '!=', 'fechado')->count(),
+        $vulnerabilidades = [
+            'criticos' => Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count(),
+            'altos' => Finding::where('severidade', 'alto')->where('status', '!=', 'fechado')->count(),
+            'medios' => Finding::where('severidade', 'medio')->where('status', '!=', 'fechado')->count(),
+            'baixos' => Finding::where('severidade', 'baixo')->where('status', '!=', 'fechado')->count(),
         ];
 
         $incidentes = [
@@ -64,7 +64,7 @@ class DashboardController extends Controller
             'percentual' => round(($lgpd_conforme / $lgpd_total) * 100),
         ];
 
-        $ultimos_riscos = Risco::latest()->take(3)->get();
+        $ultimos_findings = Finding::latest()->take(3)->get();
         $ultimos_incidentes = Incidente::latest()->take(3)->get();
 
         $weeklyEvents = ControleEvento::query()
@@ -196,7 +196,7 @@ class DashboardController extends Controller
         $alertas = app(AlertService::class)->getAlertSummary();
 
         return view('dashboard', compact(
-            'ativos', 'governanca', 'riscos', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_riscos', 'ultimos_incidentes', 'operacional', 'cobertura', 'alertas'
+            'ativos', 'governanca', 'vulnerabilidades', 'incidentes', 'plano_acoes', 'lgpd', 'ultimos_findings', 'ultimos_incidentes', 'operacional', 'cobertura', 'alertas'
         ));
     }
 
@@ -219,9 +219,9 @@ class DashboardController extends Controller
                 'modulos_cobertos' => $modulosCobertos,
                 'percentual' => $totalModulos > 0 ? round(($modulosCobertos / $totalModulos) * 100) : 0,
             ],
-            'riscos' => [
-                'criticos' => \App\Models\Risco::where('criticidade', 'Critico')->where('status', '!=', 'fechado')->count(),
-                'total_abertos' => \App\Models\Risco::where('status', '!=', 'fechado')->count(),
+            'vulnerabilidades' => [
+                'criticos' => Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count(),
+                'total_abertos' => Finding::where('status', '!=', 'fechado')->count(),
             ],
             'incidentes' => [
                 'abertos' => \App\Models\Incidente::where('status', '!=', 'fechado')->count(),
@@ -251,12 +251,12 @@ class DashboardController extends Controller
         $data['treinamentos']['percentual'] = round(($data['treinamentos']['concluidos'] / $data['treinamentos']['total']) * 100);
         $data['planos']['percentual'] = round(($data['planos']['concluidos'] / $data['planos']['total']) * 100);
 
-        // Gera a análise da IA para o PDF
-        $prompt = "Aja como um CISO. Analise estes números da empresa {$data['company']}: 
-        Riscos Críticos: {$data['riscos']['criticos']}, 
+        // Gera a analise da IA para o PDF
+        $prompt = "Aja como um CISO. Analise estes numeros da empresa {$data['company']}: 
+        Vulnerabilidades Criticas: {$data['vulnerabilidades']['criticos']}, 
         Incidentes Abertos: {$data['incidentes']['abertos']}, 
         Conformidade LGPD: {$data['lgpd']['percentual']}%. 
-        Dê um resumo estratégico de 2 frases para a diretoria. Responda em Português.";
+        De um resumo estrategico de 2 frases para a diretoria. Responda em Portugues.";
         
         $data['ai_analysis'] = $gemini->generateGovernance($prompt);
 
@@ -266,19 +266,19 @@ class DashboardController extends Controller
     public function aiSummary(GeminiService $gemini)
     {
         $ativos = \App\Models\Software::count();
-        $riscosCriticos = \App\Models\Risco::where('criticidade', 'Critico')->where('status', '!=', 'fechado')->count();
+        $findingsCriticos = Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count();
         $incidentesAbertos = \App\Models\Incidente::where('status', '!=', 'fechado')->count();
         $lgpdConforme = \App\Models\LgpdItem::where('conforme', 'conforme')->count();
         $lgpdTotal = \App\Models\LgpdItem::count() ?: 1;
         $lgpdPerc = round(($lgpdConforme / $lgpdTotal) * 100);
 
-        $prompt = "Aja como um CISO (Chief Information Security Officer). Analise estes números da nossa empresa:
-        - Softwares no inventário: $ativos
-        - Riscos Críticos em aberto: $riscosCriticos
-        - Incidentes de Segurança ativos: $incidentesAbertos
+        $prompt = "Aja como um CISO (Chief Information Security Officer). Analise estes numeros da nossa empresa:
+        - Softwares no inventario: $ativos
+        - Vulnerabilidades Criticas em aberto: $findingsCriticos
+        - Incidentes de Seguranca ativos: $incidentesAbertos
         - Conformidade LGPD: $lgpdPerc%
         
-        Escreva um resumo executivo de no máximo 3 frases curtas e diretas sobre o estado atual da nossa segurança e conformidade. Seja profissional e aponte o que precisa de atenção imediata se os números forem ruins. Responda em Português.";
+        Escreva um resumo executivo de no maximo 3 frases curtas e diretas sobre o estado atual da nossa seguranca e conformidade. Seja profissional e aponte o que precisa de atencao imediata se os numeros forem ruins. Responda em Portugues.";
 
         $analise = $gemini->generateGovernance($prompt);
 

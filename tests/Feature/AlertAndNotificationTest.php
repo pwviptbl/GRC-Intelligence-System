@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\ControleEvento;
-use App\Models\Risco;
+use App\Models\Engagement;
+use App\Models\EngagementTest;
+use App\Models\Finding;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
 use App\Models\User;
@@ -40,12 +42,23 @@ class AlertAndNotificationTest extends TestCase
         ]);
 
         // 3. Vulnerabilidade com SLA vencido
-        Risco::create([
+        $eng = Engagement::create([
             'software_id' => $software->id,
+            'nome' => 'Auditoria Pentest',
+            'tipo' => 'pentest',
+            'status' => 'ativo',
+        ]);
+        $test = EngagementTest::create([
+            'engagement_id' => $eng->id,
+            'titulo' => 'Teste de Autenticacao',
+            'tipo_teste' => 'dast',
+            'status' => 'concluido',
+        ]);
+        Finding::create([
+            'test_id' => $test->id,
             'titulo' => 'Injeção SQL no Módulo de Login',
             'descricao' => 'Falha de validação de input no formulário de login.',
-            'criticidade' => 'Critico',
-            'origem' => 'pentest',
+            'severidade' => 'critico',
             'status' => 'aberto',
             'data_limite_correcao' => now()->subDays(2)->toDateString(),
         ]);
@@ -76,7 +89,7 @@ class AlertAndNotificationTest extends TestCase
 
         $this->assertTrue($alerts->contains('id', 'controles_atrasados'));
         $this->assertTrue($alerts->contains('id', 'controles_bloqueados'));
-        $this->assertTrue($alerts->contains('id', 'riscos_vencidos'));
+        $this->assertTrue($alerts->contains('id', 'findings_vencidos'));
         $this->assertTrue($alerts->contains('id', 'modulos_sem_controle'));
     }
 

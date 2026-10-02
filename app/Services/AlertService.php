@@ -71,17 +71,11 @@ class AlertService
             ->where('data_limite_correcao', '<', $today)
             ->count();
 
-        $riscosVencidos = \App\Models\Risco::query()
-            ->where('status', '!=', 'fechado')
-            ->whereNotNull('data_limite_correcao')
-            ->where('data_limite_correcao', '<', $today)
-            ->count();
-
-        $totalVencidos = $findingsVencidos + $riscosVencidos;
+        $totalVencidos = $findingsVencidos;
 
         if ($totalVencidos > 0) {
             $alerts[] = [
-                'id' => 'riscos_vencidos',
+                'id' => 'findings_vencidos',
                 'severity' => 'danger',
                 'category' => 'Segurança',
                 'icon' => '🚨',
