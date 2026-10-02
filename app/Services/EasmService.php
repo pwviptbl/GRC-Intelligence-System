@@ -162,7 +162,7 @@ class EasmService
 
             if ($diasRestantes < 0) {
                 $statusCertificado = 'expirado';
-            } elseif ($diasRestantes <= 30) {
+            } elseif ($diasRestantes <= 2) {
                 $statusCertificado = 'expirando';
             } else {
                 $statusCertificado = 'ok';

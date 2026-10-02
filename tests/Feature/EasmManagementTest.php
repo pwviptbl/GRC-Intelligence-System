@@ -82,9 +82,9 @@ class EasmManagementTest extends TestCase
             'dominio' => 'portal.exemplo.com.br',
             'emissor' => 'Let\'s Encrypt',
             'valido_de' => now()->subDays(85),
-            'valido_ate' => now()->addDays(5),
+            'valido_ate' => now()->addDays(2),
             'status_certificado' => 'expirando',
-            'dias_restantes' => 5,
+            'dias_restantes' => 2,
         ]);
 
         $service = app(EasmService::class);
@@ -166,9 +166,9 @@ class EasmManagementTest extends TestCase
         InstanciaSslCert::create([
             'instancia_cliente_id' => $instancia->id,
             'dominio' => 'bd.exemplo.com.br',
-            'valido_ate' => now()->addDays(5),
+            'valido_ate' => now()->addDays(2),
             'status_certificado' => 'expirando',
-            'dias_restantes' => 5,
+            'dias_restantes' => 2,
         ]);
 
         // Cria porta crítica aberta em ambiente público

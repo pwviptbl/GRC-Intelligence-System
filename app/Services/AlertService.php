@@ -244,20 +244,29 @@ class AlertService
         }
 
         
-        // 11. Certificados SSL Expirando ou Expirados (EASM)
+        // 11. Certificados SSL Expirando ou Expirados (EASM - Limite <= 2 dias)
         $sslCriticos = InstanciaSslCert::query()
-            ->whereIn('status_certificado', ['expirado', 'expirando'])
-            ->count();
+            ->where(function ($q) {
+                $q->where('status_certificado', 'expirado')
+                  ->orWhere('dias_restantes', '<=', 2);
+            })
+            ->get();
 
-        if ($sslCriticos > 0) {
+        $countSsl = $sslCriticos->count();
+        if ($countSsl > 0) {
+            $detalhes = $sslCriticos->map(function ($c) {
+                $dias = $c->dias_restantes !== null ? ($c->dias_restantes <= 0 ? 'expirado' : "{$c->dias_restantes}d restantes") : 'inválido';
+                return "{$c->dominio} ({$dias})";
+            })->take(3)->join(', ');
+
             $alerts[] = [
                 'id' => 'ssl_expirando',
                 'severity' => 'danger',
                 'category' => 'Superfície Externa',
                 'icon' => '🔒',
-                'title' => 'Certificados SSL Próximos de Vencer ou Expirados',
-                'count' => $sslCriticos,
-                'description' => "{$sslCriticos} certificado(s) digital(is) de ambientes com validade comprometida.",
+                'title' => 'Certificados SSL a Vencer (≤ 2 dias) ou Expirados',
+                'count' => $countSsl,
+                'description' => "{$countSsl} certificado(s) com validade crítica (vencendo em até 2 dias ou expirados): {$detalhes}.",
                 'action_label' => 'Ver Ambientes',
                 'action_url' => route('instancias.index'),
             ];
