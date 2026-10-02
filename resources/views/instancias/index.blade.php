@@ -134,7 +134,7 @@
 }">
 
     <!-- Stats Cards -->
-    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+    <div class="stats-row">
         <div class="stat-card c3">
             <div class="stat-label">Total de Ambientes</div>
             <div class="stat-value">{{ $instancias->count() }}</div>
