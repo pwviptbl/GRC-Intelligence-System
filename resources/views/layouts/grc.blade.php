@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ config('app.name', 'Bastion Cyber') }}</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <meta name="description" content="Bastion Cyber — Plataforma de Segurança de Aplicações, Perímetro e Governança" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
@@ -213,11 +213,11 @@
       <button type="button" class="sidebar-close" @click="sidebarOpen = false" aria-label="Fechar menu" title="Fechar menu">×</button>
       <div class="logo">
         <a href="{{ route('dashboard') }}" style="text-decoration:none; color:inherit; display:block; transition:opacity .15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'" title="Ir para o Dashboard (Início)">
-          <div style="display:flex; align-items:center; gap:9px;">
-            <span style="font-size:22px; filter:drop-shadow(0 0 8px rgba(0,229,255,0.4));">🛡️</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <x-bastion-logo style="width:28px; height:28px; flex-shrink:0; filter:drop-shadow(0 0 10px rgba(0,245,255,0.45));" />
             <div>
-              <div style="font-size:17px; font-weight:900; color:var(--cyan); letter-spacing:1px; line-height:1.1; font-family:var(--font);">BASTION</div>
-              <div style="font-size:9px; color:var(--text-3); text-transform:uppercase; letter-spacing:1.8px; font-weight:700;">CYBER</div>
+              <div style="font-size:16px; font-weight:900; color:var(--cyan); letter-spacing:1.2px; line-height:1.1; font-family:var(--font);">BASTION</div>
+              <div style="font-size:9px; color:var(--text-3); text-transform:uppercase; letter-spacing:2px; font-weight:700;">CYBER</div>
             </div>
           </div>
           <p style="margin:6px 0 0; font-size:10px; color:var(--text-3); text-decoration:none; border-top:1px solid rgba(255,255,255,0.06); padding-top:4px;">{{ config('app.company') }}</p>
