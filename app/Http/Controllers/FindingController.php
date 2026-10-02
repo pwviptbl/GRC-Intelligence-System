@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Finding;
+use App\Models\Engagement;
 use App\Models\EngagementTest;
 use App\Models\Software;
 use Illuminate\Http\Request;
@@ -31,6 +32,12 @@ class FindingController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+                if ($request->filled('engagement_id')) {
+            $query->whereHas('test', fn($q) => $q->where('engagement_id', $request->engagement_id));
+        }
+        if ($request->filled('test_id')) {
+            $query->where('test_id', $request->test_id);
+        }
         if ($request->filled('software_id')) {
             $query->whereHas('test.engagement', fn($q) => $q->where('software_id', $request->software_id));
         }
@@ -54,8 +61,13 @@ class FindingController extends Controller
             $query->where('is_regression', true);
         }
 
-        $findings  = $query->paginate(25)->withQueryString();
+                $findings  = $query->paginate(25)->withQueryString();
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
+        $engagements = Engagement::with('software:id,nome')->orderBy('nome')->get();
+        $tests = EngagementTest::with('engagement.software:id,nome')->orderBy('titulo')->get();
+        $selectedTest = $request->filled('test_id') ? EngagementTest::with('engagement.software')->find($request->test_id) : null;
+        $selectedEngagement = $request->filled('engagement_id') ? Engagement::with('software')->find($request->engagement_id) : null;
+
 
         $stats = [
             'total'      => Finding::count(),
@@ -70,7 +82,7 @@ class FindingController extends Controller
                                    ->whereDate('data_limite_correcao', '<', now())->count(),
         ];
 
-        return view('findings.index', compact('findings', 'softwares', 'stats', 'tab'));
+        return view('findings.index', compact('findings', 'softwares', 'engagements', 'tests', 'selectedTest', 'selectedEngagement', 'stats', 'tab'));
     }
 
     public function create(Request $request)

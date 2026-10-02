@@ -86,4 +86,49 @@ class RiscosMigrationAndLayoutTest extends TestCase
         $response->assertSee('table-view');
         $response->assertSee('data-table');
     }
+
+    public function test_engagement_tests_index_renders_successfully(): void
+    {
+        $user = $this->makeUser();
+        $software = Software::create(['nome' => 'App Test List', 'ativo' => true]);
+        $eng = Engagement::create(['software_id' => $software->id, 'nome' => 'Auditoria Geral', 'tipo' => 'auditoria', 'status' => 'ativo']);
+        EngagementTest::create(['engagement_id' => $eng->id, 'titulo' => 'Scan Semgrep SAST', 'tipo_teste' => 'sast', 'ferramenta' => 'Semgrep', 'status' => 'concluido']);
+
+        $response = $this->actingAs($user)->get(route('engagement-tests.index'));
+        $response->assertStatus(200);
+        $response->assertSee('Scan Semgrep SAST');
+        $response->assertSee('Auditoria Geral');
+    }
+
+    public function test_findings_can_be_filtered_by_specific_test(): void
+    {
+        $user = $this->makeUser();
+        $software = Software::create(['nome' => 'App Test Filter', 'ativo' => true]);
+        $eng = Engagement::create(['software_id' => $software->id, 'nome' => 'Ciclo Q4', 'tipo' => 'pentest', 'status' => 'ativo']);
+        
+        $test1 = EngagementTest::create(['engagement_id' => $eng->id, 'titulo' => 'Teste ZAP DAST', 'tipo_teste' => 'dast', 'ferramenta' => 'zap', 'status' => 'concluido']);
+        $test2 = EngagementTest::create(['engagement_id' => $eng->id, 'titulo' => 'Teste Trivy SCA', 'tipo_teste' => 'sca', 'ferramenta' => 'trivy', 'status' => 'concluido']);
+
+        Finding::create([
+            'test_id' => $test1->id,
+            'titulo' => 'Injeção SQL Alvo Teste 1',
+            'descricao' => 'Falha SQLi no login',
+            'severidade' => 'critico',
+            'status' => 'aberto',
+        ]);
+
+        Finding::create([
+            'test_id' => $test2->id,
+            'titulo' => 'Biblioteca Vulnerável Teste 2',
+            'descricao' => 'Dependencia desatualizada',
+            'severidade' => 'medio',
+            'status' => 'aberto',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('findings.index', ['test_id' => $test1->id]));
+        $response->assertStatus(200);
+        $response->assertSee('Injeção SQL Alvo Teste 1');
+        $response->assertDontSee('Biblioteca Vulnerável Teste 2');
+        $response->assertSee('Filtrando achados do Teste: Teste ZAP DAST');
+    }
 }

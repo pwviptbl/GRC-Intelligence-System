@@ -292,8 +292,11 @@
           <span style="font-size: 10px; color: var(--text-3);" x-text="menuSegurancaAberto ? '▼' : '►'"></span>
         </div>
         <div class="nav-submenu-group" x-show="menuSegurancaAberto" style="display: none;" x-transition>
-          <a href="{{ route('engagements.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('engagement') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔐</span> Engajamentos
+          <a href="{{ route('engagements.index') }}" class="nav-btn submenu" :class="{ 'active': view === 'engagements.index' || view.startsWith('engagements.') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">📁</span> Engajamentos
+          </a>
+          <a href="{{ route('engagement-tests.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('engagement-tests') || view.includes('engagement-test') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">⚡</span> Testes & Scans
           </a>
           <a href="{{ route('findings.index') }}" class="nav-btn submenu" :class="{ 'active': view.includes('finding') || view.includes('risco') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🎯</span> Achados & Vulnerabilidades

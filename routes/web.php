@@ -187,7 +187,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // --- Gestão de Vulnerabilidades DefectDojo-style ---
         Route::resource('engagements', EngagementController::class);
-        Route::resource('engagement-tests', EngagementTestController::class)->except(['index', 'create']);
+        Route::resource('engagement-tests', EngagementTestController::class)->except(['create']);
         Route::get('/engagement-tests/create', [EngagementTestController::class, 'create'])->name('engagement-tests.create');
         Route::post('/engagement-tests/{engagement_test}/mitigate', [EngagementTestController::class, 'mitigate'])->name('engagement-tests.mitigate');
         Route::post('/engagement-tests/{engagement_test}/import', [EngagementTestController::class, 'importScan'])->name('engagement-tests.import');

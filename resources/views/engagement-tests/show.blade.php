@@ -154,6 +154,9 @@
                 <a href="{{ route('engagement-tests.report', $engagementTest) }}" target="_blank" class="btn-action" style="padding:8px 14px; background:rgba(34,197,94,0.1); color:#22c55e; border:1px solid rgba(34,197,94,0.3); border-radius:8px; font-size:12px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
                     📄 Relatório PDF
                 </a>
+                <a href="{{ route('findings.index', ['test_id' => $engagementTest->id]) }}" class="btn-action" style="padding:8px 14px; background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:12px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    🎯 Ver Achados na Tabela Geral
+                </a>
                 <a href="{{ route('findings.create', ['test_id' => $engagementTest->id]) }}" class="btn-add" style="text-decoration:none; font-size:12px; padding:8px 14px;">
                     + Novo Achado
                 </a>

@@ -9,6 +9,56 @@ use Illuminate\Http\Request;
 
 class EngagementTestController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = EngagementTest::with(['engagement.software', 'findings', 'retestOf'])->latest();
+
+        if ($request->filled('software_id')) {
+            $query->whereHas('engagement', fn($q) => $q->where('software_id', $request->software_id));
+        }
+
+        if ($request->filled('engagement_id')) {
+            $query->where('engagement_id', $request->engagement_id);
+        }
+
+        if ($request->filled('tipo_teste')) {
+            $query->where('tipo_teste', $request->tipo_teste);
+        }
+
+        if ($request->filled('ferramenta')) {
+            $query->where('ferramenta', $request->ferramenta);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('titulo', 'like', "%{$search}%")
+                  ->orWhere('ambiente', 'like', "%{$search}%")
+                  ->orWhere('notas', 'like', "%{$search}%");
+            });
+        }
+
+        $tests = $query->paginate(20)->withQueryString();
+
+        $stats = [
+            'total'         => EngagementTest::count(),
+            'concluidos'    => EngagementTest::where('status', 'concluido')->count(),
+            'em_andamento'  => EngagementTest::where('status', 'em_andamento')->count(),
+            'planejados'    => EngagementTest::where('status', 'planejado')->count(),
+            'total_findings'=> \App\Models\Finding::count(),
+        ];
+
+        $softwares = \App\Models\Software::where('ativo', true)->orderBy('nome')->get();
+        $engagements = Engagement::with('software:id,nome')->orderBy('nome')->get();
+
+        return view('engagement-tests.index', compact('tests', 'stats', 'softwares', 'engagements'));
+    }
+
+
     public function create(Request $request)
     {
         $engagementId = $request->input('engagement_id');

@@ -112,6 +112,54 @@
         </div>
     </div>
 
+    
+    {{-- Banner de Contexto de Teste ou Engajamento Selecionado --}}
+    @if(isset($selectedTest) && $selectedTest)
+        <div style="background: rgba(0, 229, 255, 0.08); border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">🎯</span>
+                <div>
+                    <div style="font-weight: 700; color: var(--cyan); font-size: 14px;">
+                        Filtrando achados do Teste: {{ $selectedTest->titulo }}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">
+                        Engajamento: <strong>{{ $selectedTest->engagement->nome }}</strong> • Sistema: <strong>{{ $selectedTest->engagement->software->nome }}</strong> • Ferramenta: <strong>{{ $selectedTest->ferramenta }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <a href="{{ route('engagement-tests.show', $selectedTest) }}" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; text-decoration: none; border-radius: 6px;">
+                    👁️ Abrir Tela do Teste
+                </a>
+                <a href="{{ route('findings.index', request()->except('test_id')) }}" class="btn-cancel" style="font-size: 11px; padding: 6px 10px; text-decoration: none; border-radius: 6px;">
+                    ✖ Remover Filtro
+                </a>
+            </div>
+        </div>
+    @elseif(isset($selectedEngagement) && $selectedEngagement)
+        <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">📁</span>
+                <div>
+                    <div style="font-weight: 700; color: #38bdf8; font-size: 14px;">
+                        Filtrando achados do Engajamento: {{ $selectedEngagement->nome }}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">
+                        Sistema: <strong>{{ $selectedEngagement->software->nome }}</strong> • Tipo: <strong>{{ $selectedEngagement->tipo_label }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <a href="{{ route('engagements.show', $selectedEngagement) }}" class="btn-secondary" style="font-size: 11px; padding: 6px 12px; text-decoration: none; border-radius: 6px;">
+                    👁️ Abrir Engajamento
+                </a>
+                <a href="{{ route('findings.index', request()->except('engagement_id')) }}" class="btn-cancel" style="font-size: 11px; padding: 6px 10px; text-decoration: none; border-radius: 6px;">
+                    ✖ Remover Filtro
+                </a>
+            </div>
+        </div>
+    @endif
+
     {{-- Filtros Avançados --}}
     <div style="background:var(--bg-card); padding:16px; border-radius:10px; border:1px solid var(--border); margin-bottom:20px">
         <form action="{{ route('findings.index') }}" method="GET" class="findings-filter-grid">
@@ -122,6 +170,24 @@
                     <option value="">Todos os sistemas</option>
                     @foreach($softwares as $s)
                         <option value="{{ $s->id }}" {{ request('software_id') == $s->id ? 'selected' : '' }}>{{ $s->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px; font-weight:600">Engajamento</label>
+                <select name="engagement_id" class="form-select" style="height:35px; font-size:12px; width:100%">
+                    <option value="">Todos os engajamentos</option>
+                    @foreach($engagements as $eng)
+                        <option value="{{ $eng->id }}" {{ request('engagement_id') == $eng->id ? 'selected' : '' }}>{{ $eng->nome }} ({{ $eng->software?->nome }})</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); margin-bottom:4px; font-weight:600">Teste / Varredura</label>
+                <select name="test_id" class="form-select" style="height:35px; font-size:12px; width:100%">
+                    <option value="">Todos os testes</option>
+                    @foreach($tests as $t)
+                        <option value="{{ $t->id }}" {{ request('test_id') == $t->id ? 'selected' : '' }}>{{ $t->titulo }} [{{ $t->ferramenta }}]</option>
                     @endforeach
                 </select>
             </div>
@@ -157,7 +223,7 @@
             </div>
             <div style="display:flex; gap:8px">
                 <button type="submit" class="btn-save" style="height:35px; padding:0 14px; font-size:12px; display:flex; align-items:center; justify-content:center;">🔍 Filtrar</button>
-                @if(request()->hasAny(['software_id','severidade','status','sla_status','search']))
+                @if(request()->hasAny(['software_id','engagement_id','test_id','severidade','status','sla_status','search']))
                     <a href="{{ route('findings.index', ['tab' => $currentTab]) }}" class="btn-cancel" style="height:35px; padding:0 12px; font-size:12px; text-decoration:none; display:flex; align-items:center; justify-content:center;">Limpar</a>
                 @endif
             </div>
