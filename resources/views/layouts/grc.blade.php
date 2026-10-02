@@ -212,8 +212,10 @@
     <aside class="sidebar" :class="{ 'mobile-open': sidebarOpen }">
       <button type="button" class="sidebar-close" @click="sidebarOpen = false" aria-label="Fechar menu" title="Fechar menu">×</button>
       <div class="logo">
-        <h1>GRC</h1>
-        <p>{{ config('app.company') }}</p>
+        <a href="{{ route('dashboard') }}" style="text-decoration:none; color:inherit; display:block; transition:opacity .15s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Ir para o Dashboard (Início)">
+          <h1 style="margin:0; font-size:18px; font-weight:800; color:var(--cyan); letter-spacing:0.5px;">GRC</h1>
+          <p style="margin:2px 0 0; font-size:11px; color:var(--text-3); text-decoration:none;">{{ config('app.company') }}</p>
+        </a>
       </div>
       <nav @click="if ($event.target.closest('a') && window.innerWidth <= 900) sidebarOpen = false">
         <a href="{{ route('profile.edit') }}" class="user-info" title="Perfil">
