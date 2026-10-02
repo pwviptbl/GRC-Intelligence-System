@@ -6,6 +6,8 @@ use App\Models\ControleEvento;
 use App\Models\Finding;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
+use App\Models\InstanciaSslCert;
+use App\Models\InstanciaPortaServico;
 use Carbon\Carbon;
 
 class AlertService
@@ -238,6 +240,47 @@ class AlertService
                 'description' => "{$modulosSemControle} módulo(s) cadastrados no inventário sem nenhum controle atribuído.",
                 'action_label' => 'Mapear Módulos',
                 'action_url' => route('atividades.module_coverage', ['uncovered' => 1]),
+            ];
+        }
+
+        
+        // 11. Certificados SSL Expirando ou Expirados (EASM)
+        $sslCriticos = InstanciaSslCert::query()
+            ->whereIn('status_certificado', ['expirado', 'expirando'])
+            ->count();
+
+        if ($sslCriticos > 0) {
+            $alerts[] = [
+                'id' => 'ssl_expirando',
+                'severity' => 'danger',
+                'category' => 'Superfície Externa',
+                'icon' => '🔒',
+                'title' => 'Certificados SSL Próximos de Vencer ou Expirados',
+                'count' => $sslCriticos,
+                'description' => "{$sslCriticos} certificado(s) digital(is) de ambientes com validade comprometida.",
+                'action_label' => 'Ver Ambientes',
+                'action_url' => route('instancias.index'),
+            ];
+        }
+
+        // 12. Portas de Risco Expostas na Internet (EASM)
+        $portasCriticas = InstanciaPortaServico::query()
+            ->whereHas('instancia', fn ($q) => $q->where('status_exposicao', 'publico'))
+            ->whereIn('porta', [21, 22, 23, 445, 1433, 1521, 3306, 3389, 5432, 6379, 9200, 27017])
+            ->where('estado', 'open')
+            ->count();
+
+        if ($portasCriticas > 0) {
+            $alerts[] = [
+                'id' => 'portas_criticas_expostas',
+                'severity' => 'danger',
+                'category' => 'Superfície Externa',
+                'icon' => '🚪',
+                'title' => 'Portas Críticas Abertas na Internet',
+                'count' => $portasCriticas,
+                'description' => "{$portasCriticas} porta(s) administrativa(s) ou de banco de dados acessíveis publicamente.",
+                'action_label' => 'Revisar Perímetro',
+                'action_url' => route('instancias.index', ['status_exposicao' => 'publico']),
             ];
         }
 

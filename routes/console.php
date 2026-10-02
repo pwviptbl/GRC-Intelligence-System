@@ -44,3 +44,8 @@ Artisan::command('backups:verify {file?}', function (BackupController $backups) 
 Schedule::command('backups:run')
     ->weeklyOn(1, '02:00')
     ->withoutOverlapping();
+
+// Varredura diária de perímetro e certificados SSL (EASM)
+Schedule::command('easm:scan')
+    ->dailyAt('03:30')
+    ->withoutOverlapping();

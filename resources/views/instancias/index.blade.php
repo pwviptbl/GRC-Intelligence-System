@@ -236,8 +236,10 @@
                 <tr>
                     <!-- Ambiente & Sistema -->
                     <td>
-                        <div style="font-weight: 600; color: var(--text-1); font-size: 13px;">
-                            {{ $i->nome_ambiente ?: 'Ambiente #' . $i->id }}
+                        <div style="font-weight: 600; font-size: 13px;">
+                            <a href="{{ route('instancias.show', $i) }}" style="color: var(--text-1); text-decoration: none;" onmouseover="this.style.color='#38bdf8'" onmouseout="this.style.color='var(--text-1)'">
+                                🔗 {{ $i->nome_ambiente ?: 'Ambiente #' . $i->id }}
+                            </a>
                         </div>
                         <div style="font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 6px; margin-top: 2px;">
                             <span>{{ $i->software->nome }}</span>
@@ -323,6 +325,11 @@
                     @if(in_array(auth()->user()->role, ['admin', 'governanca']))
                     <td style="text-align: right;">
                         <div class="instances-row-actions" style="justify-content: flex-end;">
+                            <!-- Visualizar Detalhes -->
+                            <a href="{{ route('instancias.show', $i) }}" class="btn-secondary" style="padding: 5px 8px; font-size: 11px; border-radius: 6px; text-decoration: none;" title="Ver Detalhes do Perímetro">
+                                👁️
+                            </a>
+
                             <!-- Botão Escanear -->
                             <form action="{{ route('instancias.scan', $i) }}" method="POST" style="margin: 0;">
                                 @csrf

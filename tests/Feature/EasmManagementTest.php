@@ -10,6 +10,7 @@ use App\Models\InstanciaPortaServico;
 use App\Models\InstanciaSslCert;
 use App\Models\Software;
 use App\Models\User;
+use App\Services\AlertService;
 use App\Services\EasmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -130,6 +131,61 @@ class EasmManagementTest extends TestCase
         $this->assertEquals('critico', $finding->severidade);
         $this->assertEquals('aberto', $finding->status);
         $this->assertStringContainsString('Porta Sensível Exposta', $finding->titulo);
+    }
+
+    public function test_can_view_instance_show_page(): void
+    {
+        $instancia = InstanciaCliente::create([
+            'cliente_id' => $this->cliente->id,
+            'software_id' => $this->software->id,
+            'nome_ambiente' => 'Produção Principal',
+            'url_principal' => 'https://app.teste.gov.br',
+            'status_exposicao' => 'publico',
+            'branch' => 'main',
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('instancias.show', $instancia));
+
+        $response->assertOk()
+            ->assertSee('Produção Principal')
+            ->assertSee('Perfil de Exposição e Infraestrutura')
+            ->assertSee('Certificado SSL / TLS de Perímetro');
+    }
+
+    public function test_alert_service_includes_easm_alerts(): void
+    {
+        $instancia = InstanciaCliente::create([
+            'cliente_id' => $this->cliente->id,
+            'software_id' => $this->software->id,
+            'nome_ambiente' => 'Servidor BD',
+            'status_exposicao' => 'publico',
+            'branch' => 'main',
+        ]);
+
+        // Cria SSL expirando
+        InstanciaSslCert::create([
+            'instancia_cliente_id' => $instancia->id,
+            'dominio' => 'bd.exemplo.com.br',
+            'valido_ate' => now()->addDays(5),
+            'status_certificado' => 'expirando',
+            'dias_restantes' => 5,
+        ]);
+
+        // Cria porta crítica aberta em ambiente público
+        InstanciaPortaServico::create([
+            'instancia_cliente_id' => $instancia->id,
+            'porta' => 3306,
+            'protocolo' => 'tcp',
+            'servico' => 'mysql',
+            'estado' => 'open',
+        ]);
+
+        $alertService = app(AlertService::class);
+        $summary = $alertService->getAlertSummary();
+
+        $alerts = collect($summary['alerts']);
+        $this->assertTrue($alerts->contains('id', 'ssl_expirando'));
+        $this->assertTrue($alerts->contains('id', 'portas_criticas_expostas'));
     }
 
     public function test_can_trigger_scan_endpoint(): void

@@ -49,6 +49,21 @@ class InstanciaClienteController extends Controller
         return view('instancias.index', compact('instancias', 'clientes', 'softwares'));
     }
 
+    
+    protected function autoResolveIp(array $data): array
+    {
+        if (empty($data['endereco_ip']) && !empty($data['url_principal'])) {
+            $host = parse_url($data['url_principal'], PHP_URL_HOST);
+            if ($host) {
+                $ip = @gethostbyname($host);
+                if ($ip && $ip !== $host) {
+                    $data['endereco_ip'] = $ip;
+                }
+            }
+        }
+        return $data;
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -63,6 +78,7 @@ class InstanciaClienteController extends Controller
             'status_exposicao' => 'required|in:publico,vpn_only,interno',
         ]);
 
+        $validated = $this->autoResolveIp($validated);
         $instancia = InstanciaCliente::create($validated);
 
         return redirect()->back()->with('success', 'Ambiente cadastrado com sucesso!');
@@ -82,9 +98,28 @@ class InstanciaClienteController extends Controller
             'status_exposicao' => 'required|in:publico,vpn_only,interno',
         ]);
 
+        $validated = $this->autoResolveIp($validated);
         $instancia->update($validated);
 
         return redirect()->back()->with('success', 'Ambiente atualizado com sucesso!');
+    }
+
+    
+    public function show(InstanciaCliente $instancia)
+    {
+        $instancia->load(['cliente', 'software', 'latestSslCert', 'portasServicos']);
+
+        // Buscar achados vinculados a este software/ambiente
+        $findings = \App\Models\Finding::query()
+            ->whereHas('test', function ($q) use ($instancia) {
+                $q->where('ambiente', 'like', "%{$instancia->nome_ambiente}%")
+                  ->orWhereHas('engagement', fn ($eq) => $eq->where('software_id', $instancia->software_id));
+            })
+            ->latest()
+            ->take(15)
+            ->get();
+
+        return view('instancias.show', compact('instancia', 'findings'));
     }
 
     public function scan(InstanciaCliente $instancia, EasmService $easmService)
