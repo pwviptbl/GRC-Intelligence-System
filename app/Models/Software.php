@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PostureCache;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -137,6 +138,15 @@ class Software extends Model
      */
     public function getTestCycleStatusAttribute(): array
     {
+        if (! $this->exists) {
+            return $this->computeTestCycleStatus();
+        }
+
+        return PostureCache::remember('software:'.$this->id.':test_cycle_status', fn () => $this->computeTestCycleStatus());
+    }
+
+    protected function computeTestCycleStatus(): array
+    {
         $cicloMeses = $this->ciclo_testes_meses ?? 6;
 
         if ($cicloMeses === 0) {
@@ -224,6 +234,15 @@ class Software extends Model
      * Calcula o Score de Postura de Segurança (0 a 100) e Grade (A, B, C, D, F).
      */
     public function getSecurityScoreAttribute(): array
+    {
+        if (! $this->exists) {
+            return $this->computeSecurityScore();
+        }
+
+        return PostureCache::remember('software:'.$this->id.':security_score', fn () => $this->computeSecurityScore());
+    }
+
+    protected function computeSecurityScore(): array
     {
         $score = 100;
         $penalidades = [];
@@ -417,5 +436,12 @@ class Software extends Model
         }
 
         return sprintf('%s (%d - %s)', $label, $level, $detail);
+    }
+
+    public function refresh()
+    {
+        PostureCache::flush();
+
+        return parent::refresh();
     }
 }

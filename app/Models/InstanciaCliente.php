@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PostureCache;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -69,6 +70,15 @@ class InstanciaCliente extends Model
      */
     public function getApplicableEngagementIds(): array
     {
+        if (! $this->exists) {
+            return $this->resolveApplicableEngagementIds();
+        }
+
+        return PostureCache::remember('instancia:'.$this->id.':engagement_ids', fn () => $this->resolveApplicableEngagementIds());
+    }
+
+    protected function resolveApplicableEngagementIds(): array
+    {
         $directIds = $this->engagements()->pluck('engagements.id')->toArray();
 
         $branchIds = [];
@@ -110,6 +120,15 @@ class InstanciaCliente extends Model
      * Calcula o status de cumprimento do ciclo de testes deste ambiente.
      */
     public function getTestCycleStatusAttribute(): array
+    {
+        if (! $this->exists) {
+            return $this->computeTestCycleStatus();
+        }
+
+        return PostureCache::remember('instancia:'.$this->id.':test_cycle_status', fn () => $this->computeTestCycleStatus());
+    }
+
+    protected function computeTestCycleStatus(): array
     {
         $cicloMeses = $this->software?->ciclo_testes_meses ?? 6;
 
@@ -202,6 +221,15 @@ class InstanciaCliente extends Model
      * Calcula o Score de Postura Integrada do Ambiente (AppSec + Infra EASM) de 0 a 100.
      */
     public function getSecurityScoreAttribute(): array
+    {
+        if (! $this->exists) {
+            return $this->computeSecurityScore();
+        }
+
+        return PostureCache::remember('instancia:'.$this->id.':security_score', fn () => $this->computeSecurityScore());
+    }
+
+    protected function computeSecurityScore(): array
     {
         $score = 100;
         $penalidades = [];
@@ -331,5 +359,12 @@ class InstanciaCliente extends Model
         }
 
         return $this->endereco_ip;
+    }
+
+    public function refresh()
+    {
+        PostureCache::flush();
+
+        return parent::refresh();
     }
 }

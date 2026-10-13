@@ -110,7 +110,7 @@ Fazer antes de publicar o sistema de novo:
 
 ---
 
-## Etapa 3 — Notificações e alertas ativos (semanas 3–4)
+## Etapa 3 — Notificações e alertas ativos ⏸️ (adiada pelo usuário em 2026-10-13)
 
 O `AlertService` já calcula os alertas (`getAlertSummary`), mas eles só aparecem na tela.
 
@@ -137,7 +137,7 @@ O `AlertService` já calcula os alertas (`getAlertSummary`), mas eles só aparec
 3. **Aceite formal de risco em findings:** status "risco aceito" com justificativa, aprovador e data de expiração, que reabre automaticamente ao vencer.
 4. **Evidência reutilizável:** entidade polimórfica `evidencias` com hash, MIME, período coberto, validade, coletor e aprovador, ligada a controles, incidentes e LGPD. Unifica as três tabelas de anexos atuais.
 5. **Mapeamento de frameworks:** tabelas `frameworks` e `requisitos`, mais um pivot com atividades e controles. Seed com LGPD (já existe `lgpd_items`), ISO 27001:2022 Anexo A e CIS v8 IG1. Mostrar % de conformidade e gaps por framework.
-6. **Paginação:** trocar `->get()`/`::all()` (87 ocorrências) por `paginate()` nas listagens principais: findings, controles, instâncias, auditoria.
+6. ✅ **Desempenho das listagens:** a medição mostrou que o problema não era volume (as tabelas que crescem já são paginadas), e sim consultas N+1 nos cálculos de postura de segurança, que estão em `$appends` e eram refeitos a cada serialização. A correção foi um cache por requisição (`App\Support\PostureCache`), invalidado em qualquer escrita de software, instância, engajamento, teste ou finding. /atividades caiu de 782 para 219 ms (375 para 45 consultas), /execucao_controles de 435 para 180 ms e /instancias de 804 para 422 ms. Pendente: calcular a postura das instâncias em lote, o que deve levar /instancias para menos de 150 ms.
 
 ---
 
