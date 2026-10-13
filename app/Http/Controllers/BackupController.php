@@ -106,6 +106,7 @@ class BackupController extends Controller
             $this->writeMetadata($zipName, [
                 'origin' => $origin,
                 'protected' => false,
+                'encrypted' => $this->backupPassword() !== null,
                 'integrity' => 'valid',
                 'checksum' => hash_file('sha256', $zipPath),
                 'validated_at' => now()->toIso8601String(),
@@ -446,7 +447,41 @@ class BackupController extends Controller
             $this->addDirectoryToZip($zip, $privateFilesDir, 'storage/app/private', ['backups']);
         }
 
-        $zip->close();
+        $password = $this->backupPassword();
+        if ($password !== null) {
+            for ($index = 0; $index < $zip->numFiles; $index++) {
+                $name = (string) $zip->getNameIndex($index);
+                if (str_ends_with($name, '/')) {
+                    continue;
+                }
+
+                if (!$zip->setEncryptionIndex($index, ZipArchive::EM_AES_256, $password)) {
+                    $zip->close();
+                    File::delete($zipPath);
+
+                    throw new RuntimeException('Não foi possível criptografar o backup: ' . $name);
+                }
+            }
+        }
+
+        if (!$zip->close()) {
+            throw new RuntimeException('Não foi possível finalizar o arquivo zip de backup.');
+        }
+    }
+
+    private function backupPassword(): ?string
+    {
+        $password = (string) config('backup.password', '');
+
+        return $password === '' ? null : $password;
+    }
+
+    private function applyPassword(ZipArchive $zip): void
+    {
+        $password = $this->backupPassword();
+        if ($password !== null) {
+            $zip->setPassword($password);
+        }
     }
 
     private function extractZip(string $zipPath, string $extractTo): void
@@ -460,6 +495,8 @@ class BackupController extends Controller
         if ($status !== true) {
             throw new RuntimeException('Não foi possível abrir o arquivo zip para restauração.');
         }
+
+        $this->applyPassword($zip);
 
         try {
             $hasDatabaseDump = false;
@@ -480,7 +517,7 @@ class BackupController extends Controller
             }
 
             if (!$zip->extractTo($extractTo)) {
-                throw new RuntimeException('Não foi possível extrair o arquivo de backup.');
+                throw new RuntimeException('Não foi possível extrair o arquivo de backup. Se ele for criptografado, confira BACKUP_PASSWORD.');
             }
         } finally {
             $zip->close();
@@ -526,6 +563,8 @@ class BackupController extends Controller
             return ['valid' => false, 'reason' => 'Arquivo ZIP inválido.', 'checksum' => $checksum];
         }
 
+        $this->applyPassword($zip);
+
         try {
             $databaseIndex = $zip->locateName('database.sql');
             $manifestIndex = $zip->locateName('manifest.json');
@@ -545,7 +584,12 @@ class BackupController extends Controller
                 return ['valid' => false, 'reason' => 'database.sql está vazio.', 'checksum' => $checksum];
             }
 
-            $manifest = json_decode((string) $zip->getFromIndex($manifestIndex), true);
+            $manifestContent = $zip->getFromIndex($manifestIndex);
+            if ($manifestContent === false) {
+                return ['valid' => false, 'reason' => 'Não foi possível ler o manifest.json (senha do backup incorreta ou ausente?).', 'checksum' => $checksum];
+            }
+
+            $manifest = json_decode($manifestContent, true);
             if (!is_array($manifest)) {
                 return ['valid' => false, 'reason' => 'manifest.json inválido.', 'checksum' => $checksum];
             }

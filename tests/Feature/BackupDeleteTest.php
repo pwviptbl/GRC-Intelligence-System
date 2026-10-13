@@ -122,6 +122,40 @@ class BackupDeleteTest extends TestCase
             ->assertSessionHas('error', 'Backup inválido: Caminho interno inválido.');
     }
 
+    public function test_validation_reads_encrypted_backup_with_configured_password(): void
+    {
+        config(['backup.password' => 'senha-de-teste']);
+        $this->makeEncryptedBackup('cripto.zip', 'senha-de-teste');
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->post(route('backups.validate', ['file' => 'cripto.zip']))
+            ->assertSessionHas('success', 'Integridade do backup validada com sucesso.');
+    }
+
+    public function test_validation_fails_for_encrypted_backup_with_wrong_password(): void
+    {
+        config(['backup.password' => 'senha-errada']);
+        $this->makeEncryptedBackup('cripto.zip', 'senha-de-teste');
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->post(route('backups.validate', ['file' => 'cripto.zip']))
+            ->assertSessionHas('error', 'Backup inválido: Não foi possível ler o manifest.json (senha do backup incorreta ou ausente?).');
+    }
+
+    private function makeEncryptedBackup(string $name, string $password): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->makeDirectory('backups');
+
+        $zip = new ZipArchive();
+        $zip->open(Storage::disk('local')->path('backups/'.$name), ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('database.sql', 'select 1;');
+        $zip->addFromString('manifest.json', '{}');
+        $zip->setEncryptionName('database.sql', ZipArchive::EM_AES_256, $password);
+        $zip->setEncryptionName('manifest.json', ZipArchive::EM_AES_256, $password);
+        $zip->close();
+    }
+
     public function test_retention_removes_only_old_unprotected_automatic_backups(): void
     {
         Storage::fake('local');

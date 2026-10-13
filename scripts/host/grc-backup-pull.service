@@ -1,0 +1,6 @@
+[Unit]
+Description=Copia os backups do GRC (LXC 104) para o host Proxmox
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/grc-backup-pull.sh

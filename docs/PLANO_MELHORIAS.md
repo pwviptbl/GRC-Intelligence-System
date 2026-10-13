@@ -28,7 +28,14 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 
 ---
 
-## Etapa 0 — Contenção imediata (hoje, ~1h)
+## Estado em 2026-10-13
+
+- **Etapa 0: concluída** (commit `062e882`). Também foi corrigido um bug que já existia: o scheduler rodava como root e criava arquivos em `storage/` que a aplicação web não conseguia gravar, o que gerava 500 em qualquer requisição que tentasse registrar log.
+- **ngrok removido.** O sistema agora só é acessível pela LAN (`APP_URL=http://192.168.1.19:8088`). O MFA passou a ser pré-requisito para voltar a expor o sistema na internet (ver "Reexposição à internet").
+- **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
+- **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Falta uma cópia em outro disco ou local.
+
+## Etapa 0 — Contenção imediata ✅
 
 | # | Ação | Onde |
 |---|------|------|
@@ -47,17 +54,15 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 
 ---
 
-## Etapa 1 — Hardening de segurança (semana 1)
+## Etapa 1 — Proteção de dados (semana 1)
 
-1. **MFA/TOTP** obrigatório para `admin` e `governanca`, opcional para os demais.
-   - Pacote `pragmarx/google2fa` com tela própria no fluxo Breeze, ou migração para Laravel Fortify.
-   - Códigos de recuperação.
-   - Arquivos: `app/Http/Requests/Auth/LoginRequest.php`, `app/Http/Middleware/RoleMiddleware.php` (já revalida `active`; acrescentar a checagem de MFA), migration em `users`.
+1. **MFA/TOTP:** adiado. Enquanto o sistema estiver só na LAN, ele fica como pré-requisito da reexposição à internet (ver abaixo).
 2. **Backups seguros (3-2-1).**
-   - Criptografar o ZIP com AES-256 (`ZipArchive::setEncryptionName` com a senha em `BACKUP_PASSWORD`) em `BackupController::generateBackup`.
-   - Trocar `--password=` por `PGPASSWORD` nas linhas ~356 e ~405 de `BackupController.php`.
-   - Cópia externa: disk `s3`/`sftp` (Backblaze, ou NAS/PBS da rede) após `verifyBackup`, no comando `backups:run` em `routes/console.php`.
-   - Adicionar ao `vzdump` do Proxmox um job diário do CT 104.
+   - ✅ ZIP criptografado com AES-256 usando `BACKUP_PASSWORD` (`config/backup.php`). A verificação e a restauração aplicam a senha, e backups antigos sem criptografia continuam legíveis. Uma cópia da senha fica no host, em `/root/grc-backup-password.txt`.
+   - ✅ O host Proxmox busca os backups todo dia às 04:00 e guarda em `/var/backups/grc-intel`. Usa `scripts/host/grc-backup-pull.sh` e o timer systemd `grc-backup-pull.timer`. As cópias já feitas nunca são sobrescritas, o checksum é conferido e a retenção é de 180 dias.
+   - ✅ A observação sobre `--password=` só se aplicava ao ramo MySQL. O Postgres já usava `PGPASSWORD`.
+   - Pendente: cópia em outro disco ou local. A cópia atual fica no mesmo NVMe do Proxmox. Opções: o disco `sda` de 1 TB, que está sem uso, um NAS ou a nuvem.
+   - Opcional: job de `vzdump` do CT 104.
 3. **Gemini e LGPD.**
    - Migrar para o plano pago ou para a Vertex AI. Hoje é `generativelanguage.googleapis.com`, em `app/Services/GeminiService.php:14`.
    - Remover a URL comentada.
@@ -68,6 +73,13 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
    - `EngagementTestController`: json, xml, sarif e similares.
    - Calcular SHA-256 e mover `evidencias_planos` de `storage/app/public` para `private`.
 5. **Rotação de segredos**: `APP_KEY` e `MCP_SERVER_TOKEN`, por precaução.
+6. **Limpeza:** remover `grc-proxy/`, `scripts/grc_stack_status.sh` e o token MCP fixo, que ficaram sem uso depois da saída do Codex.
+
+### Reexposição à internet (pré-requisitos)
+Fazer antes de publicar o sistema de novo:
+- MFA/TOTP obrigatório para `admin` e `governanca`, com códigos de recuperação. Arquivos: `LoginRequest.php`, `RoleMiddleware.php` e uma migration em `users`.
+- Cloudflare Tunnel ou reverse proxy com TLS, configurado como proxy confiável (TrustProxies) para que a auditoria registre o IP real.
+- Atualizar `APP_URL`, `MCP_OAUTH_AUDIENCE` e `MCP_OAUTH_RESOURCE_URL`.
 
 **Verificação:**
 - Testes novos em `tests/Feature/SecurityHardeningTest.php`: MFA obrigatório para admin, upload `.php` rejeitado.
