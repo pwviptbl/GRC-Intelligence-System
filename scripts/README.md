@@ -39,7 +39,7 @@ venv/bin/python scripts/reset_senha.py
 
 ## `host/` — scripts do host Proxmox
 
-`host/grc-backup-pull.sh`, `.service` e `.timer` rodam **no host Proxmox**, fora do container. Todo dia o host busca os backups criptografados do LXC 104 e guarda em `/var/backups/grc-intel`, sem nunca sobrescrever cópias existentes. Instalação:
+`host/grc-backup-pull.sh`, `.service` e `.timer` rodam **no host Proxmox**, fora do container. Todo dia o host busca os backups criptografados do LXC 104 e guarda em `/mnt/storage/backups/grc-intel` (disco `sda`), sem nunca sobrescrever cópias existentes. Instalação:
 
 ```bash
 install -m 750 scripts/host/grc-backup-pull.sh /usr/local/sbin/

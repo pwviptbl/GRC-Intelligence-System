@@ -33,7 +33,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 - **Etapa 0: concluída** (commit `062e882`). Também foi corrigido um bug que já existia: o scheduler rodava como root e criava arquivos em `storage/` que a aplicação web não conseguia gravar, o que gerava 500 em qualquer requisição que tentasse registrar log.
 - **ngrok removido.** O sistema agora só é acessível pela LAN (`APP_URL=http://192.168.1.19:8088`). O MFA passou a ser pré-requisito para voltar a expor o sistema na internet (ver "Reexposição à internet").
 - **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
-- **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Falta uma cópia em outro disco ou local.
+- **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Cópia no disco `sda` e teste de recuperação concluídos.
 
 ## Etapa 0 — Contenção imediata ✅
 
@@ -59,9 +59,10 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 1. **MFA/TOTP:** adiado. Enquanto o sistema estiver só na LAN, ele fica como pré-requisito da reexposição à internet (ver abaixo).
 2. **Backups seguros (3-2-1).**
    - ✅ ZIP criptografado com AES-256 usando `BACKUP_PASSWORD` (`config/backup.php`). A verificação e a restauração aplicam a senha, e backups antigos sem criptografia continuam legíveis. Uma cópia da senha fica no host, em `/root/grc-backup-password.txt`.
-   - ✅ O host Proxmox busca os backups todo dia às 04:00 e guarda em `/var/backups/grc-intel`. Usa `scripts/host/grc-backup-pull.sh` e o timer systemd `grc-backup-pull.timer`. As cópias já feitas nunca são sobrescritas, o checksum é conferido e a retenção é de 180 dias.
+   - ✅ O host Proxmox busca os backups todo dia às 04:00 e guarda em `/mnt/storage/backups/grc-intel` (disco `sda`). Usa `scripts/host/grc-backup-pull.sh` e o timer systemd `grc-backup-pull.timer`. As cópias já feitas nunca são sobrescritas, o checksum é conferido e a retenção é de 180 dias.
    - ✅ A observação sobre `--password=` só se aplicava ao ramo MySQL. O Postgres já usava `PGPASSWORD`.
-   - Pendente: cópia em outro disco ou local. A cópia atual fica no mesmo NVMe do Proxmox. Opções: o disco `sda` de 1 TB, que está sem uso, um NAS ou a nuvem.
+   - ✅ Cópia em disco separado (`sda`), com o teste de recuperação aprovado em 2026-10-13 (ver `docs/RECUPERACAO_BACKUP.md`).
+   - Pendente: guardar `BACKUP_PASSWORD` no gerenciador de senhas. Opcional: cópia fora do servidor (NAS ou nuvem).
    - Opcional: job de `vzdump` do CT 104.
 3. **Gemini e LGPD.**
    - Migrar para o plano pago ou para a Vertex AI. Hoje é `generativelanguage.googleapis.com`, em `app/Services/GeminiService.php:14`.

@@ -1,6 +1,9 @@
 [Unit]
 Description=Copia os backups do GRC (LXC 104) para o host Proxmox
+RequiresMountsFor=/mnt/storage
 
 [Service]
 Type=oneshot
+Environment=GRC_BACKUP_DEST=/mnt/storage/backups/grc-intel
+Environment=GRC_BACKUP_REQUIRE_MOUNT=/mnt/storage
 ExecStart=/usr/local/sbin/grc-backup-pull.sh

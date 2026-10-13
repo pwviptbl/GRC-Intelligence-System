@@ -8,6 +8,14 @@ CT="${GRC_CT:-104}"
 SRC="${GRC_BACKUP_SRC:-/opt/GRC-Intelligence-System/storage/app/private/backups}"
 DEST="${GRC_BACKUP_DEST:-/var/backups/grc-intel}"
 RETENTION_DAYS="${GRC_BACKUP_RETENTION_DAYS:-180}"
+# Se definido, exige que este caminho seja um ponto de montagem ativo (evita gravar no disco do sistema
+# quando o disco de backup não montou).
+REQUIRE_MOUNT="${GRC_BACKUP_REQUIRE_MOUNT:-}"
+
+if [ -n "$REQUIRE_MOUNT" ] && ! mountpoint -q "$REQUIRE_MOUNT"; then
+    echo "ERRO: $REQUIRE_MOUNT não está montado; cópia cancelada" >&2
+    exit 1
+fi
 
 if [ "$(pct status "$CT" | awk '{print $2}')" != "running" ]; then
     echo "ERRO: container $CT não está rodando" >&2
