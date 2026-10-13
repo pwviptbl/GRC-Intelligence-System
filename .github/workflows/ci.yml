@@ -77,11 +77,9 @@ jobs:
       - run: php artisan test
 
   pint:
-    name: Estilo de código (Pint, informativo)
+    name: Estilo de código (Pint)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Informativo até a base ser formatada: há arquivos fora do padrão anteriores à CI.
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4

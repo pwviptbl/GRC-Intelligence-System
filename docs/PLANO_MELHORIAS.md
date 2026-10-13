@@ -34,7 +34,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 - **ngrok removido.** O sistema agora só é acessível pela LAN (`APP_URL=http://192.168.1.19:8088`). O MFA passou a ser pré-requisito para voltar a expor o sistema na internet (ver "Reexposição à internet").
 - **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
 - **Etapa 1.4 (uploads):** concluída.
-- **Etapa 2.7 (CI):** `.github/workflows/ci.yml` roda os testes (PHP 8.5 e PostgreSQL 18) a cada push e PR. O Pint roda só como informativo: 115 arquivos estão fora do padrão, e formatá-los fica para um commit separado.
+- **Etapa 2.7 (CI):** `.github/workflows/ci.yml` roda os testes (PHP 8.5 e PostgreSQL 18) a cada push e PR. O Pint também bloqueia: a base foi formatada num commit só de estilo, listado em `.git-blame-ignore-revs`.
 - **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Cópia no disco `sda` e teste de recuperação concluídos.
 
 ## Etapa 0 — Contenção imediata ✅

@@ -1,0 +1,5 @@
+# Commits só de formatação, ignorados pelo git blame.
+# Uso local: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: formatar codigo com Laravel Pint
+b696c1d78efd7f7f5b738963e08584206744a68e
