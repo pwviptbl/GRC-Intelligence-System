@@ -67,12 +67,12 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
    - ✅ Cópia em disco separado (`sda`), com o teste de recuperação aprovado em 2026-10-13 (ver `docs/RECUPERACAO_BACKUP.md`).
    - Pendente: guardar `BACKUP_PASSWORD` no gerenciador de senhas. Opcional: cópia fora do servidor (NAS ou nuvem).
    - Opcional: job de `vzdump` do CT 104.
-3. ✅ **Gemini e LGPD:** a integração com o Gemini foi removida (2026-10-13). Ela era paga e quase não era usada: 3 chamadas no total, a última em 23/8. A IA agora entra só pelo MCP, com o provedor e o contrato do cliente, e o servidor não envia dados a terceiros. Saíram a geração e a sugestão de políticas e procedimentos, o resumo de IA no dashboard e na exportação executiva, a tela Estratégia e a sugestão de evidência LGPD. Falta revogar a chave no Google AI Studio.
+3. ✅ **Gemini e LGPD:** a integração com o Gemini foi removida (2026-10-13). Ela era paga e quase não era usada: 3 chamadas no total, a última em 23/8. A IA agora entra só pelo MCP, com o provedor e o contrato do cliente, e o servidor não envia dados a terceiros. Saíram a geração e a sugestão de políticas e procedimentos, o resumo de IA no dashboard e na exportação executiva, a tela Estratégia e a sugestão de evidência LGPD. A chave do Google AI Studio foi revogada.
 4. ✅ **Uploads.** A análise inicial superestimou o risco. Evidências e anexos já ficavam em disco privado e eram baixados só por rota autenticada, como download. O XML dos scans não é vulnerável a XXE (libxml 2.9.14, sem `LIBXML_NOENT`). O que foi feito:
    - Regra única `App\Rules\AllowedUploadExtension` (lista permitida) em evidências de incidentes, evidências de etapas e anexos do Kanban. O Kanban usava lista de bloqueio e aceitava `.html` e `.svg`.
    - Imports de scan (web e API) aceitam só `json, jsonl, xml, sarif, csv, txt`.
    - Removido o `PlanoAcaoController`, que não tinha rota e gravava no disco público.
-   - Pendente, opcional: hash SHA-256 por evidência, que entra na Etapa 4 (evidência reutilizável). Também resta decidir sobre o arquivo órfão `storage/app/public/evidencias_planos/rq8q….docx`, sem registro no banco.
+   - Pendente, opcional: hash SHA-256 por evidência, que entra na Etapa 4 (evidência reutilizável). O arquivo órfão de `storage/app/public/evidencias_planos` foi removido em 2026-10-13.
 5. **Rotação de segredos**: `APP_KEY` e `MCP_SERVER_TOKEN`, por precaução.
 6. **Limpeza:** remover `grc-proxy/`, `scripts/grc_stack_status.sh` e o token MCP fixo, que ficaram sem uso depois da saída do Codex.
 
