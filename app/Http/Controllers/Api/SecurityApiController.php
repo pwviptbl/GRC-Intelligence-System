@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Engagement;
 use App\Models\EngagementTest;
 use App\Models\Finding;
+use App\Rules\AllowedUploadExtension;
 use App\Services\ScanImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -126,7 +127,7 @@ class SecurityApiController extends Controller
     public function importScan(Request $request, EngagementTest $engagementTest, ScanImportService $importService): JsonResponse
     {
         $request->validate([
-            'arquivo_scan' => ['required', 'file', 'max:51200'],
+            'arquivo_scan' => ['required', 'file', 'max:51200', AllowedUploadExtension::scan()],
             'formato_scan' => ['nullable', 'string', 'in:zap,nikto,nuclei,nmap,burp,semgrep,trivy,bandit,grype'],
         ]);
 

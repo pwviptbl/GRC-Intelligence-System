@@ -9,6 +9,7 @@ use App\Models\PlanoAcaoItemEvidencia;
 use App\Models\Procedimento;
 use App\Models\Software;
 use App\Models\User;
+use App\Rules\AllowedUploadExtension;
 use App\Services\CalendarioControleService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -164,22 +165,7 @@ class CalendarioControleController extends Controller
                 'required',
                 'file',
                 'max:20480',
-                function (string $attribute, $file, \Closure $fail) {
-                    $extension = strtolower($file->getClientOriginalExtension());
-                    $name = strtolower($file->getClientOriginalName());
-                    $blockedExtensions = [
-                        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar',
-                        'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'zsh', 'fish',
-                        'exe', 'com', 'bat', 'cmd', 'msi', 'dll', 'so',
-                        'jar', 'war', 'jsp', 'asp', 'aspx', 'htaccess', 'env',
-                    ];
-
-                    if (in_array($extension, $blockedExtensions, true)
-                        || $name === '.htaccess'
-                        || $name === '.env') {
-                        $fail('Este tipo de arquivo não é permitido por segurança.');
-                    }
-                },
+                AllowedUploadExtension::evidence('Este tipo de arquivo não é permitido por segurança.'),
             ],
         ], [
             'arquivo.required' => 'Selecione um arquivo para anexar.',
@@ -604,17 +590,7 @@ class CalendarioControleController extends Controller
             'nullable',
             'file',
             'max:10240',
-            function (string $attribute, $file, \Closure $fail): void {
-                $extension = strtolower($file->getClientOriginalExtension());
-                $allowedExtensions = [
-                    'pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'zip',
-                    'tgz', 'gz', 'tar', 'doc', 'docx', 'xls', 'xlsx', 'md', 'json',
-                ];
-
-                if (!in_array($extension, $allowedExtensions, true)) {
-                    $fail('Tipo de arquivo não permitido. Envie documento, imagem, log ou arquivo compactado seguro.');
-                }
-            },
+            AllowedUploadExtension::evidence(),
         ];
     }
 

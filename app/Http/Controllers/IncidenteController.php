@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Incidente;
 use App\Models\IncidenteEvidencia;
+use App\Rules\AllowedUploadExtension;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -152,17 +153,7 @@ class IncidenteController extends Controller
             'required',
             'file',
             'max:10240',
-            function (string $attribute, $file, \Closure $fail): void {
-                $extension = strtolower($file->getClientOriginalExtension());
-                $allowedExtensions = [
-                    'pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt', 'csv', 'zip',
-                    'tgz', 'gz', 'tar', 'doc', 'docx', 'xls', 'xlsx', 'md', 'json',
-                ];
-
-                if (!in_array($extension, $allowedExtensions, true)) {
-                    $fail('Tipo de arquivo nao permitido. Envie documento, imagem, log ou arquivo compactado seguro.');
-                }
-            },
+            AllowedUploadExtension::evidence(),
         ];
     }
 }

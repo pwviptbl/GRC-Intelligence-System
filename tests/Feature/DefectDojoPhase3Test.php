@@ -320,4 +320,18 @@ TXT;
         $this->assertEquals('duplicado', $duplicateFinding->status);
         $this->assertNotNull($duplicateFinding->duplicado_de_id);
     }
+
+    public function test_scan_import_rejects_unsupported_file_types(): void
+    {
+        Storage::fake('local');
+        $user = $this->makeUser();
+        $test = $this->makeTest();
+
+        $this->actingAs($user)->post(route('engagement-tests.import', $test), [
+            'arquivo_scan' => UploadedFile::fake()->createWithContent('shell.php', '<?php echo 1;'),
+            'formato_scan' => 'zap',
+        ])->assertSessionHasErrors('arquivo_scan');
+
+        $this->assertDatabaseCount('findings', 0);
+    }
 }

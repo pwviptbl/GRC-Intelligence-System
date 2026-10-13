@@ -33,6 +33,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 - **Etapa 0: concluída** (commit `062e882`). Também foi corrigido um bug que já existia: o scheduler rodava como root e criava arquivos em `storage/` que a aplicação web não conseguia gravar, o que gerava 500 em qualquer requisição que tentasse registrar log.
 - **ngrok removido.** O sistema agora só é acessível pela LAN (`APP_URL=http://192.168.1.19:8088`). O MFA passou a ser pré-requisito para voltar a expor o sistema na internet (ver "Reexposição à internet").
 - **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
+- **Etapa 1.4 (uploads):** concluída.
 - **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Cópia no disco `sda` e teste de recuperação concluídos.
 
 ## Etapa 0 — Contenção imediata ✅
@@ -69,10 +70,11 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
    - Remover a URL comentada.
    - Registrar a decisão como risco e controle no próprio GRC.
    - Opcional: mascarar nomes de clientes e IPs no `GrcContextService` antes de enviar.
-4. **Uploads.** Allowlist de MIME e extensão em todos os uploads. Hoje existe só `max:`. Pontos a cobrir:
-   - `IncidenteController` (~linha 154) e `CalendarioControleController` (~linha 166): allowlist de documentos e imagens.
-   - `EngagementTestController`: json, xml, sarif e similares.
-   - Calcular SHA-256 e mover `evidencias_planos` de `storage/app/public` para `private`.
+4. ✅ **Uploads.** A análise inicial superestimou o risco. Evidências e anexos já ficavam em disco privado e eram baixados só por rota autenticada, como download. O XML dos scans não é vulnerável a XXE (libxml 2.9.14, sem `LIBXML_NOENT`). O que foi feito:
+   - Regra única `App\Rules\AllowedUploadExtension` (lista permitida) em evidências de incidentes, evidências de etapas e anexos do Kanban. O Kanban usava lista de bloqueio e aceitava `.html` e `.svg`.
+   - Imports de scan (web e API) aceitam só `json, jsonl, xml, sarif, csv, txt`.
+   - Removido o `PlanoAcaoController`, que não tinha rota e gravava no disco público.
+   - Pendente, opcional: hash SHA-256 por evidência, que entra na Etapa 4 (evidência reutilizável). Também resta decidir sobre o arquivo órfão `storage/app/public/evidencias_planos/rq8q….docx`, sem registro no banco.
 5. **Rotação de segredos**: `APP_KEY` e `MCP_SERVER_TOKEN`, por precaução.
 6. **Limpeza:** remover `grc-proxy/`, `scripts/grc_stack_status.sh` e o token MCP fixo, que ficaram sem uso depois da saída do Codex.
 
@@ -100,7 +102,7 @@ Fazer antes de publicar o sistema de novo:
 6. **Healthcheck e monitoramento:**
    - Endpoint `/up` (já existe no Laravel 11+) monitorado.
    - Enviar `storage/logs` e `audit_events` ao **Wazuh (VM 100)** pelo agente Wazuh no CT 104.
-7. **CI:** GitHub Actions com Pint, PHPStan/Larastan (nível 5 para começar) e `php artisan test` com Postgres em service. **Antes**, corrigir os testes que falham hoje, por exemplo `CalendarioControleSuggestionFlowTest` (falhas no `.phpunit.result.cache` de 2/10).
+7. **CI:** GitHub Actions com Pint, PHPStan/Larastan (nível 5 para começar) e `php artisan test` com Postgres em service. **Antes**, corrigir os 18 testes que falham desde antes de 2/10. A maioria espera as ferramentas `create_risk` e `list_risks`, removidas na migração de riscos para findings: `GrcToolRegistryTest`, `McpOAuthTest`, `McpEndpointTest`, `GeminiServiceToolActionTest` e `CalendarioControleSuggestionFlowTest`. O `phpunit.xml` agora isola `MCP_AUTH_MODE`, para que os testes não herdem o `.env` de produção.
 
 **Verificação:**
 - `ab`/`hey` com 20 conexões concorrentes sem erros.

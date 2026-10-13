@@ -76,6 +76,22 @@ class KanbanCardRecordsTest extends TestCase
         $this->assertDatabaseCount('controle_evento_anexos', 1);
     }
 
+    public function test_attachment_uses_allowlist_and_blocks_html_and_svg(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create(['role' => 'governanca']);
+        $event = $this->event();
+
+        foreach (['pagina.html', 'imagem.svg', 'sem_extensao'] as $name) {
+            $this->actingAs($user)->postJson(route('calendario_controles.add_attachment', $event), [
+                'arquivo' => UploadedFile::fake()->create($name, 2, 'text/html'),
+            ])->assertUnprocessable()
+                ->assertJsonPath('errors.arquivo.0', 'Este tipo de arquivo não é permitido por segurança.');
+        }
+
+        $this->assertDatabaseCount('controle_evento_anexos', 0);
+    }
+
     private function event(): ControleEvento
     {
         return ControleEvento::create([

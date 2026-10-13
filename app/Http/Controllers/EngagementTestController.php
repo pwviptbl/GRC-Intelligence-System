@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Engagement;
 use App\Models\EngagementTest;
+use App\Rules\AllowedUploadExtension;
 use App\Services\FindingDeduplicationService;
 use Illuminate\Http\Request;
 
@@ -122,7 +123,7 @@ class EngagementTestController extends Controller
     public function importScan(Request $request, EngagementTest $engagementTest, \App\Services\ScanImportService $importService)
     {
         $request->validate([
-            'arquivo_scan' => ['required', 'file', 'max:51200'], // 50MB
+            'arquivo_scan' => ['required', 'file', 'max:51200', AllowedUploadExtension::scan()], // 50MB
             'formato_scan' => ['nullable', 'string', 'in:zap,nikto,nuclei,nmap,burp,semgrep,trivy,bandit,grype'],
         ], [
             'arquivo_scan.required' => 'Selecione o arquivo de scan para importar.',
