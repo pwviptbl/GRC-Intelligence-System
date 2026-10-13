@@ -5,7 +5,7 @@ Sistema de Governança, Risco e Conformidade (GRC).
 ## 🚀 Funcionalidades
 
 - **Clientes & Ativos:** Gestão de clientes e softwares/instâncias.
-- **Governança:** Elaboração de Políticas e Procedimentos Operacionais com auxílio de IA.
+- **Governança:** Elaboração de Políticas e Procedimentos Operacionais (com apoio opcional de agentes de IA via MCP).
 - **Riscos:** Inventário de riscos com análise de criticidade e planos de mitigação.
 - **Incidentes:** Monitoramento e resposta a incidentes de segurança (Pós-Mortem).
 - **Conformidade LGPD:** Manual de auditoria com guias educativos (O que é? / Como fazer?) e checklist de evidências.
@@ -52,13 +52,11 @@ O sistema possui controle de acesso baseado em perfis, garantindo a segregação
   
 - **⚖️ Governança (`governanca`):**
   - Gestão completa de Ativos, Riscos, Incidentes e Conformidade.
-  - Acesso total às ferramentas de **Inteligência Artificial** (Geração de Políticas, Sugestões de Riscos, etc).
   - Não possui acesso à gestão de usuários.
 
 - **🛠️ Operacional (`operacional`):**
   - Foco na execução: Permissão total para gerenciar **Riscos, Incidentes, Planos de Ação e Treinamentos**.
   - Acesso de **Apenas Leitura** para os módulos estruturais (**Ativos e Governança**).
-  - Pode utilizar ferramentas de **Inteligência Artificial** para análise e sugestões.
   - Bloqueado para gestão de usuários.
 
 - **🔍 Auditor (`auditor`):**
@@ -102,11 +100,8 @@ Com isso, `docker compose up -d` (e o serviço `grc-compose` no boot) sobe `web`
 - Comandos Artisan na produção: `docker compose exec -u www-data -e HOME=/tmp php php artisan <comando>`.
 - Rollback para o Sail: remova `COMPOSE_FILE` do `.env`, rode `docker compose -f compose.yaml -f compose.prod.yaml stop web php` e depois `docker compose up -d`.
 
-## 🤖 Integração com IA
-O sistema utiliza o modelo **Gemini 2.5 Flash Lite**. Certifique-se de configurar sua chave no arquivo `.env`:
-```env
-GEMINI_API_KEY=sua_chave_aqui
-```
+## 🤖 IA via MCP
+O sistema não chama nenhuma API de IA no servidor: nenhum dado de cliente é enviado a terceiros pelo próprio GRC. Assistentes de IA usam o servidor **MCP** (veja abaixo) com o provedor e o contrato de quem os opera, e toda escrita passa por `dry-run` e confirmação.
 
 ## 🧠 Agente via Terminal
 
@@ -127,7 +122,6 @@ Ferramentas de escrita exigem `--confirm` para gravar. Use `--dry-run` antes de 
 php artisan grc:agent call create_risk --confirm --json='{"titulo":"...","descricao":"...","probabilidade":"Alta","impacto":"Alto","responsavel":"..."}'
 ```
 
-O chat web usa o mesmo registro de ferramentas: consultas são executadas apenas pelas ferramentas tipadas e ações de escrita retornam uma prévia. Responda `confirmar` para gravar ou `cancelar` para descartar a operação pendente.
 
 ## 🔌 MCP
 

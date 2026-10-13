@@ -40,16 +40,6 @@
         white-space: nowrap;
     }
 
-    .procedures-suggestions {
-        position: relative;
-        padding: 20px;
-        margin-bottom: 25px;
-        border: 1px solid rgba(0, 255, 255, .1);
-        border-radius: 8px;
-        background: rgba(0, 255, 255, .05);
-        overflow-wrap: anywhere;
-    }
-
     .procedures-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
@@ -197,7 +187,6 @@
             flex: 1 1 calc(50% - 5px);
         }
 
-        .procedures-suggestions,
         .procedure-card {
             padding: 16px;
         }
@@ -248,34 +237,14 @@
 <div class="table-view" x-data="{
     showModal: false,
     showViewModal: false,
-    showSuggest: false,
     editMode: false,
-    generating: false,
-    suggesting: false,
-    suggestions: '',
     formAction: '{{ route('procedimentos.store') }}',
-    form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', prompt_adicional: '', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
+    form: { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] },
     viewProc: { titulo: '', tipo: '', status: '', etapas: [] },
 
-    async getSuggestions() {
-        this.suggesting = true;
-        try {
-            const res = await fetch('{{ route('procedimentos.suggest') }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-            });
-            const data = await res.json();
-            this.suggestions = data.sugestoes;
-            this.showSuggest = true;
-        } catch(e) {
-            console.error(e);
-            alert('Erro ao buscar sugestões.');
-        }
-        this.suggesting = false;
-    },
-
-    openCreate() {        this.editMode = false;
-        this.form = { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', prompt_adicional: '', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] };
+    openCreate() {
+        this.editMode = false;
+        this.form = { id: '', titulo: '', tipo: 'Operacional', status: 'rascunho', etapas: [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }] };
         this.formAction = '{{ route('procedimentos.store') }}';
         this.showModal = true;
     },
@@ -283,9 +252,6 @@
     openEdit(p) {
         this.editMode = true;
         this.form = { ...p };
-        if (!this.form.prompt_adicional) {
-            this.form.prompt_adicional = '';
-        }
         if (!this.form.etapas || this.form.etapas.length === 0) {
             this.form.etapas = [{ id: '', nome_etapa: '', responsavel: '', descricao: '', sla: '' }];
         }
@@ -296,32 +262,6 @@
     openView(p) {
         this.viewProc = p;
         this.showViewModal = true;
-    },
-
-    async generateEtapas() {
-        if(!this.form.titulo) return alert('Dê um título para que a IA possa sugerir as etapas!');
-        this.generating = true;
-        try {
-            const res = await fetch('{{ route('procedimentos.generate') }}', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({
-                    titulo: this.form.titulo,
-                    prompt_adicional: this.form.prompt_adicional
-                })
-            });
-            const data = await res.json();
-            
-            if(data.etapas) {
-                this.form.etapas = data.etapas;
-            } else {
-                alert('A IA não conseguiu gerar etapas estruturadas. Tente um título mais claro.');
-            }
-        } catch(e) { 
-            console.error(e);
-            alert('Erro ao consultar IA. Verifique os logs do sistema ou sua chave da API.'); 
-        }
-        this.generating = false;
     },
 
     addEtapa() {
@@ -360,26 +300,10 @@
             <a href="{{ route('procedimentos.export.all') }}" target="_blank" class="btn-secondary procedures-header-button" style="background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1)">
                 <span>📄 Exportar Todos</span>
             </a>
-            @if(in_array(auth()->user()->role, ['admin', 'governanca', 'operacional']))
-            <button class="btn-secondary procedures-header-button" @click="getSuggestions()" :disabled="suggesting" style="background:rgba(0,255,255,0.05); color:var(--cyan); border:1px solid var(--cyan); cursor:pointer">
-                <span x-show="!suggesting">💡 Sugerir Novos</span>
-                <span x-show="suggesting">⌛ Consultando...</span>
-            </button>
-            @endif
-
             @if(in_array(auth()->user()->role, ['admin', 'governanca']))
             <button class="btn-add" @click="openCreate()">+ Novo Procedimento</button>
             @endif
         </div>
-    </div>
-
-    <!-- Sugestões da IA -->
-    <div x-show="showSuggest" x-transition class="procedures-suggestions">
-        <button @click="showSuggest = false" style="position:absolute; top:15px; right:15px; background:none; border:none; color:var(--text-3); cursor:pointer">✕</button>
-        <h4 style="color:var(--cyan); margin-bottom:15px; display:flex; align-items:center; gap:10px">
-            <span>✨ Sugestões da Inteligência Artificial</span>
-        </h4>
-        <div style="color:var(--text-2); font-size:13px; line-height:1.6; white-space: pre-line" x-text="suggestions"></div>
     </div>
 
     <div class="grid-view procedures-grid">
@@ -493,23 +417,10 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:12px" x-show="!editMode">
-                    <label>Prompt adicional para IA (opcional)</label>
-                    <textarea
-                        x-model="form.prompt_adicional"
-                        class="form-input"
-                        rows="2"
-                        placeholder="Ex.: Gerar sequência de testes web: reconhecimento, SQL Injection, XSS, upload malicioso, controle de acesso, validação final com evidências."
-                    ></textarea>
-                </div>
-
                 <div style="margin-top:25px">
                     <div class="procedures-steps-header" style="margin-bottom:15px">
                         <div class="procedures-steps-title-actions">
                             <h4 style="color:var(--cyan); margin:0; font-size:14px">Etapas do Processo</h4>
-                            <button type="button" @click="generateEtapas()" x-show="!editMode" class="btn-save" style="font-size:10px; padding:4px 10px; background:rgba(0,229,255,0.1); border-color:rgba(0,229,255,0.2); color:var(--cyan)" :disabled="generating">
-                                <span x-text="generating ? '⏳ Gerando etapas...' : '🤖 Sugerir Etapas via IA'"></span>
-                            </button>
                         </div>
                         <button type="button" @click="addEtapa()" class="btn-save" style="font-size:10px; padding:4px 10px; background:rgba(0,255,159,0.1); color:var(--green)">+ Adicionar Etapa</button>
                     </div>

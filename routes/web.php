@@ -10,7 +10,6 @@ use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\EngagementTestController;
-use App\Http\Controllers\EstrategiaController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\IncidenteController;
 use App\Http\Controllers\InstanciaClienteController;
@@ -50,13 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios.index');
         Route::get('/relatorios/dossie', [RelatorioController::class, 'gerarDossie'])->name('relatorios.dossie');
         Route::get('/dashboard/export/executive', [DashboardController::class, 'exportExecutive'])->name('dashboard.export');
-        Route::get('/dashboard/ai-summary', [DashboardController::class, 'aiSummary'])->name('dashboard.ai_summary');
         Route::get('/alertas/resumo', [AlertController::class, 'summary'])->name('alertas.summary');
-    });
-
-    Route::middleware('role:admin,governanca')->group(function () {
-        Route::get('/estrategia', [EstrategiaController::class, 'index'])->name('estrategia.index');
-        Route::post('/estrategia/roadmap', [EstrategiaController::class, 'generateRoadmap'])->name('estrategia.roadmap');
     });
 
     // Gestão de Usuários (Apenas Admin)
@@ -178,12 +171,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     });
 
-    // 3. FERRAMENTAS DE IA
+    // 3. GESTÃO DE VULNERABILIDADES
     Route::middleware('role:admin,governanca,operacional')->group(function () {
-        Route::post('/politicas/generate', [PoliticaController::class, 'generateIA'])->name('politicas.generate');
-        Route::post('/politicas/suggest', [PoliticaController::class, 'suggestIA'])->name('politicas.suggest');
-        Route::post('/procedimentos/generate', [ProcedimentoController::class, 'generateIA'])->name('procedimentos.generate');
-        Route::post('/procedimentos/suggest', [ProcedimentoController::class, 'suggestIA'])->name('procedimentos.suggest');
 
         // --- Gestão de Vulnerabilidades DefectDojo-style ---
         Route::resource('engagements', EngagementController::class);
@@ -204,7 +193,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('findings', FindingController::class);
         Route::patch('/findings/{finding}/status', [FindingController::class, 'updateStatus'])->name('findings.update_status');
         Route::post('/findings/{finding}/controles', [FindingController::class, 'syncControles'])->name('findings.sync_controles');
-        Route::get('/lgpd/{item}/suggest-evidence', [LgpdController::class, 'suggestEvidence'])->name('lgpd.suggest');
         Route::post('/treinamentos/{treinamento}/alunos', [TreinamentoController::class, 'addAlunos'])->name('treinamentos.add_alunos');
     });
 });

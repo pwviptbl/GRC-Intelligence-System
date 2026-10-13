@@ -58,7 +58,6 @@ if [ ! -f .env ]; then
     echo -e "${YELLOW}⚠️  Arquivo .env não encontrado!${NC}"
     cp .env.example .env
     echo -e "${GREEN}✅ Arquivo .env criado a partir do .example.${NC}"
-    echo -e "${YELLOW}👉 Lembre-se de configurar sua GEMINI_API_KEY no .env!${NC}"
 fi
 
 # 2. Sobe os containers usando o Sail (Docker Compose)

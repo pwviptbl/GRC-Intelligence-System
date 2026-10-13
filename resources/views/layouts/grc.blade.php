@@ -241,12 +241,6 @@
           <span class="icon" style="margin-right: 10px;">📊</span> Painel
         </a>
 
-        @if(in_array(auth()->user()->role, ['admin', 'governanca']))
-        <a href="{{ route('estrategia.index') }}" class="nav-btn" :class="{ 'active': view.includes('estrategia') }">
-          <span class="icon" style="margin-right: 10px;">🚀</span> Assistente GRC
-        </a>
-        @endif
-
         <a href="{{ route('relatorios.index') }}" class="nav-btn" :class="{ 'active': view.includes('relatorios') }">
           <span class="icon" style="margin-right: 10px;">📊</span> Centro de Relatórios
         </a>
@@ -351,12 +345,10 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div><span class="status-dot"></span>API Conectada</div>
-        <div style="margin-top:6px;color:var(--text-3)">Gemini 2.5 Flash Lite</div>
         <form method="POST" action="{{ route('logout') }}">
           @csrf
           <button type="submit"
-            style="margin-top:10px;background:rgba(255,83,112,.1);border:1px solid rgba(255,83,112,.2);color:var(--red);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;width:100%">
+            style="background:rgba(255,83,112,.1);border:1px solid rgba(255,83,112,.2);color:var(--red);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;width:100%">
             🚪 Sair
           </button>
         </form>

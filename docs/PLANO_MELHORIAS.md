@@ -33,6 +33,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 - **Etapa 0: concluída** (commit `062e882`). Também foi corrigido um bug que já existia: o scheduler rodava como root e criava arquivos em `storage/` que a aplicação web não conseguia gravar, o que gerava 500 em qualquer requisição que tentasse registrar log.
 - **ngrok removido.** O sistema agora só é acessível pela LAN (`APP_URL=http://192.168.1.19:8088`). O MFA passou a ser pré-requisito para voltar a expor o sistema na internet (ver "Reexposição à internet").
 - **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
+- **Etapa 1.3 (Gemini/LGPD):** integração removida; a IA entra só via MCP.
 - **Etapa 1.4 (uploads):** concluída.
 - **Etapa 2.7 (CI):** `.github/workflows/ci.yml` roda os testes (PHP 8.5 e PostgreSQL 18) a cada push e PR. O Pint também bloqueia: a base foi formatada num commit só de estilo, listado em `.git-blame-ignore-revs`.
 - **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Cópia no disco `sda` e teste de recuperação concluídos.
@@ -66,11 +67,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
    - ✅ Cópia em disco separado (`sda`), com o teste de recuperação aprovado em 2026-10-13 (ver `docs/RECUPERACAO_BACKUP.md`).
    - Pendente: guardar `BACKUP_PASSWORD` no gerenciador de senhas. Opcional: cópia fora do servidor (NAS ou nuvem).
    - Opcional: job de `vzdump` do CT 104.
-3. **Gemini e LGPD.**
-   - Migrar para o plano pago ou para a Vertex AI. Hoje é `generativelanguage.googleapis.com`, em `app/Services/GeminiService.php:14`.
-   - Remover a URL comentada.
-   - Registrar a decisão como risco e controle no próprio GRC.
-   - Opcional: mascarar nomes de clientes e IPs no `GrcContextService` antes de enviar.
+3. ✅ **Gemini e LGPD:** a integração com o Gemini foi removida (2026-10-13). Ela era paga e quase não era usada: 3 chamadas no total, a última em 23/8. A IA agora entra só pelo MCP, com o provedor e o contrato do cliente, e o servidor não envia dados a terceiros. Saíram a geração e a sugestão de políticas e procedimentos, o resumo de IA no dashboard e na exportação executiva, a tela Estratégia e a sugestão de evidência LGPD. Falta revogar a chave no Google AI Studio.
 4. ✅ **Uploads.** A análise inicial superestimou o risco. Evidências e anexos já ficavam em disco privado e eram baixados só por rota autenticada, como download. O XML dos scans não é vulnerável a XXE (libxml 2.9.14, sem `LIBXML_NOENT`). O que foi feito:
    - Regra única `App\Rules\AllowedUploadExtension` (lista permitida) em evidências de incidentes, evidências de etapas e anexos do Kanban. O Kanban usava lista de bloqueio e aceitava `.html` e `.svg`.
    - Imports de scan (web e API) aceitam só `json, jsonl, xml, sarif, csv, txt`.

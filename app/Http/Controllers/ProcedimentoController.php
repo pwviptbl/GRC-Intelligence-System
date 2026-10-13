@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Procedimento;
-use App\Models\Software;
-use App\Services\GeminiService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -77,66 +75,6 @@ class ProcedimentoController extends Controller
     public function edit(string $id)
     {
         //
-    }
-
-    public function generateIA(Request $request, GeminiService $gemini)
-    {
-        $validated = $request->validate([
-            'titulo' => 'required|string|max:255',
-            'prompt_adicional' => 'nullable|string|max:2000',
-        ]);
-
-        $titulo = $validated['titulo'];
-        $promptAdicional = trim($validated['prompt_adicional'] ?? '');
-
-        $prompt = "Crie um procedimento operacional padrão para o título: '{$titulo}'.\n"
-                ."Responda OBRIGATORIAMENTE em JSON no seguinte formato:\n"
-                ."{\n"
-                ."  \"tipo\": \"procedimento_json\",\n"
-                ."  \"etapas\": [\n"
-                ."    {\"nome_etapa\": \"...\", \"responsavel\": \"...\", \"sla\": \"...\", \"descricao\": \"...\"}\n"
-                ."  ]\n"
-                ."}\n"
-                .'Não use Markdown no JSON. Seja técnico.'
-                ."\nPriorize etapas acionáveis, com ordem lógica, validação e critérios de conclusão.";
-
-        if ($promptAdicional !== '') {
-            $prompt .= "\n\nContexto e foco adicional informado pelo usuário:\n".$promptAdicional
-                    ."\n\nAjuste as etapas para respeitar este foco sem quebrar o formato JSON exigido.";
-        }
-
-        $response = $gemini->chat($prompt);
-
-        // Se a resposta vier dentro de uma chave 'resposta' (texto puro) ao invés do JSON de etapas
-        if (isset($response['resposta']) && ! isset($response['etapas'])) {
-            // Tenta extrair JSON do texto caso a IA tenha vacilado
-            preg_match('/\{.*\}/s', $response['resposta'], $matches);
-            if (! empty($matches)) {
-                $json = json_decode($matches[0], true);
-                if (isset($json['etapas'])) {
-                    return response()->json(['etapas' => $json['etapas']]);
-                }
-            }
-
-            return response()->json(['error' => 'Formato inválido'], 500);
-        }
-
-        return response()->json($response);
-    }
-
-    public function suggestIA(GeminiService $gemini)
-    {
-        $procedimentosAtuais = Procedimento::pluck('titulo')->toArray();
-        $softwares = Software::pluck('nome')->toArray();
-
-        $contexto = 'Softwares no inventário: '.implode(', ', $softwares).'. ';
-        $contexto .= 'Procedimentos já documentados: '.implode(', ', $procedimentosAtuais).'. ';
-
-        $prompt = $contexto.'Com base nesses softwares e procedimentos, sugira 3 novos procedimentos operacionais (POPs) que seriam importantes para manter a segurança, backup ou operação desses ativos. Para cada sugestão, dê um título curto e uma justificativa técnica de 1 frase. Responda em texto simples, sem Markdown.';
-
-        $sugestoes = $gemini->generateGovernance($prompt);
-
-        return response()->json(['sugestoes' => $sugestoes]);
     }
 
     public function print(Request $request, Procedimento $procedimento)

@@ -74,12 +74,6 @@
             </div>
         </div>
 
-        <!-- Análise IA -->
-        <div style="margin-top: 30px; padding: 20px; background: #f0fdfa; border-left: 4px solid #10b981; border-radius: 4px;">
-            <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 8px;">Análise Estratégica (Visão do CISO)</div>
-            <div style="font-size: 14px; color: #0f172a; font-style: italic;">"{{ $ai_analysis }}"</div>
-        </div>
-
         <div class="section-title">Status Detalhado por Unidade</div>
         
         <div class="indicator-row">

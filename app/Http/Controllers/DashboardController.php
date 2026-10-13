@@ -14,7 +14,6 @@ use App\Models\SoftwareModulo;
 use App\Models\TreinamentoRegistro;
 use App\Models\User;
 use App\Services\AlertService;
-use App\Services\GeminiService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -203,7 +202,7 @@ class DashboardController extends Controller
         ));
     }
 
-    public function exportExecutive(GeminiService $gemini)
+    public function exportExecutive()
     {
         $totalModulos = SoftwareModulo::where('ativo', true)->count();
         $modulosCobertos = SoftwareModulo::where('ativo', true)->whereHas('atividades')->count();
@@ -254,37 +253,6 @@ class DashboardController extends Controller
         $data['treinamentos']['percentual'] = round(($data['treinamentos']['concluidos'] / $data['treinamentos']['total']) * 100);
         $data['planos']['percentual'] = round(($data['planos']['concluidos'] / $data['planos']['total']) * 100);
 
-        // Gera a analise da IA para o PDF
-        $prompt = "Aja como um CISO. Analise estes numeros da empresa {$data['company']}: 
-        Vulnerabilidades Criticas: {$data['vulnerabilidades']['criticos']}, 
-        Incidentes Abertos: {$data['incidentes']['abertos']}, 
-        Conformidade LGPD: {$data['lgpd']['percentual']}%. 
-        De um resumo estrategico de 2 frases para a diretoria. Responda em Portugues.";
-
-        $data['ai_analysis'] = $gemini->generateGovernance($prompt);
-
         return view('dashboard_export', $data);
-    }
-
-    public function aiSummary(GeminiService $gemini)
-    {
-        $ativos = Software::count();
-        $findingsCriticos = Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count();
-        $incidentesAbertos = Incidente::where('status', '!=', 'fechado')->count();
-        $lgpdConforme = LgpdItem::where('conforme', 'conforme')->count();
-        $lgpdTotal = LgpdItem::count() ?: 1;
-        $lgpdPerc = round(($lgpdConforme / $lgpdTotal) * 100);
-
-        $prompt = "Aja como um CISO (Chief Information Security Officer). Analise estes numeros da nossa empresa:
-        - Softwares no inventario: $ativos
-        - Vulnerabilidades Criticas em aberto: $findingsCriticos
-        - Incidentes de Seguranca ativos: $incidentesAbertos
-        - Conformidade LGPD: $lgpdPerc%
-        
-        Escreva um resumo executivo de no maximo 3 frases curtas e diretas sobre o estado atual da nossa seguranca e conformidade. Seja profissional e aponte o que precisa de atencao imediata se os numeros forem ruins. Responda em Portugues.";
-
-        $analise = $gemini->generateGovernance($prompt);
-
-        return response()->json(['analise' => $analise]);
     }
 }
