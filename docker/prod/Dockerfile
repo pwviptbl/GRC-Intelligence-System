@@ -23,4 +23,7 @@ RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY php.ini $PHP_INI_DIR/conf.d/99-grc.ini
 COPY www.conf /usr/local/etc/php-fpm.d/zz-grc.conf
 
+# Composer para o deploy-prod.sh instalar dependências dentro do container.
+COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
+
 WORKDIR /var/www/html

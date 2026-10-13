@@ -1,6 +1,14 @@
 # Override de produção: Nginx + PHP-FPM no lugar do `artisan serve` do Sail.
 # Ativado no servidor via COMPOSE_FILE=compose.yaml:compose.prod.yaml no .env.
 # Sem essa variável (ambiente de desenvolvimento), o Sail continua como antes.
+
+# Logs dos containers com limite (padrão do Docker é crescer sem limite).
+x-logging: &default-logging
+    driver: json-file
+    options:
+        max-size: '10m'
+        max-file: '5'
+
 services:
     laravel.test:
         profiles: ['dev']
@@ -10,6 +18,7 @@ services:
             - pgsql
             - redis
         restart: unless-stopped
+        logging: *default-logging
 
     php:
         build:
@@ -23,6 +32,7 @@ services:
             - pgsql
             - redis
         restart: unless-stopped
+        logging: *default-logging
 
     web:
         image: 'nginx:1.28-alpine'
@@ -36,9 +46,19 @@ services:
         depends_on:
             - php
         restart: unless-stopped
+        logging: *default-logging
+        # /up passa por Nginx -> PHP-FPM -> Laravel: cobre a pilha web inteira.
+        healthcheck:
+            test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1/up']
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 20s
 
     pgsql:
         restart: unless-stopped
+        logging: *default-logging
 
     redis:
         restart: unless-stopped
+        logging: *default-logging

@@ -35,6 +35,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 - **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
 - **Etapa 1.3 (Gemini/LGPD):** integração removida; a IA entra só via MCP.
 - **Etapa 1.4 (uploads):** concluída.
+- **Etapa 2:** concluída, exceto o envio ao Wazuh, que ficou opcional. Inclui `deploy-prod.sh` e a correção de 2 bugs: o `deploy.sh` regerava a APP_KEY a cada execução, e a rota antiga `PUT /password` deixava driblar a política de senha forte.
 - **Etapa 2.7 (CI):** `.github/workflows/ci.yml` roda os testes (PHP 8.5 e PostgreSQL 18) a cada push e PR. O Pint também bloqueia: a base foi formatada num commit só de estilo, listado em `.git-blame-ignore-revs`.
 - **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Cópia no disco `sda` e teste de recuperação concluídos.
 
@@ -74,7 +75,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
    - Removido o `PlanoAcaoController`, que não tinha rota e gravava no disco público.
    - Pendente, opcional: hash SHA-256 por evidência, que entra na Etapa 4 (evidência reutilizável). O arquivo órfão de `storage/app/public/evidencias_planos` foi removido em 2026-10-13.
 5. **Rotação de segredos**: `APP_KEY` e `MCP_SERVER_TOKEN`, por precaução.
-6. **Limpeza:** remover `grc-proxy/`, `scripts/grc_stack_status.sh` e o token MCP fixo, que ficaram sem uso depois da saída do Codex.
+6. ✅ **Limpeza:** `grc-proxy/` e `scripts/grc_stack_status.sh` removidos, token MCP fixo esvaziado e README de scripts atualizado.
 
 ### Reexposição à internet (pré-requisitos)
 Fazer antes de publicar o sistema de novo:
@@ -96,7 +97,7 @@ Fazer antes de publicar o sistema de novo:
 2. **Exposição:** trocar o ngrok free por Cloudflare Tunnel (Access e WAF opcionais) ou por um reverse proxy com TLS. Atualizar `APP_URL`, `MCP_OAUTH_AUDIENCE` e `MCP_OAUTH_RESOURCE_URL`.
 3. ✅ **Recursos do CT:** RAM aumentada para 2 GB.
 4. **Cache e sessão no Redis**, se ele for mantido na Etapa 0, ou continuar em `database` e remover o Redis.
-5. **Logs:** rotação (`LOG_STACK=daily`, `LOG_DAILY_DAYS=30`). Hoje o `laravel.log` tem 390 KB e cresce sem limite.
+5. ✅ **Logs:** um arquivo por dia, retenção de 30 dias, nível `info`; logs dos containers limitados a 10 MB x 5 arquivos; healthcheck do `web` em `/up`.
 6. **Healthcheck e monitoramento:**
    - Endpoint `/up` (já existe no Laravel 11+) monitorado.
    - Enviar `storage/logs` e `audit_events` ao **Wazuh (VM 100)** pelo agente Wazuh no CT 104.

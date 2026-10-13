@@ -95,8 +95,9 @@ COMPOSE_FILE=compose.yaml:compose.prod.yaml
 
 Com isso, `docker compose up -d` (e o serviço `grc-compose` no boot) sobe `web` (Nginx, porta `APP_PORT`), `php` (PHP-FPM 8.5, workers com UID 1000), `scheduler`, `pgsql` e `redis`. Sem a variável, como em ambiente de desenvolvimento, o Sail funciona como antes.
 
-- Deploy: `git pull` no diretório do projeto. O código é montado como volume e o OPcache revalida os arquivos alterados.
-- Após mudar `docker/prod/*`: `docker compose build php && docker compose up -d`.
+- Deploy: `./deploy-prod.sh`. Ele faz `git pull`, rebuild da imagem se `docker/prod/` mudou, `composer install`, build do Vite quando `resources/` muda (ou com `--assets`), backup e migrações se houver pendentes, `php artisan optimize` e verificação de saúde via `/up`.
+- Após editar o `.env` em produção: `docker compose exec -u www-data -e HOME=/tmp php php artisan optimize` (a configuração fica em cache).
+- Logs: `storage/logs/laravel-AAAA-MM-DD.log`, um arquivo por dia, 30 dias, nível `info`. Logs dos containers limitados a 10 MB x 5 arquivos (`docker compose logs`). O container `web` tem healthcheck em `/up`.
 - Comandos Artisan na produção: `docker compose exec -u www-data -e HOME=/tmp php php artisan <comando>`.
 - Rollback para o Sail: remova `COMPOSE_FILE` do `.env`, rode `docker compose -f compose.yaml -f compose.prod.yaml stop web php` e depois `docker compose up -d`.
 

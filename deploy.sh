@@ -12,6 +12,13 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Iniciando GRC Intelligence System (Versão Laravel)...${NC}"
 
+# Este script é para desenvolvimento/primeira instalação com o Sail.
+# No servidor de produção (Nginx + PHP-FPM), use ./deploy-prod.sh.
+if [ -f .env ] && grep -q "^COMPOSE_FILE=.*compose.prod.yaml" .env; then
+    echo -e "${RED}❌ Ambiente de produção detectado (COMPOSE_FILE no .env). Use ./deploy-prod.sh.${NC}"
+    exit 1
+fi
+
 # Garante que o Sail exista antes de qualquer comando que dependa de vendor/
 bootstrap_sail() {
     if [ -x ./vendor/bin/sail ]; then
@@ -77,7 +84,10 @@ echo -e "\n${GREEN}✅ Banco de dados online!${NC}"
 # 4. Instala dependências e roda migrações
 echo -e "${BLUE}🔄 Executando migrações e atualizando ambiente...${NC}"
 ./vendor/bin/sail composer install --quiet
-./vendor/bin/sail artisan key:generate --force --quiet
+# Gera a APP_KEY só se ainda não existir (regerar derruba todas as sessões).
+if ! grep -q "^APP_KEY=base64:" .env; then
+    ./vendor/bin/sail artisan key:generate --force --quiet
+fi
 ./vendor/bin/sail artisan config:clear --quiet
 ./vendor/bin/sail artisan migrate --force --quiet
 
@@ -112,7 +122,7 @@ fi
 echo -e "--------------------------------------------------------"
 echo -e "${GREEN}🔥 Sistema GRC Intelligence Online!${NC}"
 echo -e "Acesse em: ${BLUE}http://localhost${NC}"
-echo -e "Usuário: ${YELLOW}admin@admin.com${NC} | Senha: ${YELLOW}admin123${NC}"
+echo -e "Usuário: ${YELLOW}admin@admin.com${NC} | Senha: definida pelo AdminSeeder (ADMIN_INITIAL_PASSWORD ou exibida na criação)"
 echo -e "Para ver os logs, use: ${BLUE}./vendor/bin/sail logs -f${NC}"
 echo -e "Para parar o sistema, use: ${BLUE}./vendor/bin/sail stop${NC}"
 echo -e "--------------------------------------------------------"

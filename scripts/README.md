@@ -1,43 +1,6 @@
-# Utilitários e Scripts Auxiliares
+# Scripts auxiliares
 
-Esta pasta contém scripts úteis para testes, administração local e depuração da plataforma GRC Intelligence System.
-
-## Lista de Scripts
-
-### 0. Diagnóstico e Subida do Stack (`grc_stack_status.sh`)
-Script operacional para validar e subir o stack local do GRC, garantir o token MCP, testar o endpoint MCP HTTP e imprimir as instrucoes de conexao para o Codex.
-**Uso:**
-```bash
-./scripts/grc_stack_status.sh
-```
-
-### 1. Popular Dados de Teste (`popular_banco.py`)
-Script que preenche o banco de dados `grc.db` com dados fictícios de ponta a ponta (clientes, instâncias, incidentes, treinamentos, avaliações LGPD e planos de ação) para demonstrar as volumetrias do dashboard.
-**Uso:**
-```bash
-# Executar a partir da raiz do projeto:
-venv/bin/python scripts/popular_banco.py
-```
-
-### 2. Resetar Instalação (`resetar_banco.py`)
-Utilitário para apagar integralmente o banco de dados e recriar toda sua estrutura inicial sem registros e apenas com o usuário administrador padrão. Muito útil após uma rodada de testes utilizando dados fictícios, caso os clientes reais comecem a usar.
-**Uso:**
-```bash
-# Executar a partir da raiz do projeto:
-venv/bin/python scripts/resetar_banco.py
-```
-
-### 3. Recuperação de Acesso Local (`reset_senha.py`)
-Script de segurança caso houver perda de acesso ao seu controle do Dashboard, ele randomiza uma nova senha de emergência para o usuário `admin` padrão para efetuar novo login.
-**Uso:**
-```bash
-# Executar a partir da raiz do projeto:
-venv/bin/python scripts/reset_senha.py
-```
-
----
-
-## `host/` — scripts do host Proxmox
+## `host/`: scripts do host Proxmox
 
 `host/grc-backup-pull.sh`, `.service` e `.timer` rodam **no host Proxmox**, fora do container. Todo dia o host busca os backups criptografados do LXC 104 e guarda em `/mnt/storage/backups/grc-intel` (disco `sda`), sem nunca sobrescrever cópias existentes. Instalação:
 
@@ -47,6 +10,15 @@ install -m 644 scripts/host/grc-backup-pull.{service,timer} /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now grc-backup-pull.timer
 ```
 
-Para restaurar, a senha `BACKUP_PASSWORD` é obrigatória. Há uma cópia dela em `/root/grc-backup-password.txt` no host.
+Para restaurar, a senha `BACKUP_PASSWORD` é obrigatória. Há uma cópia dela em `/root/grc-backup-password.txt` no host. O procedimento completo está em `docs/RECUPERACAO_BACKUP.md`.
 
-> **Aviso:** Os scripts da raiz desta pasta assumem que o comando será rodado **a partir da RAIZ** do projeto, garantindo que o banco de dados alvo de impacto seja o mesmo operado pelo `deploy.sh`.
+## Tarefas comuns (via Artisan)
+
+Os antigos scripts Python (`popular_banco.py`, `resetar_banco.py`, `reset_senha.py`) foram substituídos por comandos do Laravel. Em produção, rode-os no container `php`; o README principal, na seção "Produção", mostra como.
+
+| Tarefa | Comando |
+|---|---|
+| Dados de demonstração | `php artisan db:seed` |
+| Resetar o banco com dados iniciais (pede senha) | `php artisan grc:reset` |
+| Trocar a senha de um usuário | tela **Usuários** (admin) ou `php artisan tinker` |
+| Gerar e verificar backup | `php artisan backups:run` / `php artisan backups:verify` |
