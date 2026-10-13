@@ -87,6 +87,21 @@ docker compose exec laravel.test bash
 ./vendor/bin/sail artisan <comando>
 ```
 
+## 🏭 Produção (Nginx + PHP-FPM)
+
+No servidor, o `artisan serve` do Sail (que atende uma requisição por vez) é substituído por **Nginx + PHP-FPM**, definido em `compose.prod.yaml` e `docker/prod/`. O override é ativado pelo `.env` do servidor:
+
+```env
+COMPOSE_FILE=compose.yaml:compose.prod.yaml
+```
+
+Com isso, `docker compose up -d` (e o serviço `grc-compose` no boot) sobe `web` (Nginx, porta `APP_PORT`), `php` (PHP-FPM 8.5, workers com UID 1000), `scheduler`, `pgsql` e `redis`. Sem a variável, como em ambiente de desenvolvimento, o Sail funciona como antes.
+
+- Deploy: `git pull` no diretório do projeto. O código é montado como volume e o OPcache revalida os arquivos alterados.
+- Após mudar `docker/prod/*`: `docker compose build php && docker compose up -d`.
+- Comandos Artisan na produção: `docker compose exec -u www-data -e HOME=/tmp php php artisan <comando>`.
+- Rollback para o Sail: remova `COMPOSE_FILE` do `.env`, rode `docker compose -f compose.yaml -f compose.prod.yaml stop web php` e depois `docker compose up -d`.
+
 ## 🤖 Integração com IA
 O sistema utiliza o modelo **Gemini 2.5 Flash Lite**. Certifique-se de configurar sua chave no arquivo `.env`:
 ```env

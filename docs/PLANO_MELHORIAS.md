@@ -95,9 +95,9 @@ Fazer antes de publicar o sistema de novo:
 
 ## Etapa 2 — Produção estável (semanas 2–3)
 
-1. **Servidor web:** trocar o `artisan serve` do Sail por uma imagem de produção com Nginx + PHP-FPM, ou FrankenPHP/Octane. Criar `compose.prod.yaml`, sem bind-mount do código e sem Vite. Ajustar `deploy.sh`.
+1. ✅ **Servidor web:** Nginx + PHP-FPM 8.5 em produção (`compose.prod.yaml` e `docker/prod/`, ativados por `COMPOSE_FILE` no `.env`). Com 4 exportações simultâneas, uma página leve caiu de 8,6 s para 1,0 s. O código continua montado como volume para manter o deploy por `git pull`.
 2. **Exposição:** trocar o ngrok free por Cloudflare Tunnel (Access e WAF opcionais) ou por um reverse proxy com TLS. Atualizar `APP_URL`, `MCP_OAUTH_AUDIENCE` e `MCP_OAUTH_RESOURCE_URL`.
-3. **Recursos do CT:** RAM de 1 para 2 GB (`pct set 104 -memory 2048`).
+3. ✅ **Recursos do CT:** RAM aumentada para 2 GB.
 4. **Cache e sessão no Redis**, se ele for mantido na Etapa 0, ou continuar em `database` e remover o Redis.
 5. **Logs:** rotação (`LOG_STACK=daily`, `LOG_DAILY_DAYS=30`). Hoje o `laravel.log` tem 390 KB e cresce sem limite.
 6. **Healthcheck e monitoramento:**
