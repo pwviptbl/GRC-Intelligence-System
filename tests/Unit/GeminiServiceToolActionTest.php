@@ -13,21 +13,22 @@ class GeminiServiceToolActionTest extends TestCase
     {
         $result = $this->service()->resolveAction([
             'tipo' => 'ferramenta',
-            'ferramenta' => 'create_risk',
+            'ferramenta' => 'create_incident',
             'argumentos' => [
                 'titulo' => 'Risco de teste do chat',
                 'descricao' => 'Ação de escrita deve exigir confirmação.',
-                'probabilidade' => 'Alta',
-                'impacto' => 'Alto',
-                'responsavel' => 'Analista GRC',
+                'severidade'    => 'Alta',
+                'status'        => 'aberto',
+                'data_deteccao' => '2026-10-01',
+                'detectado_por' => 'Analista',
             ],
             'descricao' => 'Prévia de risco',
         ]);
 
         $this->assertSame('cadastro', $result['tipo']);
         $this->assertStringContainsString('Responda **confirmar**', $result['resposta']);
-        $this->assertStringContainsString('"criticidade": "Critico"', $result['resposta']);
-        $this->assertSame('create_risk', $result['pending_action']['tool']);
+        $this->assertStringContainsString('"severidade": "Alta"', $result['resposta']);
+        $this->assertSame('create_incident', $result['pending_action']['tool']);
     }
 
     public function test_unknown_tool_is_rejected(): void

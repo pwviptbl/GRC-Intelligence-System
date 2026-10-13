@@ -8,6 +8,7 @@ use App\Models\Engagement;
 use App\Models\EngagementTest;
 use App\Models\Finding;
 use App\Models\Software;
+use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
 use App\Models\User;
 use App\Services\Agent\GrcToolRegistry;
@@ -89,7 +90,9 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             ->assertDontSee('Fallback de Tier legado');
     }
 
-    public function test_catalog_generation_does_not_apply_global_activity_to_every_software(): void
+    // Desde cbd2f08/61dd335 as atividades formam um catálogo mestre: uma atividade global (sem software)
+    // gera sugestão para cada software que ainda não a cobre por módulo.
+    public function test_catalog_generation_applies_global_activity_to_each_software(): void
     {
         $this->actingAs($this->adminUser());
 
@@ -109,9 +112,10 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'somente_atividades' => true,
         ])->assertRedirect();
 
-        $this->assertDatabaseMissing('controle_eventos', [
+        $this->assertDatabaseHas('controle_eventos', [
             'software_id' => $software->id,
             'atividade_id' => $globalActivity->id,
+            'modulo' => null,
             'status' => 'sugestao',
         ]);
     }
@@ -124,6 +128,9 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         $tierPolicy = $this->createTierPolicy();
         $atividade = $this->createActivity($software);
         $this->createRisk($software);
+        // O módulo da sugestão vem do vínculo da atividade com o módulo do inventário (cbd2f08).
+        SoftwareModulo::create(['software_id' => $software->id, 'nome' => 'Arrecadacao', 'ativo' => true])
+            ->atividades()->attach($atividade->id);
 
         $this->post(route('calendario_controles.generate'))
             ->assertRedirect(route('calendario_controles.index'));
@@ -132,7 +139,6 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'software_id' => $software->id,
             'tier_politica_id' => $tierPolicy->id,
             'atividade_id' => $atividade->id,
-            'risco_id' => null,
             'acao_controle_snapshot' => 'Analise autenticada',
             'modulo' => 'Arrecadacao',
             'categoria' => 'Cadastro',
@@ -181,7 +187,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'atividade_id' => $atividade->id,
             'acao_controle_snapshot' => 'Pentest interno',
             'frequencia_snapshot' => 'Mensal',
-            'sla_correcao_snapshot' => null,
+            'sla_correcao_snapshot' => '9 dias', // copiado da política desde 2884c39
             'responsavel_planejado' => 'Time Base',
             'origem' => 'atividade+tier',
             'status' => 'sugestao',
@@ -378,7 +384,8 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'tier_politica_id' => $policy->id,
             'atividade_id' => $activity->id,
             'acao_controle_snapshot' => $activity->atividade,
-            'modulo' => $activity->modulo,
+            // Sem vínculo com módulo do inventário, a atividade é avaliada no escopo "sem módulo" (cbd2f08).
+            'modulo' => null,
             'categoria' => $activity->categoria,
             'rotina' => $activity->rotina,
             'status' => 'concluido',
@@ -415,7 +422,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'sla_correcao_snapshot' => '7 dias',
             'bloqueio_automatico_snapshot' => false,
             'responsavel_planejado' => 'Time antigo',
-            'modulo' => 'Arrecadacao',
+            'modulo' => null, // mesmo escopo da sugestão de tier, que é gerada sem módulo (cbd2f08)
             'categoria' => 'Cadastro',
             'rotina' => 'Grupo de taxas',
             'esforco' => 'G',
@@ -566,8 +573,8 @@ class CalendarioControleSuggestionFlowTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Execucao de Controles')
-            ->assertSee('Kanban de execucao')
+            ->assertSee('Execuções de Controles')
+            ->assertSee('Acompanhamento e execução dos controles aprovados')
             ->assertDontSee('Captacao de Demandas')
             ->assertDontSee('Triagem de Demanda');
     }
@@ -623,7 +630,8 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
     }
 
-    public function test_agent_created_control_event_defaults_to_suggestion(): void
+    // Desde 2a0cda4 o agente cria o card direto no Kanban (status planejado), salvo se informar outro status.
+    public function test_agent_created_control_event_defaults_to_planned(): void
     {
         $software = $this->createSoftware();
         $tierPolicy = $this->createTierPolicy();
@@ -647,7 +655,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ], true);
 
         $this->assertTrue($response['ok']);
-        $this->assertSame('sugestao', $response['result']['would_create']['status']);
+        $this->assertSame('planejado', $response['result']['would_create']['status']);
         $this->assertSame('Arrecadacao', $response['result']['would_create']['modulo']);
         $this->assertSame('Cadastro', $response['result']['would_create']['categoria']);
         $this->assertSame('Grupo de taxas', $response['result']['would_create']['rotina']);

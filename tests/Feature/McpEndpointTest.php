@@ -121,7 +121,7 @@ class McpEndpointTest extends TestCase
             ->assertHeader('Retry-After');
     }
 
-    public function test_write_tool_preview_is_audited_without_arguments(): void
+    public function test_write_tool_preview_is_audited_with_arguments(): void
     {
         config([
             'mcp.token' => 'token-de-auditoria-com-mais-de-trinta-e-dois-caracteres',
@@ -136,19 +136,21 @@ class McpEndpointTest extends TestCase
             'id' => 1,
             'method' => 'tools/call',
             'params' => [
-                'name' => 'create_risk',
+                'name' => 'create_incident',
                 'arguments' => [
                     'titulo' => 'Risco de teste',
-                    'descricao' => 'Descricao que nao deve ser armazenada na auditoria.',
-                    'probabilidade' => 'Alta',
-                    'impacto' => 'Alto',
-                    'responsavel' => 'Analista',
+                    'descricao' => 'Descricao registrada na auditoria.',
+                    'severidade'    => 'Alta',
+                    'status'        => 'aberto',
+                    'data_deteccao' => '2026-10-01',
+                    'detectado_por' => 'Analista',
                 ],
             ],
         ])->assertOk();
 
         $event = \App\Models\AuditEvent::query()->where('action', 'mcp.write_preview')->firstOrFail();
-        $this->assertSame('create_risk', $event->context['tool']);
-        $this->assertArrayNotHasKey('arguments', $event->context);
+        $this->assertSame('create_incident', $event->context['tool']);
+        // Desde c384c1c a auditoria registra os argumentos para rastreabilidade (exibidos na tela de Auditoria).
+        $this->assertSame('Risco de teste', $event->context['arguments']['titulo']);
     }
 }

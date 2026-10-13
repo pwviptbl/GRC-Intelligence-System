@@ -143,7 +143,7 @@ Regras operacionais do MCP:
 - Ferramentas de leitura executam normalmente.
 - Ferramentas de escrita retornam `dry_run` por padrao.
 - Para gravar de fato, o cliente deve chamar a tool com `confirm=true`.
-- Chamadas de escrita, inclusive previews, sao registradas na Auditoria sem os argumentos enviados.
+- Chamadas de escrita, inclusive previews, sao registradas na Auditoria com ferramenta, argumentos e estado antes/depois. Nao envie segredos como argumento.
 - O limite HTTP e aplicado por token e IP; ferramentas de escrita possuem um limite separado.
 - Requisicoes HTTP nao inicializadas devem enviar `MCP-Protocol-Version: 2025-11-25`.
 - O MCP permite listar, criar e atualizar politicas, regras de tier, procedimentos e etapas, riscos, incidentes e eventos do calendario.

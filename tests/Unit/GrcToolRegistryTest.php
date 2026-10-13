@@ -15,7 +15,7 @@ class GrcToolRegistryTest extends TestCase
         $toolNames = array_column($registry->listTools(), 'name');
 
         $this->assertContains('dashboard_summary', $toolNames);
-        $this->assertContains('create_risk', $toolNames);
+        $this->assertContains('list_incidents', $toolNames);
         $this->assertContains('create_incident', $toolNames);
         $this->assertContains('create_policy', $toolNames);
         $this->assertContains('update_tier_policy', $toolNames);
@@ -31,23 +31,26 @@ class GrcToolRegistryTest extends TestCase
         $registry = $this->registry();
 
         $this->assertFalse($registry->requiresConfirmation('dashboard_summary'));
-        $this->assertTrue($registry->requiresConfirmation('create_risk'));
+        $this->assertTrue($registry->requiresConfirmation('create_incident'));
         $this->assertTrue($registry->requiresConfirmation('create_activities_batch'));
+        // O módulo de riscos foi migrado para findings: as ferramentas antigas não podem voltar a ser expostas.
+        $this->assertNotContains('create_risk', array_column($registry->listTools(), 'name'));
     }
 
-    public function test_create_risk_dry_run_validates_and_calculates_criticality(): void
+    public function test_create_incident_dry_run_validates_without_writing(): void
     {
-        $result = $this->registry()->call('create_risk', [
-            'titulo' => 'Risco validado em teste',
+        $result = $this->registry()->call('create_incident', [
+            'titulo' => 'Incidente validado em teste',
             'descricao' => 'Payload de dry-run para o agente GRC.',
-            'probabilidade' => 'Alta',
-            'impacto' => 'Alto',
-            'responsavel' => 'Analista',
+            'severidade' => 'Alta',
+            'status' => 'aberto',
+            'data_deteccao' => '2026-10-01',
+            'detectado_por' => 'Analista',
         ], true);
 
         $this->assertTrue($result['ok']);
         $this->assertTrue($result['dry_run']);
-        $this->assertSame('Critico', $result['result']['would_create']['criticidade']);
+        $this->assertSame('Alta', $result['result']['would_create']['severidade']);
     }
 
     public function test_policy_dry_run_applies_defaults(): void

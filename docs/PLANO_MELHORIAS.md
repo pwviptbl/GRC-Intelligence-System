@@ -34,6 +34,7 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 - **ngrok removido.** O sistema agora só é acessível pela LAN (`APP_URL=http://192.168.1.19:8088`). O MFA passou a ser pré-requisito para voltar a expor o sistema na internet (ver "Reexposição à internet").
 - **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
 - **Etapa 1.4 (uploads):** concluída.
+- **Etapa 2.7 (CI):** suíte de testes recuperada (190/190). Falta criar o workflow do GitHub Actions.
 - **Etapa 1.2 (backups):** criptografia AES-256 e cópia para o host Proxmox concluídas. Cópia no disco `sda` e teste de recuperação concluídos.
 
 ## Etapa 0 — Contenção imediata ✅
@@ -102,7 +103,7 @@ Fazer antes de publicar o sistema de novo:
 6. **Healthcheck e monitoramento:**
    - Endpoint `/up` (já existe no Laravel 11+) monitorado.
    - Enviar `storage/logs` e `audit_events` ao **Wazuh (VM 100)** pelo agente Wazuh no CT 104.
-7. **CI:** GitHub Actions com Pint, PHPStan/Larastan (nível 5 para começar) e `php artisan test` com Postgres em service. **Antes**, corrigir os 18 testes que falham desde antes de 2/10. A maioria espera as ferramentas `create_risk` e `list_risks`, removidas na migração de riscos para findings: `GrcToolRegistryTest`, `McpOAuthTest`, `McpEndpointTest`, `GeminiServiceToolActionTest` e `CalendarioControleSuggestionFlowTest`. O `phpunit.xml` agora isola `MCP_AUTH_MODE`, para que os testes não herdem o `.env` de produção.
+7. **CI:** GitHub Actions com Pint, PHPStan/Larastan (nível 5 para começar) e `php artisan test` com Postgres em service. ✅ Pré-requisito concluído: suíte com 190/190 testes passando. Nenhum dos 18 testes quebrados era bug de produção. Todos refletiam mudanças intencionais: remoção de riscos (`ed5a6f3`), geração por módulo (`cbd2f08`), SLA copiado da política (`2884c39`) e card criado pelo agente como planejado (`2a0cda4`). O `phpunit.xml` isola `MCP_AUTH_MODE`.
 
 **Verificação:**
 - `ab`/`hey` com 20 conexões concorrentes sem erros.

@@ -214,7 +214,7 @@ class McpOAuthTest extends TestCase
             'id'      => 1,
             'method'  => 'tools/call',
             'params'  => [
-                'name'      => 'create_risk',
+                'name'      => 'create_incident',
                 'arguments' => ['titulo' => 'Teste'],
             ],
         ]);
@@ -251,13 +251,13 @@ class McpOAuthTest extends TestCase
         $tools = $response->json('result.tools');
         $this->assertNotEmpty($tools);
 
-        $readTool = collect($tools)->firstWhere('name', 'list_risks');
-        $this->assertNotNull($readTool, 'Ferramenta list_risks não encontrada na lista');
+        $readTool = collect($tools)->firstWhere('name', 'list_incidents');
+        $this->assertNotNull($readTool, 'Ferramenta list_incidents não encontrada na lista');
         $this->assertArrayHasKey('securitySchemes', $readTool);
         $this->assertSame('grc:read', $readTool['securitySchemes'][0]['oauth2'][0] ?? $readTool['securitySchemes'][0]['scopes'][0]);
 
-        $writeTool = collect($tools)->firstWhere('name', 'create_risk');
-        $this->assertNotNull($writeTool, 'Ferramenta create_risk não encontrada na lista');
+        $writeTool = collect($tools)->firstWhere('name', 'create_incident');
+        $this->assertNotNull($writeTool, 'Ferramenta create_incident não encontrada na lista');
         $this->assertSame('grc:write', $writeTool['securitySchemes'][0]['oauth2'][0] ?? $writeTool['securitySchemes'][0]['scopes'][0]);
     }
 
@@ -283,18 +283,15 @@ class McpOAuthTest extends TestCase
         $tools = $response->json('result.tools');
         $this->assertNotEmpty($tools);
 
-        // Ferramentas de escrita conhecidas (requiresConfirmation = true)
-        $writeToolNames = [
-            'create_activity', 'create_activities_batch', 'upsert_software_modules_batch',
-            'update_activity', 'assign_activities_to_tier_policy',
-            'create_risk', 'update_risk', 'update_risk_status',
-            'create_policy', 'update_policy',
-            'create_tier_policy', 'update_tier_policy',
-            'create_procedure', 'update_procedure',
-            'create_incident', 'update_incident',
-            'create_control_event', 'update_control_event',
-            'create_action_plan',
-        ];
+        // Ferramentas de escrita vêm do próprio registro (requiresConfirmation = true),
+        // para o teste não quebrar a cada ferramenta nova.
+        $registry = app(\App\Services\Agent\GrcToolRegistry::class);
+        $writeToolNames = array_values(array_filter(
+            array_column($registry->listTools(), 'name'),
+            fn (string $name) => $registry->requiresConfirmation($name)
+        ));
+        $this->assertContains('create_incident', $writeToolNames);
+        $this->assertNotContains('list_incidents', $writeToolNames);
 
         foreach ($tools as $tool) {
             $name = $tool['name'];
@@ -418,13 +415,14 @@ class McpOAuthTest extends TestCase
             'id'      => 1,
             'method'  => 'tools/call',
             'params'  => [
-                'name'      => 'create_risk',
+                'name'      => 'create_incident',
                 'arguments' => [
                     'titulo'       => 'Risco OAuth',
                     'descricao'    => 'Teste de dry-run com OAuth',
-                    'probabilidade' => 'Alta',
-                    'impacto'      => 'Alto',
-                    'responsavel'  => 'Analista',
+                    'severidade'    => 'Alta',
+                    'status'        => 'aberto',
+                    'data_deteccao' => '2026-10-01',
+                    'detectado_por' => 'Analista',
                 ],
             ],
         ]);
@@ -433,8 +431,8 @@ class McpOAuthTest extends TestCase
             ->assertJsonPath('result.isError', false)
             ->assertJsonPath('result.structuredContent.dry_run', true);
 
-        // Garante que nenhum risco foi criado
-        $this->assertDatabaseCount('riscos', 0);
+        // Garante que nenhum incidente foi criado
+        $this->assertDatabaseCount('incidentes', 0);
     }
 
     // -------------------------------------------------------------------
@@ -453,13 +451,14 @@ class McpOAuthTest extends TestCase
             'id'      => 1,
             'method'  => 'tools/call',
             'params'  => [
-                'name'      => 'create_risk',
+                'name'      => 'create_incident',
                 'arguments' => [
                     'titulo'        => 'Risco OAuth Confirmado',
                     'descricao'     => 'Criado via OAuth 2.1',
-                    'probabilidade' => 'Media',
-                    'impacto'       => 'Medio',
-                    'responsavel'   => 'Analista',
+                    'severidade'    => 'Alta',
+                    'status'        => 'aberto',
+                    'data_deteccao' => '2026-10-01',
+                    'detectado_por' => 'Analista',
                     'confirm'       => true,
                 ],
             ],
@@ -469,7 +468,7 @@ class McpOAuthTest extends TestCase
             ->assertJsonPath('result.isError', false)
             ->assertJsonPath('result.structuredContent.dry_run', false);
 
-        $this->assertDatabaseHas('riscos', ['titulo' => 'Risco OAuth Confirmado']);
+        $this->assertDatabaseHas('incidentes', ['titulo' => 'Risco OAuth Confirmado']);
     }
 
     // -------------------------------------------------------------------
@@ -513,13 +512,14 @@ class McpOAuthTest extends TestCase
             'id'      => 1,
             'method'  => 'tools/call',
             'params'  => [
-                'name'      => 'create_risk',
+                'name'      => 'create_incident',
                 'arguments' => [
                     'titulo'        => 'Risco permissions dry-run',
                     'descricao'     => 'Teste via permissions claim',
-                    'probabilidade' => 'Alta',
-                    'impacto'       => 'Alto',
-                    'responsavel'   => 'Analista',
+                    'severidade'    => 'Alta',
+                    'status'        => 'aberto',
+                    'data_deteccao' => '2026-10-01',
+                    'detectado_por' => 'Analista',
                 ],
             ],
         ]);
@@ -527,7 +527,7 @@ class McpOAuthTest extends TestCase
         $dryRun->assertOk()
             ->assertJsonPath('result.structuredContent.dry_run', true);
 
-        $this->assertDatabaseCount('riscos', 0);
+        $this->assertDatabaseCount('incidentes', 0);
 
         // Com confirm → grava
         $confirmed = $this->withHeaders([
@@ -538,13 +538,14 @@ class McpOAuthTest extends TestCase
             'id'      => 2,
             'method'  => 'tools/call',
             'params'  => [
-                'name'      => 'create_risk',
+                'name'      => 'create_incident',
                 'arguments' => [
                     'titulo'        => 'Risco permissions confirmado',
                     'descricao'     => 'Gravado via permissions claim',
-                    'probabilidade' => 'Media',
-                    'impacto'       => 'Medio',
-                    'responsavel'   => 'Analista',
+                    'severidade'    => 'Alta',
+                    'status'        => 'aberto',
+                    'data_deteccao' => '2026-10-01',
+                    'detectado_por' => 'Analista',
                     'confirm'       => true,
                 ],
             ],
@@ -553,7 +554,7 @@ class McpOAuthTest extends TestCase
         $confirmed->assertOk()
             ->assertJsonPath('result.structuredContent.dry_run', false);
 
-        $this->assertDatabaseHas('riscos', ['titulo' => 'Risco permissions confirmado']);
+        $this->assertDatabaseHas('incidentes', ['titulo' => 'Risco permissions confirmado']);
     }
 
     // -------------------------------------------------------------------
