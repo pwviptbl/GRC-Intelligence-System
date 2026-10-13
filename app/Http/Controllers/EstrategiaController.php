@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Software;
+use App\Models\ControleEvento;
 use App\Models\Finding;
 use App\Models\Incidente;
-use App\Models\ControleEvento;
 use App\Models\Politica;
+use App\Models\Software;
 use App\Services\GeminiService;
 use Illuminate\Http\Request;
 
@@ -29,19 +29,19 @@ class EstrategiaController extends Controller
         $politicas = Politica::all(['titulo', 'status'])->toArray();
 
         $contexto = "Contexto atual da empresa:\n";
-        $contexto .= "- Softwares: " . json_encode($softwares) . "\n";
-        $contexto .= "- Vulnerabilidades/Findings Ativos: " . json_encode($findings) . "\n";
-        $contexto .= "- Ultimos Incidentes: " . json_encode($incidentes) . "\n";
-        $contexto .= "- Cartoes Pendentes no Kanban: " . json_encode($planos) . "\n";
-        $contexto .= "- Politicas: " . json_encode($politicas) . "\n";
+        $contexto .= '- Softwares: '.json_encode($softwares)."\n";
+        $contexto .= '- Vulnerabilidades/Findings Ativos: '.json_encode($findings)."\n";
+        $contexto .= '- Ultimos Incidentes: '.json_encode($incidentes)."\n";
+        $contexto .= '- Cartoes Pendentes no Kanban: '.json_encode($planos)."\n";
+        $contexto .= '- Politicas: '.json_encode($politicas)."\n";
 
         // Detalhes extras fornecidos pelo usuario
         $detalhes = $request->input('detalhes');
-        if (!empty($detalhes)) {
-            $contexto .= "- Observacoes e Restricoes Adicionais do Usuario: " . $detalhes . "\n";
+        if (! empty($detalhes)) {
+            $contexto .= '- Observacoes e Restricoes Adicionais do Usuario: '.$detalhes."\n";
         }
 
-        $prompt = $contexto . "\n
+        $prompt = $contexto."\n
         Aja como um Gerente de Seguranca da Informacao (CISO) senior. 
         Com base nos dados acima e nos detalhes fornecidos pelo usuario, crie um Roadmap Estrategico de Curto Prazo (Proximas 4 semanas).
         

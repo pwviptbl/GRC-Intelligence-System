@@ -3,17 +3,16 @@
 namespace Database\Seeders;
 
 use App\Models\Cliente;
-use App\Models\Software;
-use App\Models\InstanciaCliente;
-use App\Models\Politica;
 use App\Models\Incidente;
+use App\Models\InstanciaCliente;
 use App\Models\PlanoAcao;
 use App\Models\PlanoAcaoItem;
-use App\Models\LgpdItem;
-use App\Models\Treinamento;
-use App\Models\TreinamentoRegistro;
+use App\Models\Politica;
 use App\Models\Procedimento;
 use App\Models\ProcedimentoEtapa;
+use App\Models\Software;
+use App\Models\Treinamento;
+use App\Models\TreinamentoRegistro;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -61,14 +60,14 @@ class DatabaseSeeder extends Seeder
             'conteudo' => "Esta política estabelece os requisitos mínimos para senhas...\n\n1. Comprimento mínimo de 12 caracteres.\n2. Uso de símbolos e números.\n3. Troca obrigatória a cada 90 dias.",
             'status' => 'publicado',
             'categoria' => 'Segurança',
-            'versao' => '1.0'
+            'versao' => '1.0',
         ]);
         Politica::create([
             'titulo' => 'Política de Uso Aceitável (PUA)',
-            'conteudo' => "Regras de conduta para uso dos ativos tecnológicos da empresa...",
+            'conteudo' => 'Regras de conduta para uso dos ativos tecnológicos da empresa...',
             'status' => 'publicado',
             'categoria' => 'Conduta',
-            'versao' => '2.0'
+            'versao' => '2.0',
         ]);
 
         // 5. Riscos migrados para findings/engajamentos
@@ -81,7 +80,7 @@ class DatabaseSeeder extends Seeder
             'status' => 'contido',
             'detectado_por' => 'Antivírus EDR',
             'data_deteccao' => now()->subDays(2),
-            'licoes_aprendidas' => 'Melhorar o backup offline e treinar equipe sobre anexos de e-mail.'
+            'licoes_aprendidas' => 'Melhorar o backup offline e treinar equipe sobre anexos de e-mail.',
         ]);
 
         // 7. Plano de Ações
@@ -91,7 +90,7 @@ class DatabaseSeeder extends Seeder
             'origem' => 'Risco: Sistema Legado',
             'responsavel' => 'Dev Backend',
             'prioridade' => 'critica',
-            'status' => 'pendente'
+            'status' => 'pendente',
         ]);
 
         $pa2 = PlanoAcao::create([
@@ -100,7 +99,7 @@ class DatabaseSeeder extends Seeder
             'origem' => 'Gestão de Riscos',
             'responsavel' => 'Analista Security',
             'prioridade' => 'alta',
-            'status' => 'em_andamento'
+            'status' => 'em_andamento',
         ]);
 
         PlanoAcaoItem::create(['plano_acao_id' => $pa2->id, 'titulo' => 'Teste de SQL Injection', 'concluido' => true]);
@@ -116,7 +115,7 @@ class DatabaseSeeder extends Seeder
             'titulo' => 'Conscientização Anti-Phishing',
             'descricao' => 'Simulados e boas práticas para evitar golpes de engenharia social.',
             'categoria' => 'Segurança',
-            'obrigatorio' => true
+            'obrigatorio' => true,
         ]);
         for ($i = 0; $i < 5; $i++) {
             TreinamentoRegistro::create(['treinamento_id' => $t1->id, 'colaborador' => "Colaborador $i", 'status' => 'pendente']);
@@ -126,7 +125,7 @@ class DatabaseSeeder extends Seeder
         $proc1 = Procedimento::create([
             'titulo' => 'Resposta a Vazamento de Dados',
             'tipo' => 'Incidente',
-            'status' => 'publicado'
+            'status' => 'publicado',
         ]);
 
         ProcedimentoEtapa::create([
@@ -135,7 +134,7 @@ class DatabaseSeeder extends Seeder
             'nome_etapa' => 'Identificação e Triagem',
             'responsavel' => 'Equipe SOC',
             'descricao' => 'Confirmar a autenticidade do vazamento e identificar a origem dos dados.',
-            'sla' => '2 horas'
+            'sla' => '2 horas',
         ]);
 
         ProcedimentoEtapa::create([
@@ -144,13 +143,13 @@ class DatabaseSeeder extends Seeder
             'nome_etapa' => 'Contenção',
             'responsavel' => 'Infraestrutura / Segurança',
             'descricao' => 'Isolar sistemas afetados e revogar credenciais comprometidas.',
-            'sla' => '4 horas'
+            'sla' => '4 horas',
         ]);
 
         $proc2 = Procedimento::create([
             'titulo' => 'Onboarding de Segurança - Novos Colaboradores',
             'tipo' => 'Administrativo',
-            'status' => 'publicado'
+            'status' => 'publicado',
         ]);
 
         ProcedimentoEtapa::create([
@@ -159,7 +158,7 @@ class DatabaseSeeder extends Seeder
             'nome_etapa' => 'Entrega de Ativos',
             'responsavel' => 'TI Suporte',
             'descricao' => 'Configuração da máquina com criptografia de disco e antivírus.',
-            'sla' => '24 horas'
+            'sla' => '24 horas',
         ]);
     }
 }

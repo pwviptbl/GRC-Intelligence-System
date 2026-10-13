@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -31,7 +31,7 @@ return new class extends Migration
                 ->where('atividade_id', $atv->id)
                 ->exists();
 
-            if (!$alreadyLinked) {
+            if (! $alreadyLinked) {
                 // Busca um módulo do software
                 $modulo = DB::table('software_modulos')
                     ->where('software_id', $atv->software_id)
@@ -41,9 +41,9 @@ return new class extends Migration
                 if ($modulo) {
                     DB::table('software_modulo_atividades')->insertOrIgnore([
                         'software_modulo_id' => $modulo->id,
-                        'atividade_id'       => $atv->id,
-                        'created_at'         => now(),
-                        'updated_at'         => now(),
+                        'atividade_id' => $atv->id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 }
             }

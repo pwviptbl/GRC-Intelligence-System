@@ -13,7 +13,7 @@ class SoftwareActiveStatusTest extends TestCase
         $this->actingAs($this->adminUser());
 
         $this->post(route('softwares.store'), [
-            'nome' => 'Sistema Legado ' . uniqid(),
+            'nome' => 'Sistema Legado '.uniqid(),
             'tecnologia' => 'PHP',
             'ativo' => '0',
         ])->assertRedirect();
@@ -28,7 +28,7 @@ class SoftwareActiveStatusTest extends TestCase
         $this->actingAs($this->adminUser());
 
         $software = Software::create([
-            'nome' => 'Sistema Fora de Uso ' . uniqid(),
+            'nome' => 'Sistema Fora de Uso '.uniqid(),
             'tecnologia' => 'PHP',
             'ativo' => false,
         ]);

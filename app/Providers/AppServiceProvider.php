@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\ControleEvento;
+use App\Observers\ControleEventoObserver;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,10 +22,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \App\Models\ControleEvento::observe(\App\Observers\ControleEventoObserver::class);
+        ControleEvento::observe(ControleEventoObserver::class);
 
         if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+            URL::forceScheme('https');
         }
     }
 }

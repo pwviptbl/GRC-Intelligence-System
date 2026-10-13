@@ -8,7 +8,6 @@ use App\Models\Finding;
 use App\Models\Software;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class RiscosMigrationAndLayoutTest extends TestCase
@@ -38,9 +37,9 @@ class RiscosMigrationAndLayoutTest extends TestCase
         $software = Software::create(['nome' => 'App FullWidth', 'ativo' => true]);
         Engagement::create([
             'software_id' => $software->id,
-            'nome'        => 'Pentest Q3',
-            'tipo'        => 'pentest',
-            'status'      => 'ativo',
+            'nome' => 'Pentest Q3',
+            'tipo' => 'pentest',
+            'status' => 'ativo',
         ]);
 
         $response = $this->actingAs($user)->get(route('engagements.index'));
@@ -58,11 +57,11 @@ class RiscosMigrationAndLayoutTest extends TestCase
         $eng = Engagement::create(['software_id' => $software->id, 'nome' => 'Auditoria', 'tipo' => 'auditoria', 'status' => 'ativo']);
         $test = EngagementTest::create(['engagement_id' => $eng->id, 'titulo' => 'Teste DAST', 'tipo_teste' => 'dast', 'ferramenta' => 'zap', 'status' => 'concluido']);
         Finding::create([
-            'test_id'    => $test->id,
-            'titulo'     => 'Cross-Site Scripting Refletido',
-            'descricao'  => 'Parametro q vulneravel a XSS',
+            'test_id' => $test->id,
+            'titulo' => 'Cross-Site Scripting Refletido',
+            'descricao' => 'Parametro q vulneravel a XSS',
             'severidade' => 'alto',
-            'status'     => 'aberto',
+            'status' => 'aberto',
         ]);
 
         $response = $this->actingAs($user)->get(route('findings.index'));
@@ -72,7 +71,6 @@ class RiscosMigrationAndLayoutTest extends TestCase
         $response->assertDontSee('max-width:1200px');
     }
 
-    
     public function test_engagement_test_show_renders_successfully(): void
     {
         $user = $this->makeUser();
@@ -105,7 +103,7 @@ class RiscosMigrationAndLayoutTest extends TestCase
         $user = $this->makeUser();
         $software = Software::create(['nome' => 'App Test Filter', 'ativo' => true]);
         $eng = Engagement::create(['software_id' => $software->id, 'nome' => 'Ciclo Q4', 'tipo' => 'pentest', 'status' => 'ativo']);
-        
+
         $test1 = EngagementTest::create(['engagement_id' => $eng->id, 'titulo' => 'Teste ZAP DAST', 'tipo_teste' => 'dast', 'ferramenta' => 'zap', 'status' => 'concluido']);
         $test2 = EngagementTest::create(['engagement_id' => $eng->id, 'titulo' => 'Teste Trivy SCA', 'tipo_teste' => 'sca', 'ferramenta' => 'trivy', 'status' => 'concluido']);
 

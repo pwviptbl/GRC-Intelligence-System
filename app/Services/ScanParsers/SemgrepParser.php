@@ -61,16 +61,16 @@ class SemgrepParser extends BaseScanParser
             $endpoint = "{$path}:{$line}";
 
             $findings->push([
-                'titulo'              => "Semgrep: {$checkId} em {$path}",
-                'descricao'           => $message,
-                'severidade'          => $severity,
-                'cvss_score'          => null,
-                'cve_id'              => $cveId,
-                'cwe_id'              => $cweId,
-                'endpoint'            => $endpoint,
-                'parametro'           => "Linha {$line}",
-                'metodo_http'         => null,
-                'prova_conceito'      => $linesOfCode ? "Linhas de código vulneráveis:\n" . $linesOfCode : null,
+                'titulo' => "Semgrep: {$checkId} em {$path}",
+                'descricao' => $message,
+                'severidade' => $severity,
+                'cvss_score' => null,
+                'cve_id' => $cveId,
+                'cwe_id' => $cweId,
+                'endpoint' => $endpoint,
+                'parametro' => "Linha {$line}",
+                'metodo_http' => null,
+                'prova_conceito' => $linesOfCode ? "Linhas de código vulneráveis:\n".$linesOfCode : null,
                 'remediacao_sugerida' => $metadata['fix'] ?? ($metadata['shortlink'] ?? null),
             ]);
         }

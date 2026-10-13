@@ -729,6 +729,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
             'tipo_teste' => 'dast',
             'status' => 'concluido',
         ]);
+
         return Finding::create([
             'test_id' => $test->id,
             'titulo' => 'Risco alto no portal',

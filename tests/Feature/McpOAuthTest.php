@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\Agent\GrcToolRegistry;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,9 +22,13 @@ class McpOAuthTest extends TestCase
     use RefreshDatabase;
 
     private static OpenSSLAsymmetricKey $privateKey;
+
     private static string $kid;
+
     private static array $jwks;
-    private static string $issuer   = 'https://test-tenant.auth0.com/';
+
+    private static string $issuer = 'https://test-tenant.auth0.com/';
+
     private static string $audience = 'https://grc-mcp';
 
     public static function setUpBeforeClass(): void
@@ -49,8 +54,8 @@ class McpOAuthTest extends TestCase
                     'alg' => 'RS256',
                     'use' => 'sig',
                     'kid' => self::$kid,
-                    'n'   => $n,
-                    'e'   => $e,
+                    'n' => $n,
+                    'e' => $e,
                 ],
             ],
         ];
@@ -70,18 +75,18 @@ class McpOAuthTest extends TestCase
 
         // Configura o MCP em modo OAuth para todos os testes desta classe
         config([
-            'mcp.auth_mode'              => 'oauth',
-            'mcp.allow_unauthenticated'  => false,
-            'mcp.legacy_bearer_enabled'  => false,
-            'mcp.oauth.issuer'           => self::$issuer,
-            'mcp.oauth.audience'         => self::$audience,
-            'mcp.oauth.scope_read'       => 'grc:read',
-            'mcp.oauth.scope_write'      => 'grc:write',
-            'mcp.oauth.resource_url'     => 'https://example.ngrok.app/mcp',
-            'mcp.oauth.jwks_uri'         => '',
-            'mcp.oauth.leeway_seconds'   => 30,
-            'mcp.oauth.jwks_cache_ttl'   => 600,
-            'mcp.allowed_origins'        => [],
+            'mcp.auth_mode' => 'oauth',
+            'mcp.allow_unauthenticated' => false,
+            'mcp.legacy_bearer_enabled' => false,
+            'mcp.oauth.issuer' => self::$issuer,
+            'mcp.oauth.audience' => self::$audience,
+            'mcp.oauth.scope_read' => 'grc:read',
+            'mcp.oauth.scope_write' => 'grc:write',
+            'mcp.oauth.resource_url' => 'https://example.ngrok.app/mcp',
+            'mcp.oauth.jwks_uri' => '',
+            'mcp.oauth.leeway_seconds' => 30,
+            'mcp.oauth.jwks_cache_ttl' => 600,
+            'mcp.allowed_origins' => [],
         ]);
     }
 
@@ -207,14 +212,14 @@ class McpOAuthTest extends TestCase
         $token = $this->buildToken(scopes: ['grc:read']);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/call',
-            'params'  => [
-                'name'      => 'create_incident',
+            'id' => 1,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'create_incident',
                 'arguments' => ['titulo' => 'Teste'],
             ],
         ]);
@@ -235,13 +240,13 @@ class McpOAuthTest extends TestCase
         $token = $this->buildToken(scopes: ['grc:read']);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/list',
-            'params'  => [],
+            'id' => 1,
+            'method' => 'tools/list',
+            'params' => [],
         ]);
 
         $response->assertOk()
@@ -270,13 +275,13 @@ class McpOAuthTest extends TestCase
         $token = $this->buildToken(scopes: ['grc:read']);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/list',
-            'params'  => [],
+            'id' => 1,
+            'method' => 'tools/list',
+            'params' => [],
         ]);
 
         $response->assertOk();
@@ -285,7 +290,7 @@ class McpOAuthTest extends TestCase
 
         // Ferramentas de escrita vêm do próprio registro (requiresConfirmation = true),
         // para o teste não quebrar a cada ferramenta nova.
-        $registry = app(\App\Services\Agent\GrcToolRegistry::class);
+        $registry = app(GrcToolRegistry::class);
         $writeToolNames = array_values(array_filter(
             array_column($registry->listTools(), 'name'),
             fn (string $name) => $registry->requiresConfirmation($name)
@@ -319,7 +324,7 @@ class McpOAuthTest extends TestCase
 
             // 4. securitySchemes[0].scopes contém exatamente o escopo esperado
             $expectedScope = in_array($name, $writeToolNames, true) ? 'grc:write' : 'grc:read';
-            $actualScopes  = $tool['securitySchemes'][0]['scopes'] ?? [];
+            $actualScopes = $tool['securitySchemes'][0]['scopes'] ?? [];
             $this->assertSame(
                 [$expectedScope],
                 $actualScopes,
@@ -344,13 +349,13 @@ class McpOAuthTest extends TestCase
         $token = $this->buildToken(scopes: ['grc:read']);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/list',
-            'params'  => [],
+            'id' => 1,
+            'method' => 'tools/list',
+            'params' => [],
         ]);
 
         $response->assertOk();
@@ -408,19 +413,19 @@ class McpOAuthTest extends TestCase
         $token = $this->buildToken(scopes: ['grc:read', 'grc:write']);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/call',
-            'params'  => [
-                'name'      => 'create_incident',
+            'id' => 1,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'create_incident',
                 'arguments' => [
-                    'titulo'       => 'Risco OAuth',
-                    'descricao'    => 'Teste de dry-run com OAuth',
-                    'severidade'    => 'Alta',
-                    'status'        => 'aberto',
+                    'titulo' => 'Risco OAuth',
+                    'descricao' => 'Teste de dry-run com OAuth',
+                    'severidade' => 'Alta',
+                    'status' => 'aberto',
                     'data_deteccao' => '2026-10-01',
                     'detectado_por' => 'Analista',
                 ],
@@ -444,22 +449,22 @@ class McpOAuthTest extends TestCase
         $token = $this->buildToken(scopes: ['grc:read', 'grc:write']);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/call',
-            'params'  => [
-                'name'      => 'create_incident',
+            'id' => 1,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'create_incident',
                 'arguments' => [
-                    'titulo'        => 'Risco OAuth Confirmado',
-                    'descricao'     => 'Criado via OAuth 2.1',
-                    'severidade'    => 'Alta',
-                    'status'        => 'aberto',
+                    'titulo' => 'Risco OAuth Confirmado',
+                    'descricao' => 'Criado via OAuth 2.1',
+                    'severidade' => 'Alta',
+                    'status' => 'aberto',
                     'data_deteccao' => '2026-10-01',
                     'detectado_por' => 'Analista',
-                    'confirm'       => true,
+                    'confirm' => true,
                 ],
             ],
         ]);
@@ -481,13 +486,13 @@ class McpOAuthTest extends TestCase
         $token = $this->buildTokenWithPermissions(permissions: ['grc:read']);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/list',
-            'params'  => [],
+            'id' => 1,
+            'method' => 'tools/list',
+            'params' => [],
         ]);
 
         $response->assertOk()
@@ -505,19 +510,19 @@ class McpOAuthTest extends TestCase
 
         // Sem confirm → dry-run (preview), mas autorizado
         $dryRun = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/call',
-            'params'  => [
-                'name'      => 'create_incident',
+            'id' => 1,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'create_incident',
                 'arguments' => [
-                    'titulo'        => 'Risco permissions dry-run',
-                    'descricao'     => 'Teste via permissions claim',
-                    'severidade'    => 'Alta',
-                    'status'        => 'aberto',
+                    'titulo' => 'Risco permissions dry-run',
+                    'descricao' => 'Teste via permissions claim',
+                    'severidade' => 'Alta',
+                    'status' => 'aberto',
                     'data_deteccao' => '2026-10-01',
                     'detectado_por' => 'Analista',
                 ],
@@ -531,22 +536,22 @@ class McpOAuthTest extends TestCase
 
         // Com confirm → grava
         $confirmed = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 2,
-            'method'  => 'tools/call',
-            'params'  => [
-                'name'      => 'create_incident',
+            'id' => 2,
+            'method' => 'tools/call',
+            'params' => [
+                'name' => 'create_incident',
                 'arguments' => [
-                    'titulo'        => 'Risco permissions confirmado',
-                    'descricao'     => 'Gravado via permissions claim',
-                    'severidade'    => 'Alta',
-                    'status'        => 'aberto',
+                    'titulo' => 'Risco permissions confirmado',
+                    'descricao' => 'Gravado via permissions claim',
+                    'severidade' => 'Alta',
+                    'status' => 'aberto',
                     'data_deteccao' => '2026-10-01',
                     'detectado_por' => 'Analista',
-                    'confirm'       => true,
+                    'confirm' => true,
                 ],
             ],
         ]);
@@ -567,13 +572,13 @@ class McpOAuthTest extends TestCase
         $token = $this->buildTokenWithPermissions(permissions: []);
 
         $response = $this->withHeaders([
-            'Authorization'        => "Bearer {$token}",
+            'Authorization' => "Bearer {$token}",
             'MCP-Protocol-Version' => '2025-11-25',
         ])->postJson('/mcp', [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'tools/list',
-            'params'  => [],
+            'id' => 1,
+            'method' => 'tools/list',
+            'params' => [],
         ]);
 
         $response->assertStatus(403)
@@ -594,21 +599,21 @@ class McpOAuthTest extends TestCase
     {
         return [
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'initialize',
-            'params'  => ['protocolVersion' => '2025-11-25'],
+            'id' => 1,
+            'method' => 'initialize',
+            'params' => ['protocolVersion' => '2025-11-25'],
         ];
     }
 
     /**
      * Constrói um JWT assinado com a chave RSA de teste.
      *
-     * @param list<string>             $scopes     Scopes a incluir no campo `scope`
-     * @param string|null              $issuer     Issuer (padrão: tenant de teste)
-     * @param string|null              $audience   Audience (padrão: grc-mcp de teste)
-     * @param int|null                 $expiresAt  Timestamp de expiração (padrão: +1 hora)
-     * @param OpenSSLAsymmetricKey|null $privateKey Chave para assinar (padrão: chave de teste)
-     * @param string|null              $kid        Key ID (padrão: kid de teste)
+     * @param  list<string>  $scopes  Scopes a incluir no campo `scope`
+     * @param  string|null  $issuer  Issuer (padrão: tenant de teste)
+     * @param  string|null  $audience  Audience (padrão: grc-mcp de teste)
+     * @param  int|null  $expiresAt  Timestamp de expiração (padrão: +1 hora)
+     * @param  OpenSSLAsymmetricKey|null  $privateKey  Chave para assinar (padrão: chave de teste)
+     * @param  string|null  $kid  Key ID (padrão: kid de teste)
      */
     private function buildToken(
         array $scopes = ['grc:read', 'grc:write'],
@@ -621,12 +626,12 @@ class McpOAuthTest extends TestCase
         $now = time();
 
         $payload = [
-            'iss'   => $issuer   ?? self::$issuer,
-            'aud'   => $audience ?? self::$audience,
-            'sub'   => 'test-client@grc-mcp-tests',
-            'iat'   => $now,
-            'nbf'   => $now,
-            'exp'   => $expiresAt ?? ($now + 3600),
+            'iss' => $issuer ?? self::$issuer,
+            'aud' => $audience ?? self::$audience,
+            'sub' => 'test-client@grc-mcp-tests',
+            'iat' => $now,
+            'nbf' => $now,
+            'exp' => $expiresAt ?? ($now + 3600),
             'scope' => implode(' ', $scopes),
         ];
 
@@ -646,19 +651,19 @@ class McpOAuthTest extends TestCase
      * — exatamente como o Auth0 emite tokens para o ChatGPT quando as
      * permissões são configuradas como RBAC na API.
      *
-     * @param list<string> $permissions Permissões a incluir no campo `permissions`
+     * @param  list<string>  $permissions  Permissões a incluir no campo `permissions`
      */
     private function buildTokenWithPermissions(array $permissions): string
     {
         $now = time();
 
         $payload = [
-            'iss'         => self::$issuer,
-            'aud'         => self::$audience,
-            'sub'         => 'test-client@grc-mcp-tests',
-            'iat'         => $now,
-            'nbf'         => $now,
-            'exp'         => $now + 3600,
+            'iss' => self::$issuer,
+            'aud' => self::$audience,
+            'sub' => 'test-client@grc-mcp-tests',
+            'iat' => $now,
+            'nbf' => $now,
+            'exp' => $now + 3600,
             // Intencionalmente omitimos 'scope' para simular o Auth0 RBAC
             'permissions' => $permissions,
         ];

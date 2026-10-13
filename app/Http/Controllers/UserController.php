@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 
 class UserController extends Controller
@@ -17,6 +18,7 @@ class UserController extends Controller
         } */
 
         $users = User::latest()->get();
+
         return view('usuarios.index', compact('users'));
     }
 
@@ -24,7 +26,7 @@ class UserController extends Controller
     {
         if ($request->filled('email')) {
             $request->merge([
-                'email' => strtolower(trim(\Illuminate\Support\Str::ascii((string) $request->email))),
+                'email' => strtolower(trim(Str::ascii((string) $request->email))),
             ]);
         }
 
@@ -94,6 +96,7 @@ class UserController extends Controller
     {
         // Deletar aqui apenas desativa o usuário (Soft Delete Manual)
         $usuario->update(['active' => false]);
+
         return redirect()->back()->with('success', 'Usuário desativado.');
     }
 }

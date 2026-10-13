@@ -3,19 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use App\Models\Software;
-use App\Models\SoftwareModulo;
-use App\Models\InstanciaCliente;
-use App\Models\Politica;
+use App\Models\ControleEvento;
 use App\Models\Finding;
 use App\Models\Incidente;
-use App\Models\ControleEvento;
+use App\Models\InstanciaCliente;
 use App\Models\LgpdItem;
+use App\Models\Politica;
+use App\Models\Software;
+use App\Models\SoftwareModulo;
+use App\Models\TreinamentoRegistro;
 use App\Models\User;
 use App\Services\AlertService;
 use App\Services\GeminiService;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -56,7 +56,7 @@ class DashboardController extends Controller
 
         $lgpd_total = LgpdItem::count() ?: 1;
         $lgpd_conforme = LgpdItem::where('conforme', 'conforme')->count();
-        
+
         $lgpd = [
             'total' => LgpdItem::count(),
             'conforme' => $lgpd_conforme,
@@ -99,7 +99,9 @@ class DashboardController extends Controller
             'em_revisao' => ControleEvento::where('status', 'em_revisao')->count(),
             'bloqueadas' => ControleEvento::where('status', 'bloqueado')->count(),
             'atrasadas' => ControleEvento::where('status', 'atrasado')->count(),
-            'sem_estimativa' => ControleEvento::whereIn('status', ['planejado', 'pendente', 'atrasado'])->where(function ($query) { $query->whereNull('esforco')->orWhereIn('esforco', ['GG', 'Programa']); })->count(),
+            'sem_estimativa' => ControleEvento::whereIn('status', ['planejado', 'pendente', 'atrasado'])->where(function ($query) {
+                $query->whereNull('esforco')->orWhereIn('esforco', ['GG', 'Programa']);
+            })->count(),
             'sem_executor' => ControleEvento::whereIn('status', $operationalStatuses)->whereNull('executor_id')->count(),
             'sem_prazo' => ControleEvento::whereIn('status', $operationalStatuses)->whereNull('data_prevista')->count(),
             'planejado_pontos' => (int) $weeklyEvents->sum(fn (ControleEvento $event) => $event->effort_points),
@@ -210,12 +212,12 @@ class DashboardController extends Controller
             'company' => config('app.company'),
             'date' => now()->format('d/m/Y H:i'),
             'ativos' => [
-                'clientes' => \App\Models\Cliente::count(),
-                'softwares' => \App\Models\Software::count(),
-                'instancias' => \App\Models\InstanciaCliente::count(),
+                'clientes' => Cliente::count(),
+                'softwares' => Software::count(),
+                'instancias' => InstanciaCliente::count(),
             ],
             'cobertura' => [
-                'total_sistemas' => \App\Models\Software::where('ativo', true)->count(),
+                'total_sistemas' => Software::where('ativo', true)->count(),
                 'total_modulos' => $totalModulos,
                 'modulos_cobertos' => $modulosCobertos,
                 'percentual' => $totalModulos > 0 ? round(($modulosCobertos / $totalModulos) * 100) : 0,
@@ -225,26 +227,26 @@ class DashboardController extends Controller
                 'total_abertos' => Finding::where('status', '!=', 'fechado')->count(),
             ],
             'incidentes' => [
-                'abertos' => \App\Models\Incidente::where('status', '!=', 'fechado')->count(),
-                'total_ano' => \App\Models\Incidente::whereYear('created_at', now()->year)->count(),
+                'abertos' => Incidente::where('status', '!=', 'fechado')->count(),
+                'total_ano' => Incidente::whereYear('created_at', now()->year)->count(),
             ],
             'governanca' => [
-                'publicadas' => \App\Models\Politica::where('status', 'publicado')->count(),
-                'total' => \App\Models\Politica::count() ?: 1,
+                'publicadas' => Politica::where('status', 'publicado')->count(),
+                'total' => Politica::count() ?: 1,
             ],
             'lgpd' => [
                 'percentual' => 0,
-                'conforme' => \App\Models\LgpdItem::where('conforme', 'conforme')->count(),
-                'total' => \App\Models\LgpdItem::count() ?: 1,
+                'conforme' => LgpdItem::where('conforme', 'conforme')->count(),
+                'total' => LgpdItem::count() ?: 1,
             ],
             'treinamentos' => [
-                'concluidos' => \App\Models\TreinamentoRegistro::where('status', 'concluido')->count(),
-                'total' => \App\Models\TreinamentoRegistro::count() ?: 1,
+                'concluidos' => TreinamentoRegistro::where('status', 'concluido')->count(),
+                'total' => TreinamentoRegistro::count() ?: 1,
             ],
             'planos' => [
                 'concluidos' => ControleEvento::where('status', 'concluido')->count(),
                 'total' => ControleEvento::whereNotIn('status', ['sugestao', 'triagem', 'dispensado', 'cancelado'])->count() ?: 1,
-            ]
+            ],
         ];
 
         $data['lgpd']['percentual'] = round(($data['lgpd']['conforme'] / $data['lgpd']['total']) * 100);
@@ -258,7 +260,7 @@ class DashboardController extends Controller
         Incidentes Abertos: {$data['incidentes']['abertos']}, 
         Conformidade LGPD: {$data['lgpd']['percentual']}%. 
         De um resumo estrategico de 2 frases para a diretoria. Responda em Portugues.";
-        
+
         $data['ai_analysis'] = $gemini->generateGovernance($prompt);
 
         return view('dashboard_export', $data);
@@ -266,11 +268,11 @@ class DashboardController extends Controller
 
     public function aiSummary(GeminiService $gemini)
     {
-        $ativos = \App\Models\Software::count();
+        $ativos = Software::count();
         $findingsCriticos = Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count();
-        $incidentesAbertos = \App\Models\Incidente::where('status', '!=', 'fechado')->count();
-        $lgpdConforme = \App\Models\LgpdItem::where('conforme', 'conforme')->count();
-        $lgpdTotal = \App\Models\LgpdItem::count() ?: 1;
+        $incidentesAbertos = Incidente::where('status', '!=', 'fechado')->count();
+        $lgpdConforme = LgpdItem::where('conforme', 'conforme')->count();
+        $lgpdTotal = LgpdItem::count() ?: 1;
         $lgpdPerc = round(($lgpdConforme / $lgpdTotal) * 100);
 
         $prompt = "Aja como um CISO (Chief Information Security Officer). Analise estes numeros da nossa empresa:

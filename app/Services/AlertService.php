@@ -4,10 +4,10 @@ namespace App\Services;
 
 use App\Models\ControleEvento;
 use App\Models\Finding;
+use App\Models\InstanciaPortaServico;
+use App\Models\InstanciaSslCert;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
-use App\Models\InstanciaSslCert;
-use App\Models\InstanciaPortaServico;
 use Carbon\Carbon;
 
 class AlertService
@@ -243,12 +243,11 @@ class AlertService
             ];
         }
 
-        
         // 11. Certificados SSL Expirando ou Expirados (EASM - Limite <= 2 dias)
         $sslCriticos = InstanciaSslCert::query()
             ->where(function ($q) {
                 $q->where('status_certificado', 'expirado')
-                  ->orWhere('dias_restantes', '<=', 2);
+                    ->orWhere('dias_restantes', '<=', 2);
             })
             ->get();
 
@@ -256,6 +255,7 @@ class AlertService
         if ($countSsl > 0) {
             $detalhes = $sslCriticos->map(function ($c) {
                 $dias = $c->dias_restantes !== null ? ($c->dias_restantes <= 0 ? 'expirado' : "{$c->dias_restantes}d restantes") : 'inválido';
+
                 return "{$c->dominio} ({$dias})";
             })->take(3)->join(', ');
 

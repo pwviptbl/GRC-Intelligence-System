@@ -54,7 +54,7 @@ class NucleiParser extends BaseScanParser
             $cweId = null;
             if (! empty($classification['cwe-id'])) {
                 $rawCwe = is_array($classification['cwe-id']) ? $classification['cwe-id'][0] : (string) $classification['cwe-id'];
-                $cweId = str_starts_with(strtoupper($rawCwe), 'CWE-') ? strtoupper($rawCwe) : 'CWE-' . $rawCwe;
+                $cweId = str_starts_with(strtoupper($rawCwe), 'CWE-') ? strtoupper($rawCwe) : 'CWE-'.$rawCwe;
             }
 
             $cvssScore = isset($classification['cvss-score']) ? (float) $classification['cvss-score'] : null;
@@ -62,25 +62,25 @@ class NucleiParser extends BaseScanParser
             $endpoint = $item['matched-at'] ?? $item['matched'] ?? $item['host'] ?? null;
             $poc = null;
             if (! empty($item['extracted-results'])) {
-                $poc = "Extracted results: " . implode(', ', (array) $item['extracted-results']);
+                $poc = 'Extracted results: '.implode(', ', (array) $item['extracted-results']);
             }
             if (! empty($item['curl-command'])) {
-                $poc = ($poc ? $poc . "\n\n" : '') . "cURL: " . $item['curl-command'];
+                $poc = ($poc ? $poc."\n\n" : '').'cURL: '.$item['curl-command'];
             }
 
             $remediation = $info['remediation'] ?? null;
 
             $findings->push([
-                'titulo'              => $title,
-                'descricao'           => $desc,
-                'severidade'          => $severity,
-                'cvss_score'          => $cvssScore,
-                'cve_id'              => $cveId,
-                'cwe_id'              => $cweId,
-                'endpoint'            => $endpoint,
-                'parametro'           => null,
-                'metodo_http'         => (($item['type'] ?? '') === 'http' ? 'GET' : null),
-                'prova_conceito'      => $poc,
+                'titulo' => $title,
+                'descricao' => $desc,
+                'severidade' => $severity,
+                'cvss_score' => $cvssScore,
+                'cve_id' => $cveId,
+                'cwe_id' => $cweId,
+                'endpoint' => $endpoint,
+                'parametro' => null,
+                'metodo_http' => (($item['type'] ?? '') === 'http' ? 'GET' : null),
+                'prova_conceito' => $poc,
                 'remediacao_sugerida' => $remediation,
             ]);
         }

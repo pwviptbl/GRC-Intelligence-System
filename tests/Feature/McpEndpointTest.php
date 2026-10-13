@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -140,15 +141,15 @@ class McpEndpointTest extends TestCase
                 'arguments' => [
                     'titulo' => 'Risco de teste',
                     'descricao' => 'Descricao registrada na auditoria.',
-                    'severidade'    => 'Alta',
-                    'status'        => 'aberto',
+                    'severidade' => 'Alta',
+                    'status' => 'aberto',
                     'data_deteccao' => '2026-10-01',
                     'detectado_por' => 'Analista',
                 ],
             ],
         ])->assertOk();
 
-        $event = \App\Models\AuditEvent::query()->where('action', 'mcp.write_preview')->firstOrFail();
+        $event = AuditEvent::query()->where('action', 'mcp.write_preview')->firstOrFail();
         $this->assertSame('create_incident', $event->context['tool']);
         // Desde c384c1c a auditoria registra os argumentos para rastreabilidade (exibidos na tela de Auditoria).
         $this->assertSame('Risco de teste', $event->context['arguments']['titulo']);

@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
-use App\Models\Engagement;
-use App\Models\Finding;
 use App\Models\InstanciaCliente;
 use App\Models\InstanciaPortaServico;
 use App\Models\InstanciaSslCert;
@@ -20,7 +18,9 @@ class EasmManagementTest extends TestCase
     use RefreshDatabase;
 
     protected User $admin;
+
     protected Cliente $cliente;
+
     protected Software $software;
 
     protected function setUp(): void

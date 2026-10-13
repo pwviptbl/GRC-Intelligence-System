@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\ControleEvento;
 use App\Models\FechamentoSemanal;
 use App\Models\User;
+use App\Services\WeeklyPlanningBacklogService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\WeeklyPlanningBacklogService;
 
 class PlanejamentoSemanalController extends Controller
 {
@@ -157,6 +157,7 @@ class PlanejamentoSemanalController extends Controller
             foreach ($events as $event) {
                 if ($event->effort_points === 0) {
                     $skipped[] = $event->acao_controle_snapshot.' (GG ou sem esforço)';
+
                     continue;
                 }
 
@@ -166,8 +167,9 @@ class PlanejamentoSemanalController extends Controller
                     ->sortByDesc(fn (User $member) => $remaining[$member->id])
                     ->first();
 
-                if (!$candidate) {
+                if (! $candidate) {
                     $skipped[] = $event->acao_controle_snapshot.' (sem capacidade)';
+
                     continue;
                 }
 

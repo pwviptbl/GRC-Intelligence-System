@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Hash;
 
 class ResetGrc extends Command
 {
@@ -29,15 +29,15 @@ class ResetGrc extends Command
     public function handle()
     {
         $this->warn('--- ALERTA: Esta operação apagará todos os dados atuais! ---');
-        
+
         $password = $this->secret('Digite a senha de administrador para confirmar');
 
         // Busca o admin no banco
         $admin = User::where('email', 'admin@admin.com')->first();
-        
+
         // Se o banco estiver vazio (sem admin), permite a senha padrão 'admin123'
         $authorized = false;
-        if (!$admin) {
+        if (! $admin) {
             if ($password === 'admin123') {
                 $authorized = true;
             }
@@ -47,8 +47,9 @@ class ResetGrc extends Command
             }
         }
 
-        if (!$authorized) {
+        if (! $authorized) {
             $this->error('❌ Senha incorreta! Operação cancelada.');
+
             return 1;
         }
 
@@ -62,7 +63,7 @@ class ResetGrc extends Command
 
         $this->info(Artisan::output());
         $this->info('✅ Banco de dados resetado e populado com sucesso!');
-        
+
         return 0;
     }
 }

@@ -50,25 +50,25 @@ class BurpParser extends BaseScanParser
             $detail = strip_tags((string) $issue->issueDetail);
             $remediation = strip_tags((string) $issue->remediationBackground);
 
-            $endpoint = ($host ? 'https://' . $host : '') . $path;
+            $endpoint = ($host ? 'https://'.$host : '').$path;
             $fullDesc = trim("{$desc}\n\n{$detail}");
 
             $cwe = null;
             if (preg_match('/CWE-(\d+)/i', (string) $issue->vulnerabilityClassifications, $m)) {
-                $cwe = 'CWE-' . $m[1];
+                $cwe = 'CWE-'.$m[1];
             }
 
             $findings->push([
-                'titulo'              => $name,
-                'descricao'           => $fullDesc ?: $name,
-                'severidade'          => $severity,
-                'cvss_score'          => null,
-                'cve_id'              => null,
-                'cwe_id'              => $cwe,
-                'endpoint'            => $endpoint ?: $location,
-                'parametro'           => null,
-                'metodo_http'         => null,
-                'prova_conceito'      => $detail ?: null,
+                'titulo' => $name,
+                'descricao' => $fullDesc ?: $name,
+                'severidade' => $severity,
+                'cvss_score' => null,
+                'cve_id' => null,
+                'cwe_id' => $cwe,
+                'endpoint' => $endpoint ?: $location,
+                'parametro' => null,
+                'metodo_http' => null,
+                'prova_conceito' => $detail ?: null,
                 'remediacao_sugerida' => $remediation ?: null,
             ]);
         }

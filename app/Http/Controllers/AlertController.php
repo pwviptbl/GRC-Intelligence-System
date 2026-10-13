@@ -7,9 +7,7 @@ use Illuminate\Http\JsonResponse;
 
 class AlertController extends Controller
 {
-    public function __construct(protected AlertService $alertService)
-    {
-    }
+    public function __construct(protected AlertService $alertService) {}
 
     public function summary(): JsonResponse
     {

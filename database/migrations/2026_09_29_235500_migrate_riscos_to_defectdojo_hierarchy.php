@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
-use App\Models\Software;
 use App\Models\Engagement;
 use App\Models\EngagementTest;
 use App\Models\Finding;
+use App\Models\Software;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -27,27 +27,27 @@ return new class extends Migration
 
         // Mapeamentos de criticidade
         $severidadeMap = [
-            'Critico'     => 'critico',
-            'critico'     => 'critico',
-            'Alto'        => 'alto',
-            'alto'        => 'alto',
-            'Medio'       => 'medio',
-            'medio'       => 'medio',
-            'Baixo'       => 'baixo',
-            'baixo'       => 'baixo',
+            'Critico' => 'critico',
+            'critico' => 'critico',
+            'Alto' => 'alto',
+            'alto' => 'alto',
+            'Medio' => 'medio',
+            'medio' => 'medio',
+            'Baixo' => 'baixo',
+            'baixo' => 'baixo',
             'Informativo' => 'informativo',
             'informativo' => 'informativo',
         ];
 
         // Mapeamentos de status
         $statusMap = [
-            'aberto'        => 'aberto',
-            'em_andamento'  => 'em_tratamento',
+            'aberto' => 'aberto',
+            'em_andamento' => 'em_tratamento',
             'em_tratamento' => 'em_tratamento',
-            'fechado'       => 'fechado',
-            'mitigado'      => 'fechado',
-            'risco_aceito'  => 'risco_aceito',
-            'cancelado'     => 'fechado',
+            'fechado' => 'fechado',
+            'mitigado' => 'fechado',
+            'risco_aceito' => 'risco_aceito',
+            'cancelado' => 'fechado',
         ];
 
         // Cache de testes criados por software
@@ -55,22 +55,22 @@ return new class extends Migration
 
         foreach ($riscos as $r) {
             $softwareId = $r->software_id ?: $defaultSoftwareId;
-            if (!$softwareId) {
+            if (! $softwareId) {
                 continue;
             }
 
-            if (!isset($testsBySoftware[$softwareId])) {
+            if (! isset($testsBySoftware[$softwareId])) {
                 // Localiza ou cria o engajamento de migração legado
                 $engagement = Engagement::firstOrCreate(
                     [
                         'software_id' => $softwareId,
-                        'nome'        => 'Inventário de Riscos e Vulnerabilidades (Legado)',
+                        'nome' => 'Inventário de Riscos e Vulnerabilidades (Legado)',
                     ],
                     [
-                        'tipo'        => 'auditoria',
-                        'descricao'   => 'Engajamento criado na migração automática a partir do registro histórico de riscos e vulnerabilidades.',
-                        'status'      => 'ativo',
-                        'lead'        => 'Migração do Sistema',
+                        'tipo' => 'auditoria',
+                        'descricao' => 'Engajamento criado na migração automática a partir do registro histórico de riscos e vulnerabilidades.',
+                        'status' => 'ativo',
+                        'lead' => 'Migração do Sistema',
                         'data_inicio' => $r->created_at ? substr($r->created_at, 0, 10) : now()->toDateString(),
                     ]
                 );
@@ -79,15 +79,15 @@ return new class extends Migration
                 $test = EngagementTest::firstOrCreate(
                     [
                         'engagement_id' => $engagement->id,
-                        'titulo'        => 'Mapeamento Histórico de Riscos',
+                        'titulo' => 'Mapeamento Histórico de Riscos',
                     ],
                     [
-                        'tipo_teste'  => 'manual',
-                        'ferramenta'  => 'Manual',
-                        'ambiente'    => 'producao',
-                        'status'      => 'concluido',
+                        'tipo_teste' => 'manual',
+                        'ferramenta' => 'Manual',
+                        'ambiente' => 'producao',
+                        'status' => 'concluido',
                         'data_inicio' => $r->created_at ? substr($r->created_at, 0, 10) : now()->toDateString(),
-                        'notas'       => 'Test container para achados migrados do antigo registro de riscos.',
+                        'notas' => 'Test container para achados migrados do antigo registro de riscos.',
                     ]
                 );
 
@@ -97,13 +97,13 @@ return new class extends Migration
             $test = $testsBySoftware[$softwareId];
 
             $severidade = $severidadeMap[$r->criticidade ?? ''] ?? 'medio';
-            $status     = $statusMap[$r->status ?? ''] ?? 'aberto';
+            $status = $statusMap[$r->status ?? ''] ?? 'aberto';
 
             $hashDedup = hash('sha256', implode('|', [
                 strtolower(trim($r->titulo ?? '')),
                 '', // endpoint
                 '', // cwe_id
-                (string)$softwareId
+                (string) $softwareId,
             ]));
 
             // Verifica se o finding já existe por hash no mesmo teste
@@ -113,38 +113,38 @@ return new class extends Migration
             }
 
             $findingId = DB::table('findings')->insertGetId([
-                'test_id'               => $test->id,
-                'titulo'                => $r->titulo,
-                'descricao'             => $r->descricao ?? '',
-                'severidade'            => $severidade,
-                'cvss_score'            => $r->cvss_score,
-                'cve_id'                => $r->cve_id,
-                'remediacao_sugerida'   => $r->plano_acao,
-                'status'                => $status,
-                'ativo_afetado'         => $r->ativo_afetado,
-                'responsavel'           => $r->responsavel,
-                'sla_dias'              => $r->sla_dias ?? 30,
-                'data_limite_correcao'  => $r->data_limite_correcao,
-                'hash_dedup'            => $hashDedup,
-                'falso_positivo'        => false,
-                'aceito_risco'          => ($status === 'risco_aceito'),
-                'is_regression'         => false,
-                'detectado_em'          => $r->created_at ? substr($r->created_at, 0, 10) : now()->toDateString(),
-                'corrigido_em'          => ($status === 'fechado' && $r->updated_at) ? substr($r->updated_at, 0, 10) : null,
-                'created_at'            => $r->created_at ?? now(),
-                'updated_at'            => $r->updated_at ?? now(),
+                'test_id' => $test->id,
+                'titulo' => $r->titulo,
+                'descricao' => $r->descricao ?? '',
+                'severidade' => $severidade,
+                'cvss_score' => $r->cvss_score,
+                'cve_id' => $r->cve_id,
+                'remediacao_sugerida' => $r->plano_acao,
+                'status' => $status,
+                'ativo_afetado' => $r->ativo_afetado,
+                'responsavel' => $r->responsavel,
+                'sla_dias' => $r->sla_dias ?? 30,
+                'data_limite_correcao' => $r->data_limite_correcao,
+                'hash_dedup' => $hashDedup,
+                'falso_positivo' => false,
+                'aceito_risco' => ($status === 'risco_aceito'),
+                'is_regression' => false,
+                'detectado_em' => $r->created_at ? substr($r->created_at, 0, 10) : now()->toDateString(),
+                'corrigido_em' => ($status === 'fechado' && $r->updated_at) ? substr($r->updated_at, 0, 10) : null,
+                'created_at' => $r->created_at ?? now(),
+                'updated_at' => $r->updated_at ?? now(),
             ]);
 
             // Se o risco tinha vínculo com controle de atividade, vincula na tabela pivot finding_atividades
-            if (!empty($r->atividade_id)) {
+            if (! empty($r->atividade_id)) {
                 $atividadeExists = DB::table('atividades')->where('id', $r->atividade_id)->exists();
                 if ($atividadeExists) {
                     DB::table('finding_atividades')->insertOrIgnore([
-                        'finding_id'   => $findingId,
+                        'finding_id' => $findingId,
                         'atividade_id' => $r->atividade_id,
-                        'notas'        => 'Migrado do vínculo de atividade do risco antigo #' . $r->id,
-                        'created_at'   => now(),
-                        'updated_at'   => now(),
+                        'notas' => 'Migrado do vínculo de atividade do risco antigo #'.$r->id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 }
             }

@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Finding;
+use App\Models\Atividade;
 use App\Models\Engagement;
 use App\Models\EngagementTest;
+use App\Models\Finding;
 use App\Models\Software;
 use Illuminate\Http\Request;
 
@@ -32,26 +33,26 @@ class FindingController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-                if ($request->filled('engagement_id')) {
-            $query->whereHas('test', fn($q) => $q->where('engagement_id', $request->engagement_id));
+        if ($request->filled('engagement_id')) {
+            $query->whereHas('test', fn ($q) => $q->where('engagement_id', $request->engagement_id));
         }
         if ($request->filled('test_id')) {
             $query->where('test_id', $request->test_id);
         }
         if ($request->filled('software_id')) {
-            $query->whereHas('test.engagement', fn($q) => $q->where('software_id', $request->software_id));
+            $query->whereHas('test.engagement', fn ($q) => $q->where('software_id', $request->software_id));
         }
         if ($request->filled('sla_status')) {
             $sla = $request->sla_status;
             if ($sla === 'atrasado') {
                 $query->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
-                      ->whereNotNull('data_limite_correcao')
-                      ->whereDate('data_limite_correcao', '<', now());
+                    ->whereNotNull('data_limite_correcao')
+                    ->whereDate('data_limite_correcao', '<', now());
             } elseif ($sla === 'alerta') {
                 $query->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
-                      ->whereNotNull('data_limite_correcao')
-                      ->whereDate('data_limite_correcao', '>=', now())
-                      ->whereDate('data_limite_correcao', '<=', now()->addDays(7));
+                    ->whereNotNull('data_limite_correcao')
+                    ->whereDate('data_limite_correcao', '>=', now())
+                    ->whereDate('data_limite_correcao', '<=', now()->addDays(7));
             }
         }
         if ($request->boolean('falso_positivo')) {
@@ -65,35 +66,34 @@ class FindingController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('titulo', 'like', "%{$search}%")
-                  ->orWhere('descricao', 'like', "%{$search}%")
-                  ->orWhere('cve_id', 'like', "%{$search}%")
-                  ->orWhere('cwe_id', 'like', "%{$search}%")
-                  ->orWhere('endpoint', 'like', "%{$search}%")
-                  ->orWhere('ativo_afetado', 'like', "%{$search}%")
-                  ->orWhere('severidade', 'like', "%{$search}%")
-                  ->orWhereHas('test.engagement.software', fn($sq) => $sq->where('nome', 'like', "%{$search}%"));
+                    ->orWhere('descricao', 'like', "%{$search}%")
+                    ->orWhere('cve_id', 'like', "%{$search}%")
+                    ->orWhere('cwe_id', 'like', "%{$search}%")
+                    ->orWhere('endpoint', 'like', "%{$search}%")
+                    ->orWhere('ativo_afetado', 'like', "%{$search}%")
+                    ->orWhere('severidade', 'like', "%{$search}%")
+                    ->orWhereHas('test.engagement.software', fn ($sq) => $sq->where('nome', 'like', "%{$search}%"));
             });
         }
 
-                $findings  = $query->paginate(25)->withQueryString();
+        $findings = $query->paginate(25)->withQueryString();
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
         $engagements = Engagement::with('software:id,nome')->orderBy('nome')->get();
         $tests = EngagementTest::with('engagement.software:id,nome')->orderBy('titulo')->get();
         $selectedTest = $request->filled('test_id') ? EngagementTest::with('engagement.software')->find($request->test_id) : null;
         $selectedEngagement = $request->filled('engagement_id') ? Engagement::with('software')->find($request->engagement_id) : null;
 
-
         $stats = [
-            'total'      => Finding::count(),
-            'abertos'    => Finding::whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
-            'criticos'   => Finding::where('severidade', 'critico')
-                                   ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado'])->count(),
+            'total' => Finding::count(),
+            'abertos' => Finding::whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
+            'criticos' => Finding::where('severidade', 'critico')
+                ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado'])->count(),
             'regressoes' => Finding::where('is_regression', true)
-                                   ->whereNotIn('status', ['fechado', 'falso_positivo'])->count(),
+                ->whereNotIn('status', ['fechado', 'falso_positivo'])->count(),
             'duplicados' => Finding::where('status', 'duplicado')->count(),
-            'atrasados'  => Finding::whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
-                                   ->whereNotNull('data_limite_correcao')
-                                   ->whereDate('data_limite_correcao', '<', now())->count(),
+            'atrasados' => Finding::whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+                ->whereNotNull('data_limite_correcao')
+                ->whereDate('data_limite_correcao', '<', now())->count(),
         ];
 
         return view('findings.index', compact('findings', 'softwares', 'engagements', 'tests', 'selectedTest', 'selectedEngagement', 'stats', 'tab'));
@@ -102,14 +102,15 @@ class FindingController extends Controller
     public function create(Request $request)
     {
         $testId = $request->input('test_id');
-        $test   = EngagementTest::with('engagement.software')->findOrFail($testId);
+        $test = EngagementTest::with('engagement.software')->findOrFail($testId);
+
         return view('findings.create', compact('test'));
     }
 
     public function store(Request $request)
     {
         $validated = $this->validateFinding($request);
-        $finding   = Finding::create($validated);
+        $finding = Finding::create($validated);
 
         $msg = 'Achado criado com sucesso!';
         if ($finding->is_regression) {
@@ -125,7 +126,7 @@ class FindingController extends Controller
     {
         $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom', 'controles']);
         $softwareId = $finding->test?->engagement?->software_id;
-        $availableControles = \App\Models\Atividade::where(function ($q) use ($softwareId) {
+        $availableControles = Atividade::where(function ($q) use ($softwareId) {
             if ($softwareId) {
                 $q->where('software_id', $softwareId)->orWhereNull('software_id');
             }
@@ -137,6 +138,7 @@ class FindingController extends Controller
     public function edit(Finding $finding)
     {
         $finding->load(['test.engagement.software']);
+
         return view('findings.edit', compact('finding'));
     }
 
@@ -172,7 +174,6 @@ class FindingController extends Controller
         return redirect()->back()->with('success', "Status atualizado para: {$label}");
     }
 
-
     /**
      * Vincula controles de governança ao achado de segurança.
      */
@@ -206,31 +207,31 @@ class FindingController extends Controller
     protected function validateFinding(Request $request): array
     {
         return $request->validate([
-            'test_id'              => ['required', 'integer', 'exists:engagement_tests,id'],
-            'titulo'               => ['required', 'string', 'max:255'],
-            'descricao'            => ['required', 'string'],
-            'severidade'           => ['required', 'in:critico,alto,medio,baixo,informativo'],
-            'cvss_score'           => ['nullable', 'numeric', 'min:0', 'max:10'],
-            'cve_id'               => ['nullable', 'string', 'max:50'],
-            'cwe_id'               => ['nullable', 'string', 'max:50'],
-            'endpoint'             => ['nullable', 'string', 'max:1000'],
-            'parametro'            => ['nullable', 'string', 'max:500'],
-            'metodo_http'          => ['nullable', 'in:GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'],
-            'prova_conceito'       => ['nullable', 'string'],
-            'remediacao_sugerida'  => ['nullable', 'string'],
-            'status'               => ['required', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
-            'falso_positivo'       => ['boolean'],
-            'aceito_risco'         => ['boolean'],
-            'ativo_afetado'        => ['nullable', 'string', 'max:500'],
-            'responsavel'          => ['nullable', 'string', 'max:255'],
-            'sla_dias'             => ['nullable', 'integer', 'min:1'],
+            'test_id' => ['required', 'integer', 'exists:engagement_tests,id'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string'],
+            'severidade' => ['required', 'in:critico,alto,medio,baixo,informativo'],
+            'cvss_score' => ['nullable', 'numeric', 'min:0', 'max:10'],
+            'cve_id' => ['nullable', 'string', 'max:50'],
+            'cwe_id' => ['nullable', 'string', 'max:50'],
+            'endpoint' => ['nullable', 'string', 'max:1000'],
+            'parametro' => ['nullable', 'string', 'max:500'],
+            'metodo_http' => ['nullable', 'in:GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'],
+            'prova_conceito' => ['nullable', 'string'],
+            'remediacao_sugerida' => ['nullable', 'string'],
+            'status' => ['required', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
+            'falso_positivo' => ['boolean'],
+            'aceito_risco' => ['boolean'],
+            'ativo_afetado' => ['nullable', 'string', 'max:500'],
+            'responsavel' => ['nullable', 'string', 'max:255'],
+            'sla_dias' => ['nullable', 'integer', 'min:1'],
             'data_limite_correcao' => ['nullable', 'date'],
-            'detectado_em'         => ['nullable', 'date'],
-            'corrigido_em'         => ['nullable', 'date'],
+            'detectado_em' => ['nullable', 'date'],
+            'corrigido_em' => ['nullable', 'date'],
         ], [
-            'titulo.required'    => 'O título do achado é obrigatório.',
+            'titulo.required' => 'O título do achado é obrigatório.',
             'descricao.required' => 'A descrição do achado é obrigatória.',
-            'severidade.required'=> 'A severidade é obrigatória.',
+            'severidade.required' => 'A severidade é obrigatória.',
         ]);
     }
 }

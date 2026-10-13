@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -34,7 +35,7 @@ class OperationalAuditTest extends TestCase
             'password' => 'senha-incorreta',
         ]);
 
-        $event = \App\Models\AuditEvent::query()->where('action', 'auth.login_failed')->firstOrFail();
+        $event = AuditEvent::query()->where('action', 'auth.login_failed')->firstOrFail();
         $this->assertArrayHasKey('email_fingerprint', $event->context);
         $this->assertArrayNotHasKey('password', $event->context);
     }

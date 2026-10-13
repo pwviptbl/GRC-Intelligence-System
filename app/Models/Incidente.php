@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Incidente extends Model
 {
     protected $fillable = [
-        'titulo', 'descricao', 'severidade', 'status', 
+        'titulo', 'descricao', 'severidade', 'status',
         'detectado_por', 'data_deteccao', 'risco_vinculado', 'licoes_aprendidas',
-        'software_id', 'cliente_id'
+        'software_id', 'cliente_id',
     ];
 
     public function software()

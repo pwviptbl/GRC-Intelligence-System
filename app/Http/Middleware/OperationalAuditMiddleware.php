@@ -2,17 +2,16 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\AuditLogService;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 
 class OperationalAuditMiddleware
 {
-    public function __construct(private AuditLogService $audit)
-    {
-    }
+    public function __construct(private AuditLogService $audit) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -39,8 +38,8 @@ class OperationalAuditMiddleware
 
             $inputs = $request->except(['_token', '_method', 'password', 'password_confirmation', 'secret', 'token']);
             foreach ($inputs as $k => $v) {
-                if ($v instanceof \Illuminate\Http\UploadedFile) {
-                    $inputs[$k] = '[Arquivo enviado: ' . $v->getClientOriginalName() . ']';
+                if ($v instanceof UploadedFile) {
+                    $inputs[$k] = '[Arquivo enviado: '.$v->getClientOriginalName().']';
                 }
             }
 
@@ -79,11 +78,11 @@ class OperationalAuditMiddleware
 
     private function shouldRecord(Request $request): bool
     {
-        return !$request->isMethod('get')
-            && !$request->isMethod('head')
-            && !$request->is('mcp')
-            && !$request->is('login')
-            && !$request->is('logout');
+        return ! $request->isMethod('get')
+            && ! $request->isMethod('head')
+            && ! $request->is('mcp')
+            && ! $request->is('login')
+            && ! $request->is('logout');
     }
 
     private function target(Request $request): array

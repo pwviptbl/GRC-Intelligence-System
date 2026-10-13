@@ -14,11 +14,11 @@ class WellKnownMcpController extends Controller
 {
     public function protectedResource(): JsonResponse
     {
-        $resourceUrl    = (string) config('mcp.oauth.resource_url', '');
-        $issuer         = rtrim((string) config('mcp.oauth.issuer', ''), '/');
-        $scopeRead      = (string) config('mcp.oauth.scope_read', 'grc:read');
-        $scopeWrite     = (string) config('mcp.oauth.scope_write', 'grc:write');
-        $appUrl         = rtrim((string) config('app.url', ''), '/');
+        $resourceUrl = (string) config('mcp.oauth.resource_url', '');
+        $issuer = rtrim((string) config('mcp.oauth.issuer', ''), '/');
+        $scopeRead = (string) config('mcp.oauth.scope_read', 'grc:read');
+        $scopeWrite = (string) config('mcp.oauth.scope_write', 'grc:write');
+        $appUrl = rtrim((string) config('app.url', ''), '/');
 
         // Fallback: se resource_url não configurado, usa APP_URL/mcp
         if ($resourceUrl === '') {
@@ -31,20 +31,20 @@ class WellKnownMcpController extends Controller
         }
 
         $document = [
-            'resource'              => $resourceUrl,
+            'resource' => $resourceUrl,
             'authorization_servers' => $authorizationServers,
-            'scopes_supported'      => [$scopeRead, $scopeWrite],
+            'scopes_supported' => [$scopeRead, $scopeWrite],
             'bearer_methods_supported' => ['header'],
             'resource_documentation' => $appUrl.'/.well-known/oauth-protected-resource',
-            'resource_name'          => 'Bastion Cyber MCP API',
-            'resource_description'   => 'API MCP do Bastion Cyber. Ferramentas de leitura exigem escopo '
+            'resource_name' => 'Bastion Cyber MCP API',
+            'resource_description' => 'API MCP do Bastion Cyber. Ferramentas de leitura exigem escopo '
                 .$scopeRead.'; ferramentas de escrita exigem escopo '.$scopeWrite.'.',
         ];
 
         return response()
             ->json($document, 200, [
-                'Content-Type'                => 'application/json',
-                'Cache-Control'               => 'public, max-age=300',
+                'Content-Type' => 'application/json',
+                'Cache-Control' => 'public, max-age=300',
                 'Access-Control-Allow-Origin' => '*',
             ]);
     }

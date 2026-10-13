@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Politica;
+use App\Models\Software;
 use App\Services\GeminiService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class PoliticaController extends Controller
             $busca = $request->input('busca');
             $query->where(function ($q) use ($busca) {
                 $q->where('titulo', 'like', "%{$busca}%")
-                  ->orWhere('conteudo', 'like', "%{$busca}%");
+                    ->orWhere('conteudo', 'like', "%{$busca}%");
             });
         }
 
@@ -84,28 +85,28 @@ class PoliticaController extends Controller
         $promptAdicional = trim($validated['prompt_adicional'] ?? '');
 
         // Coleta de Contexto Organizacional real para alinhar a política às tecnologias da empresa
-        $softwares = \App\Models\Software::all(['nome', 'tecnologia'])->map(function($sw) {
+        $softwares = Software::all(['nome', 'tecnologia'])->map(function ($sw) {
             return "{$sw->nome} ({$sw->tecnologia})";
         })->toArray();
-        $politicasAtuais = \App\Models\Politica::pluck('titulo')->toArray();
+        $politicasAtuais = Politica::pluck('titulo')->toArray();
 
         $contexto = "Você está criando uma política de segurança para uma organização com a seguinte arquitetura de TI/Segurança:\n";
-        if (!empty($softwares)) {
-            $contexto .= "- Softwares e pilhas tecnológicas em uso: " . implode(', ', $softwares) . "\n";
+        if (! empty($softwares)) {
+            $contexto .= '- Softwares e pilhas tecnológicas em uso: '.implode(', ', $softwares)."\n";
         }
-        if (!empty($politicasAtuais)) {
-            $contexto .= "- Políticas já formalizadas na empresa: " . implode(', ', $politicasAtuais) . "\n";
+        if (! empty($politicasAtuais)) {
+            $contexto .= '- Políticas já formalizadas na empresa: '.implode(', ', $politicasAtuais)."\n";
         }
 
         $prompt = "{$contexto}\n"
-            . "Escreva uma política de segurança corporativa profissional, formal e extremamente aderente a normas de GRC para o título '{$titulo}' na categoria '{$categoria}'.\n"
-            . "Instruções Operacionais e Técnicas:\n"
-            . "- Use apenas texto simples e quebras de linha limpas e nítidas entre parágrafos.\n"
-            . "- NÃO use formatação Markdown como títulos (#, ##), negritos (**), itálicos (*), ou marcadores com símbolos. O texto deve ser plano/raw.\n"
-            . "- Seja específico, técnico e acionável para fins de auditoria de conformidade.\n";
+            ."Escreva uma política de segurança corporativa profissional, formal e extremamente aderente a normas de GRC para o título '{$titulo}' na categoria '{$categoria}'.\n"
+            ."Instruções Operacionais e Técnicas:\n"
+            ."- Use apenas texto simples e quebras de linha limpas e nítidas entre parágrafos.\n"
+            ."- NÃO use formatação Markdown como títulos (#, ##), negritos (**), itálicos (*), ou marcadores com símbolos. O texto deve ser plano/raw.\n"
+            ."- Seja específico, técnico e acionável para fins de auditoria de conformidade.\n";
 
         if ($promptAdicional !== '') {
-            $prompt .= "\nRequisitos específicos e contexto adicional provido pelo analista:\n" . $promptAdicional . "\n";
+            $prompt .= "\nRequisitos específicos e contexto adicional provido pelo analista:\n".$promptAdicional."\n";
         }
 
         $conteudo = $gemini->generateGovernance($prompt);
@@ -115,16 +116,16 @@ class PoliticaController extends Controller
 
     public function suggestIA(GeminiService $gemini)
     {
-        $politicasAtuais = \App\Models\Politica::pluck('titulo')->toArray();
-        $softwares = \App\Models\Software::pluck('nome')->toArray();
-        
-        $contexto = "Temos os seguintes softwares no portfólio: " . implode(', ', $softwares) . ". ";
-        $contexto .= "Já possuímos as seguintes políticas: " . implode(', ', $politicasAtuais) . ". ";
-        
-        $prompt = $contexto . "Com base nisso, sugira 3 novas políticas que seriam críticas para a nossa segurança e conformidade. Para cada sugestão, dê um título curto e uma breve justificativa de 1 frase. Responda em texto simples, sem Markdown.";
-        
+        $politicasAtuais = Politica::pluck('titulo')->toArray();
+        $softwares = Software::pluck('nome')->toArray();
+
+        $contexto = 'Temos os seguintes softwares no portfólio: '.implode(', ', $softwares).'. ';
+        $contexto .= 'Já possuímos as seguintes políticas: '.implode(', ', $politicasAtuais).'. ';
+
+        $prompt = $contexto.'Com base nisso, sugira 3 novas políticas que seriam críticas para a nossa segurança e conformidade. Para cada sugestão, dê um título curto e uma breve justificativa de 1 frase. Responda em texto simples, sem Markdown.';
+
         $sugestoes = $gemini->generateGovernance($prompt);
-        
+
         return response()->json(['sugestoes' => $sugestoes]);
     }
 
@@ -135,6 +136,7 @@ class PoliticaController extends Controller
         if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
             $html = view('politicas.print', ['politicas' => $politicas, 'isPdfMode' => true])->render();
             $safeTitle = \Str::slug($politica->titulo) ?: "politica_{$politica->id}";
+
             return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
         }
 
@@ -152,7 +154,8 @@ class PoliticaController extends Controller
 
         if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
             $html = view('politicas.print', ['politicas' => $politicas, 'isPdfMode' => true, 'filters' => $filters])->render();
-            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("relatorio_politicas.pdf");
+
+            return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download('relatorio_politicas.pdf');
         }
 
         return view('politicas.print', compact('politicas', 'filters'));
@@ -161,10 +164,10 @@ class PoliticaController extends Controller
     public function exportZip(Request $request)
     {
         $politicas = $this->filteredQuery($request)->get();
-        $zipFileName = 'politicas_governanca_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
-        $zipPath = storage_path('app/' . $zipFileName);
+        $zipFileName = 'politicas_governanca_'.now()->format('Ymd_His').'_'.\Str::random(6).'.zip';
+        $zipPath = storage_path('app/'.$zipFileName);
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
@@ -184,6 +187,7 @@ class PoliticaController extends Controller
     public function destroy(Politica $politica)
     {
         $politica->delete();
+
         return redirect()->back()->with('success', 'Política removida.');
     }
 }

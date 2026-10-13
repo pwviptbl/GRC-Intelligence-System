@@ -78,16 +78,16 @@ class NmapParser extends BaseScanParser
                         }
 
                         $findings->push([
-                            'titulo'              => "Nmap NSE ({$scriptId}): {$addr}:{$portId} ({$serviceName})",
-                            'descricao'           => "Script {$scriptId} detectou vulnerabilidade ou informação na porta {$portId}/{$protocol}.\n\nServiço: {$serviceDetails}\n\nSaída:\n{$output}",
-                            'severidade'          => $severity,
-                            'cvss_score'          => null,
-                            'cve_id'              => $cve,
-                            'cwe_id'              => null,
-                            'endpoint'            => "{$addr}:{$portId}",
-                            'parametro'           => "{$protocol}/{$portId}",
-                            'metodo_http'         => null,
-                            'prova_conceito'      => "Host: {$addr}\nPort: {$portId}/{$protocol}\nScript: {$scriptId}\nOutput:\n{$output}",
+                            'titulo' => "Nmap NSE ({$scriptId}): {$addr}:{$portId} ({$serviceName})",
+                            'descricao' => "Script {$scriptId} detectou vulnerabilidade ou informação na porta {$portId}/{$protocol}.\n\nServiço: {$serviceDetails}\n\nSaída:\n{$output}",
+                            'severidade' => $severity,
+                            'cvss_score' => null,
+                            'cve_id' => $cve,
+                            'cwe_id' => null,
+                            'endpoint' => "{$addr}:{$portId}",
+                            'parametro' => "{$protocol}/{$portId}",
+                            'metodo_http' => null,
+                            'prova_conceito' => "Host: {$addr}\nPort: {$portId}/{$protocol}\nScript: {$scriptId}\nOutput:\n{$output}",
                             'remediacao_sugerida' => "Restrinja o acesso à porta {$portId} ou atualize o software do serviço ({$serviceDetails}).",
                         ]);
                     }
@@ -97,16 +97,16 @@ class NmapParser extends BaseScanParser
                     $severity = $isSensitivePort ? 'baixo' : 'informativo';
 
                     $findings->push([
-                        'titulo'              => "Porta Aberta {$portId}/{$protocol} ({$serviceName}) em {$addr}",
-                        'descricao'           => "A porta {$portId}/{$protocol} está aberta e expondo o serviço {$serviceDetails}.",
-                        'severidade'          => $severity,
-                        'cvss_score'          => null,
-                        'cve_id'              => null,
-                        'cwe_id'              => 'CWE-200',
-                        'endpoint'            => "{$addr}:{$portId}",
-                        'parametro'           => "{$protocol}/{$portId}",
-                        'metodo_http'         => null,
-                        'prova_conceito'      => "Nmap scan open port: {$portId}/{$protocol} state={$state}\nService: {$serviceDetails}",
+                        'titulo' => "Porta Aberta {$portId}/{$protocol} ({$serviceName}) em {$addr}",
+                        'descricao' => "A porta {$portId}/{$protocol} está aberta e expondo o serviço {$serviceDetails}.",
+                        'severidade' => $severity,
+                        'cvss_score' => null,
+                        'cve_id' => null,
+                        'cwe_id' => 'CWE-200',
+                        'endpoint' => "{$addr}:{$portId}",
+                        'parametro' => "{$protocol}/{$portId}",
+                        'metodo_http' => null,
+                        'prova_conceito' => "Nmap scan open port: {$portId}/{$protocol} state={$state}\nService: {$serviceDetails}",
                         'remediacao_sugerida' => $isSensitivePort ? "Recomenda-se fechar ou filtrar por firewall o acesso à porta de infraestrutura {$portId}." : null,
                     ]);
                 }

@@ -24,8 +24,7 @@ class AllowedUploadExtension implements ValidationRule
     public function __construct(
         private array $allowed = self::EVIDENCE,
         private string $message = 'Tipo de arquivo não permitido. Envie documento, imagem, log ou arquivo compactado.',
-    ) {
-    }
+    ) {}
 
     public static function evidence(?string $message = null): self
     {

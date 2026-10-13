@@ -12,6 +12,7 @@ class TreinamentoController extends Controller
     public function index()
     {
         $treinamentos = Treinamento::with('registros')->latest()->get();
+
         return view('treinamentos.index', compact('treinamentos'));
     }
 
@@ -22,24 +23,24 @@ class TreinamentoController extends Controller
             'descricao' => 'required|string',
             'categoria' => 'required|string',
             'obrigatorio' => 'boolean',
-            'alunos' => 'nullable|string' // Lista de alunos separada por virgula ou nova linha
+            'alunos' => 'nullable|string', // Lista de alunos separada por virgula ou nova linha
         ]);
 
         $treinamento = Treinamento::create([
             'titulo' => $validated['titulo'],
             'descricao' => $validated['descricao'],
             'categoria' => $validated['categoria'],
-            'obrigatorio' => $request->has('obrigatorio')
+            'obrigatorio' => $request->has('obrigatorio'),
         ]);
 
-        if (!empty($validated['alunos'])) {
+        if (! empty($validated['alunos'])) {
             $alunos = preg_split('/[,\n\r]+/', $validated['alunos']);
             foreach ($alunos as $aluno) {
                 if (trim($aluno)) {
                     TreinamentoRegistro::create([
                         'treinamento_id' => $treinamento->id,
                         'colaborador' => trim($aluno),
-                        'status' => 'pendente'
+                        'status' => 'pendente',
                     ]);
                 }
             }
@@ -54,7 +55,7 @@ class TreinamentoController extends Controller
             'titulo' => 'required|string|max:255',
             'descricao' => 'required|string',
             'categoria' => 'required|string',
-            'obrigatorio' => 'boolean'
+            'obrigatorio' => 'boolean',
         ]);
 
         $treinamento->update($validated);
@@ -69,6 +70,7 @@ class TreinamentoController extends Controller
         if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
             $html = view('treinamentos.print', ['treinamentos' => $treinamentos, 'isPdfMode' => true])->render();
             $safeTitle = \Str::slug($treinamento->titulo) ?: "treinamento_{$treinamento->id}";
+
             return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
         }
 
@@ -78,16 +80,17 @@ class TreinamentoController extends Controller
     public function printAll()
     {
         $treinamentos = Treinamento::with('registros')->latest()->get();
+
         return view('treinamentos.print', compact('treinamentos'));
     }
 
     public function exportZip()
     {
         $treinamentos = Treinamento::with('registros')->latest()->get();
-        $zipFileName = 'controle_treinamentos_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
-        $zipPath = storage_path('app/' . $zipFileName);
+        $zipFileName = 'controle_treinamentos_'.now()->format('Ymd_His').'_'.\Str::random(6).'.zip';
+        $zipPath = storage_path('app/'.$zipFileName);
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
@@ -107,6 +110,7 @@ class TreinamentoController extends Controller
     public function destroy(Treinamento $treinamento)
     {
         $treinamento->delete();
+
         return redirect()->back()->with('success', 'Treinamento removido.');
     }
 
@@ -114,17 +118,18 @@ class TreinamentoController extends Controller
     public function addAlunos(Request $request, Treinamento $treinamento)
     {
         $alunosRaw = $request->input('alunos');
-        if (!empty($alunosRaw)) {
+        if (! empty($alunosRaw)) {
             $alunos = preg_split('/[,\n\r]+/', $alunosRaw);
             foreach ($alunos as $aluno) {
                 if (trim($aluno)) {
                     TreinamentoRegistro::firstOrCreate([
                         'treinamento_id' => $treinamento->id,
-                        'colaborador' => trim($aluno)
+                        'colaborador' => trim($aluno),
                     ]);
                 }
             }
         }
+
         return redirect()->back()->with('success', 'Lista de alunos atualizada!');
     }
 
@@ -132,6 +137,7 @@ class TreinamentoController extends Controller
     public function updateRegistro(Request $request, TreinamentoRegistro $registro)
     {
         $registro->update($request->only('status', 'data_conclusao'));
+
         return response()->json(['success' => true]);
     }
 }

@@ -75,8 +75,7 @@ class ActivityCatalogCoverageService
             $activities = $module->atividades;
             if ($activities->isEmpty()) {
                 $moduleName = $this->normalizedName($module->nome);
-                $matchedLegacy = $legacyActivities->filter(fn (Atividade $activity) =>
-                    $activity->software_id === $module->software_id
+                $matchedLegacy = $legacyActivities->filter(fn (Atividade $activity) => $activity->software_id === $module->software_id
                     && $this->normalizedName((string) $activity->modulo) === $moduleName
                 );
                 if ($matchedLegacy->isNotEmpty()) {

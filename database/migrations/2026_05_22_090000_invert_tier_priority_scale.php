@@ -12,21 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         if (Schema::hasTable('tier_politicas')) {
-            DB::statement("UPDATE tier_politicas
+            DB::statement('UPDATE tier_politicas
                 SET tier = CASE
                     WHEN tier = 1 THEN 3
                     WHEN tier = 3 THEN 1
                     ELSE tier
-                END");
+                END');
         }
 
         if (Schema::hasTable('controle_eventos')) {
-            DB::statement("UPDATE controle_eventos
+            DB::statement('UPDATE controle_eventos
                 SET tier = CASE
                     WHEN tier = 1 THEN 3
                     WHEN tier = 3 THEN 1
                     ELSE tier
-                END");
+                END');
         }
     }
 
@@ -36,21 +36,21 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasTable('tier_politicas')) {
-            DB::statement("UPDATE tier_politicas
+            DB::statement('UPDATE tier_politicas
                 SET tier = CASE
                     WHEN tier = 1 THEN 3
                     WHEN tier = 3 THEN 1
                     ELSE tier
-                END");
+                END');
         }
 
         if (Schema::hasTable('controle_eventos')) {
-            DB::statement("UPDATE controle_eventos
+            DB::statement('UPDATE controle_eventos
                 SET tier = CASE
                     WHEN tier = 1 THEN 3
                     WHEN tier = 3 THEN 1
                     ELSE tier
-                END");
+                END');
         }
     }
 };

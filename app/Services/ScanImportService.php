@@ -21,15 +21,15 @@ class ScanImportService
 {
     /** @var array<string, class-string<ScanParserInterface>> */
     protected array $parsers = [
-        'zap'     => ZapParser::class,
-        'nikto'   => NiktoParser::class,
-        'nuclei'  => NucleiParser::class,
-        'nmap'    => NmapParser::class,
-        'burp'    => BurpParser::class,
+        'zap' => ZapParser::class,
+        'nikto' => NiktoParser::class,
+        'nuclei' => NucleiParser::class,
+        'nmap' => NmapParser::class,
+        'burp' => BurpParser::class,
         'semgrep' => SemgrepParser::class,
-        'trivy'   => TrivyParser::class,
-        'bandit'  => BanditParser::class,
-        'grype'   => GrypeParser::class,
+        'trivy' => TrivyParser::class,
+        'bandit' => BanditParser::class,
+        'grype' => GrypeParser::class,
     ];
 
     /**
@@ -42,10 +42,11 @@ class ScanImportService
             /** @var ScanParserInterface $instance */
             $instance = app($parserClass);
             $list[$key] = [
-                'key'  => $instance->getKey(),
+                'key' => $instance->getKey(),
                 'name' => $instance->getName(),
             ];
         }
+
         return $list;
     }
 
@@ -86,7 +87,7 @@ class ScanImportService
             return [
                 'success' => false,
                 'message' => 'Não foi possível identificar o formato do arquivo de scan. Selecione a ferramenta manualmente.',
-                'total'   => 0,
+                'total' => 0,
             ];
         }
 
@@ -96,31 +97,31 @@ class ScanImportService
         } catch (\Throwable $e) {
             return [
                 'success' => false,
-                'message' => 'Erro ao processar o arquivo de scan: ' . $e->getMessage(),
-                'total'   => 0,
+                'message' => 'Erro ao processar o arquivo de scan: '.$e->getMessage(),
+                'total' => 0,
             ];
         }
 
         if ($parsedItems->isEmpty()) {
             return [
                 'success' => true,
-                'parser'  => $parser->getName(),
-                'message' => 'O arquivo foi lido com sucesso pela ferramenta ' . $parser->getName() . ', mas nenhum achado/vulnerabilidade foi detectado.',
-                'total'       => 0,
-                'novos'       => 0,
-                'duplicados'  => 0,
-                'regressoes'  => 0,
+                'parser' => $parser->getName(),
+                'message' => 'O arquivo foi lido com sucesso pela ferramenta '.$parser->getName().', mas nenhum achado/vulnerabilidade foi detectado.',
+                'total' => 0,
+                'novos' => 0,
+                'duplicados' => 0,
+                'regressoes' => 0,
             ];
         }
 
         // Salva arquivo no storage para histórico e auditoria
-        $safeName = time() . '_' . Str::slug(pathinfo($filename, PATHINFO_FILENAME)) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
-        $storagePath = 'scans/' . $test->id . '/' . $safeName;
+        $safeName = time().'_'.Str::slug(pathinfo($filename, PATHINFO_FILENAME)).'.'.pathinfo($filename, PATHINFO_EXTENSION);
+        $storagePath = 'scans/'.$test->id.'/'.$safeName;
         Storage::disk('local')->put($storagePath, $content);
 
         $counts = [
-            'total'      => 0,
-            'novos'      => 0,
+            'total' => 0,
+            'novos' => 0,
             'duplicados' => 0,
             'regressoes' => 0,
         ];
@@ -128,7 +129,7 @@ class ScanImportService
         // Insere os achados associados ao teste
         foreach ($parsedItems as $item) {
             $item['test_id'] = $test->id;
-            
+
             // Criação do achado via Eloquent (o boot do Model Finding aciona o FindingDeduplicationService)
             $finding = Finding::create($item);
 
@@ -158,13 +159,13 @@ class ScanImportService
         $resumoMsg = "Importação concluída com sucesso via {$parser->getName()}: {$counts['total']} achados processados ({$counts['novos']} novos, {$counts['duplicados']} duplicados, {$counts['regressoes']} regressões).";
 
         return [
-            'success'     => true,
-            'parser'      => $parser->getName(),
-            'message'     => $resumoMsg,
-            'total'       => $counts['total'],
-            'novos'       => $counts['novos'],
-            'duplicados'  => $counts['duplicados'],
-            'regressoes'  => $counts['regressoes'],
+            'success' => true,
+            'parser' => $parser->getName(),
+            'message' => $resumoMsg,
+            'total' => $counts['total'],
+            'novos' => $counts['novos'],
+            'duplicados' => $counts['duplicados'],
+            'regressoes' => $counts['regressoes'],
         ];
     }
 }

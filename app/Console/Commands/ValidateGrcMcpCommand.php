@@ -28,16 +28,16 @@ class ValidateGrcMcpCommand extends Command
         // Testa protocolo MCP
         $initialize = $protocol->handle([
             'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => 'initialize',
-            'params'  => ['protocolVersion' => GrcMcpProtocol::PROTOCOL_VERSION],
+            'id' => 1,
+            'method' => 'initialize',
+            'params' => ['protocolVersion' => GrcMcpProtocol::PROTOCOL_VERSION],
         ]);
 
         $tools = $protocol->handle([
             'jsonrpc' => '2.0',
-            'id'      => 2,
-            'method'  => 'tools/list',
-            'params'  => [],
+            'id' => 2,
+            'method' => 'tools/list',
+            'params' => [],
         ]);
 
         if (($initialize['result']['protocolVersion'] ?? null) !== GrcMcpProtocol::PROTOCOL_VERSION) {
@@ -53,7 +53,7 @@ class ValidateGrcMcpCommand extends Command
             return self::FAILURE;
         }
 
-        $readTools  = collect($toolList)->filter(fn ($t) => ($t['security'][0]['oauth2'][0] ?? '') === config('mcp.oauth.scope_read', 'grc:read'))->count();
+        $readTools = collect($toolList)->filter(fn ($t) => ($t['security'][0]['oauth2'][0] ?? '') === config('mcp.oauth.scope_read', 'grc:read'))->count();
         $writeTools = collect($toolList)->filter(fn ($t) => ($t['security'][0]['oauth2'][0] ?? '') === config('mcp.oauth.scope_write', 'grc:write'))->count();
 
         $this->info('✅ MCP válido.');
@@ -89,7 +89,7 @@ class ValidateGrcMcpCommand extends Command
 
     private function validateOAuth(): bool
     {
-        $issuer   = (string) config('mcp.oauth.issuer', '');
+        $issuer = (string) config('mcp.oauth.issuer', '');
         $audience = (string) config('mcp.oauth.audience', '');
         $resource = (string) config('mcp.oauth.resource_url', '');
 
@@ -133,7 +133,7 @@ class ValidateGrcMcpCommand extends Command
     private function validateBearer(): bool
     {
         $tokens = config('mcp.tokens', []);
-        $token  = (string) ($tokens[0] ?? config('mcp.token'));
+        $token = (string) ($tokens[0] ?? config('mcp.token'));
         $allowUnauthenticated = (bool) config('mcp.allow_unauthenticated', false);
 
         if ($token === '' && ! $allowUnauthenticated) {

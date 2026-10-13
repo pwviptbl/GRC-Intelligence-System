@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class PlanoAcao extends Model
 {
     protected $table = 'plano_acaos';
+
     protected $fillable = [
         'titulo', 'descricao', 'origem', 'origem_id', 'responsavel', 'prioridade', 'status',
-        'software_id', 'cliente_id'
+        'software_id', 'cliente_id',
     ];
 
     public function software()

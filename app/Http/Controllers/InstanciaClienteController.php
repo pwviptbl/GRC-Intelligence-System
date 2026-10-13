@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InstanciaCliente;
 use App\Models\Cliente;
+use App\Models\InstanciaCliente;
 use App\Models\Software;
-use App\Services\EasmService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Process;
 
@@ -33,27 +32,26 @@ class InstanciaClienteController extends Controller
         // Filtro por Termo de busca (nome do ambiente, URL, IP, branch)
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nome_ambiente', 'like', "%{$search}%")
-                  ->orWhere('url_principal', 'like', "%{$search}%")
-                  ->orWhere('endereco_ip', 'like', "%{$search}%")
-                  ->orWhere('branch', 'like', "%{$search}%")
-                  ->orWhere('infra_provedor', 'like', "%{$search}%")
-                  ->orWhere('git_custom_url', 'like', "%{$search}%");
+                    ->orWhere('url_principal', 'like', "%{$search}%")
+                    ->orWhere('endereco_ip', 'like', "%{$search}%")
+                    ->orWhere('branch', 'like', "%{$search}%")
+                    ->orWhere('infra_provedor', 'like', "%{$search}%")
+                    ->orWhere('git_custom_url', 'like', "%{$search}%");
             });
         }
 
         $instancias = $query->latest()->get();
         $clientes = Cliente::orderBy('nome')->get();
         $softwares = Software::orderBy('nome')->get();
-        
+
         return view('instancias.index', compact('instancias', 'clientes', 'softwares'));
     }
 
-    
     protected function autoResolveIp(array $data): array
     {
-        if (empty($data['endereco_ip']) && !empty($data['url_principal'])) {
+        if (empty($data['endereco_ip']) && ! empty($data['url_principal'])) {
             $host = parse_url($data['url_principal'], PHP_URL_HOST);
             if ($host) {
                 $ip = @gethostbyname($host);
@@ -62,6 +60,7 @@ class InstanciaClienteController extends Controller
                 }
             }
         }
+
         return $data;
     }
 
@@ -105,7 +104,6 @@ class InstanciaClienteController extends Controller
         return redirect()->back()->with('success', 'Ambiente atualizado com sucesso!');
     }
 
-    
     public function show(InstanciaCliente $instancia)
     {
         $instancia->load(['cliente', 'software', 'latestSslCert', 'portasServicos']);
@@ -164,21 +162,23 @@ class InstanciaClienteController extends Controller
         }
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nome_ambiente', 'like', "%{$search}%")
-                  ->orWhere('url_principal', 'like', "%{$search}%")
-                  ->orWhere('endereco_ip', 'like', "%{$search}%")
-                  ->orWhere('branch', 'like', "%{$search}%");
+                    ->orWhere('url_principal', 'like', "%{$search}%")
+                    ->orWhere('endereco_ip', 'like', "%{$search}%")
+                    ->orWhere('branch', 'like', "%{$search}%");
             });
         }
 
         $instancias = $query->latest()->get();
+
         return view('instancias.print', compact('instancias'));
     }
 
     public function destroy(InstanciaCliente $instancia)
     {
         $instancia->delete();
+
         return redirect()->back()->with('success', 'Ambiente removido com sucesso!');
     }
 }

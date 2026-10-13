@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Http\Controllers\BackupController;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -66,7 +66,7 @@ class BackupDeleteTest extends TestCase
         $path = Storage::disk('local')->path('backups/valido.zip');
         Storage::disk('local')->makeDirectory('backups');
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $zip->addFromString('database.sql', 'select 1;');
         $zip->addFromString('manifest.json', '{}');
@@ -88,7 +88,7 @@ class BackupDeleteTest extends TestCase
         Storage::disk('local')->makeDirectory('backups');
         $path = Storage::disk('local')->path('backups/checksum.zip');
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $zip->addFromString('database.sql', 'select 1;');
         $zip->addFromString('manifest.json', '{}');
@@ -110,7 +110,7 @@ class BackupDeleteTest extends TestCase
         Storage::disk('local')->makeDirectory('backups');
         $path = Storage::disk('local')->path('backups/inseguro.zip');
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $zip->addFromString('database.sql', 'select 1;');
         $zip->addFromString('manifest.json', '{}');
@@ -147,7 +147,7 @@ class BackupDeleteTest extends TestCase
         Storage::fake('local');
         Storage::disk('local')->makeDirectory('backups');
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $zip->open(Storage::disk('local')->path('backups/'.$name), ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $zip->addFromString('database.sql', 'select 1;');
         $zip->addFromString('manifest.json', '{}');

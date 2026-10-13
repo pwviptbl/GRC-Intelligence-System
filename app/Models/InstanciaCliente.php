@@ -72,12 +72,12 @@ class InstanciaCliente extends Model
         $directIds = $this->engagements()->pluck('engagements.id')->toArray();
 
         $branchIds = [];
-        if (!empty($this->branch)) {
+        if (! empty($this->branch)) {
             $branchIds = Engagement::where('software_id', $this->software_id)
                 ->where('auto_propagar_branch', true)
                 ->where(function ($q) {
                     $q->where('branch_testada', $this->branch)
-                      ->orWhere('versao_testada', $this->branch);
+                        ->orWhere('versao_testada', $this->branch);
                 })
                 ->pluck('id')
                 ->toArray();
@@ -92,6 +92,7 @@ class InstanciaCliente extends Model
     public function applicableTests()
     {
         $engIds = $this->getApplicableEngagementIds();
+
         return EngagementTest::whereIn('engagement_id', $engIds);
     }
 
@@ -101,7 +102,8 @@ class InstanciaCliente extends Model
     public function applicableFindings()
     {
         $engIds = $this->getApplicableEngagementIds();
-        return Finding::whereHas('test', fn($q) => $q->whereIn('engagement_id', $engIds));
+
+        return Finding::whereHas('test', fn ($q) => $q->whereIn('engagement_id', $engIds));
     }
 
     /**
@@ -113,14 +115,14 @@ class InstanciaCliente extends Model
 
         if ($cicloMeses === 0) {
             return [
-                'status'         => 'sob_demanda',
-                'label'          => 'Sob Demanda',
-                'cor'            => '#64748b',
+                'status' => 'sob_demanda',
+                'label' => 'Sob Demanda',
+                'cor' => '#64748b',
                 'dias_restantes' => null,
-                'atrasado'       => false,
-                'ultimo_teste'   => null,
-                'proximo_teste'  => null,
-                'descricao'      => 'Testes sob demanda sem periodicidade fixa.',
+                'atrasado' => false,
+                'ultimo_teste' => null,
+                'proximo_teste' => null,
+                'descricao' => 'Testes sob demanda sem periodicidade fixa.',
             ];
         }
 
@@ -141,14 +143,14 @@ class InstanciaCliente extends Model
             $branchLabel = $this->branch ?: 's/ branch';
 
             return [
-                'status'         => 'pendente_primeiro_teste',
-                'label'          => $isAtrasado ? 'Ciclo Inicial Vencido' : "Sem Testes ({$branchLabel})",
-                'cor'            => $isAtrasado ? '#ef4444' : '#64748b',
+                'status' => 'pendente_primeiro_teste',
+                'label' => $isAtrasado ? 'Ciclo Inicial Vencido' : "Sem Testes ({$branchLabel})",
+                'cor' => $isAtrasado ? '#ef4444' : '#64748b',
                 'dias_restantes' => $isAtrasado ? ($cicloDias - $diasDesdeCriacao) : null,
-                'atrasado'       => $isAtrasado,
-                'ultimo_teste'   => null,
-                'proximo_teste'  => $isAtrasado ? now()->toDateString() : null,
-                'descricao'      => "Nenhum teste de segurança registrado para a branch '{$branchLabel}' deste ambiente.",
+                'atrasado' => $isAtrasado,
+                'ultimo_teste' => null,
+                'proximo_teste' => $isAtrasado ? now()->toDateString() : null,
+                'descricao' => "Nenhum teste de segurança registrado para a branch '{$branchLabel}' deste ambiente.",
             ];
         }
 
@@ -156,43 +158,43 @@ class InstanciaCliente extends Model
         $dataLimite = $refCarbon->copy()->addMonths($cicloMeses);
         $diasRestantes = (int) now()->startOfDay()->diffInDays($dataLimite->startOfDay(), false);
 
-        $origem = $latestTest->engagement?->branch_testada ? " (branch {$latestTest->engagement->branch_testada})" : "";
+        $origem = $latestTest->engagement?->branch_testada ? " (branch {$latestTest->engagement->branch_testada})" : '';
 
         if ($diasRestantes < 0) {
             return [
-                'status'         => 'atrasado',
-                'label'          => 'Ciclo Atrasado (' . abs($diasRestantes) . 'd)',
-                'cor'            => '#ef4444',
+                'status' => 'atrasado',
+                'label' => 'Ciclo Atrasado ('.abs($diasRestantes).'d)',
+                'cor' => '#ef4444',
                 'dias_restantes' => $diasRestantes,
-                'atrasado'       => true,
-                'ultimo_teste'   => $refCarbon->format('d/m/Y'),
-                'proximo_teste'  => $dataLimite->format('d/m/Y'),
-                'descricao'      => "Último teste{$origem} em {$refCarbon->format('d/m/Y')}. Ciclo semestral vencido há " . abs($diasRestantes) . " dia(s).",
+                'atrasado' => true,
+                'ultimo_teste' => $refCarbon->format('d/m/Y'),
+                'proximo_teste' => $dataLimite->format('d/m/Y'),
+                'descricao' => "Último teste{$origem} em {$refCarbon->format('d/m/Y')}. Ciclo semestral vencido há ".abs($diasRestantes).' dia(s).',
             ];
         }
 
         if ($diasRestantes <= 30) {
             return [
-                'status'         => 'alerta',
-                'label'          => "Vence em {$diasRestantes}d",
-                'cor'            => '#eab308',
+                'status' => 'alerta',
+                'label' => "Vence em {$diasRestantes}d",
+                'cor' => '#eab308',
                 'dias_restantes' => $diasRestantes,
-                'atrasado'       => false,
-                'ultimo_teste'   => $refCarbon->format('d/m/Y'),
-                'proximo_teste'  => $dataLimite->format('d/m/Y'),
-                'descricao'      => "Próximo teste{$origem} deve ocorrer até {$dataLimite->format('d/m/Y')}.",
+                'atrasado' => false,
+                'ultimo_teste' => $refCarbon->format('d/m/Y'),
+                'proximo_teste' => $dataLimite->format('d/m/Y'),
+                'descricao' => "Próximo teste{$origem} deve ocorrer até {$dataLimite->format('d/m/Y')}.",
             ];
         }
 
         return [
-            'status'         => 'em_dia',
-            'label'          => 'Em Dia (' . $diasRestantes . 'd)',
-            'cor'            => '#22c55e',
+            'status' => 'em_dia',
+            'label' => 'Em Dia ('.$diasRestantes.'d)',
+            'cor' => '#22c55e',
             'dias_restantes' => $diasRestantes,
-            'atrasado'       => false,
-            'ultimo_teste'   => $refCarbon->format('d/m/Y'),
-            'proximo_teste'  => $dataLimite->format('d/m/Y'),
-            'descricao'      => "Ambiente em conformidade até {$dataLimite->format('d/m/Y')}{$origem}.",
+            'atrasado' => false,
+            'ultimo_teste' => $refCarbon->format('d/m/Y'),
+            'proximo_teste' => $dataLimite->format('d/m/Y'),
+            'descricao' => "Ambiente em conformidade até {$dataLimite->format('d/m/Y')}{$origem}.",
         ];
     }
 
@@ -210,11 +212,11 @@ class InstanciaCliente extends Model
             ->get();
 
         $criticos = $openFindings->where('severidade', 'critico');
-        $altos    = $openFindings->where('severidade', 'alto');
-        $medios   = $openFindings->where('severidade', 'medio');
+        $altos = $openFindings->where('severidade', 'alto');
+        $medios = $openFindings->where('severidade', 'medio');
 
         $criticosAtrasados = $criticos->where('sla_status', 'atrasado')->count();
-        $criticosEmDia     = $criticos->count() - $criticosAtrasados;
+        $criticosEmDia = $criticos->count() - $criticosAtrasados;
         if ($criticosAtrasados > 0) {
             $ded = $criticosAtrasados * 20;
             $score -= $ded;
@@ -227,7 +229,7 @@ class InstanciaCliente extends Model
         }
 
         $altosAtrasados = $altos->where('sla_status', 'atrasado')->count();
-        $altosEmDia     = $altos->count() - $altosAtrasados;
+        $altosEmDia = $altos->count() - $altosAtrasados;
         if ($altosAtrasados > 0) {
             $ded = $altosAtrasados * 12;
             $score -= $ded;
@@ -260,7 +262,7 @@ class InstanciaCliente extends Model
             $penalidades[] = "-20 pts: Ambiente sem testes registrados na branch '{$this->branch}'";
         } elseif ($testCycle['status'] === 'atrasado') {
             $score -= 15;
-            $penalidades[] = "-15 pts: Ciclo periódico de testes atrasado";
+            $penalidades[] = '-15 pts: Ciclo periódico de testes atrasado';
         }
 
         // 3. Fator Superfície de Ataque EASM (Específico do Ambiente)
@@ -268,16 +270,16 @@ class InstanciaCliente extends Model
         if ($ssl) {
             if ($ssl->status_certificado === 'expirado') {
                 $score -= 20;
-                $penalidades[] = "-20 pts: Certificado SSL expirado em produção";
+                $penalidades[] = '-20 pts: Certificado SSL expirado em produção';
             } elseif ($ssl->status_certificado === 'expirando' || ($ssl->dias_restantes !== null && $ssl->dias_restantes <= 2)) {
                 $score -= 10;
-                $penalidades[] = "-10 pts: Certificado SSL a vencer em até 2 dias";
+                $penalidades[] = '-10 pts: Certificado SSL a vencer em até 2 dias';
             }
         }
 
         // Portas críticas abertas na internet pública
         if ($this->status_exposicao === 'publico') {
-            $portasPerigosas = $this->portasAbertas->filter(fn($p) => $p->isRiskyPort());
+            $portasPerigosas = $this->portasAbertas->filter(fn ($p) => $p->isRiskyPort());
             $qtdPortas = $portasPerigosas->count();
             if ($qtdPortas > 0) {
                 $ded = min(30, $qtdPortas * 15);
@@ -291,31 +293,31 @@ class InstanciaCliente extends Model
         if ($score >= 85) {
             $grade = 'A';
             $nivel = 'Excelente';
-            $cor   = '#22c55e';
+            $cor = '#22c55e';
         } elseif ($score >= 70) {
             $grade = 'B';
             $nivel = 'Bom';
-            $cor   = '#0ea5e9';
+            $cor = '#0ea5e9';
         } elseif ($score >= 50) {
             $grade = 'C';
             $nivel = 'Atenção';
-            $cor   = '#eab308';
+            $cor = '#eab308';
         } elseif ($score >= 30) {
             $grade = 'D';
             $nivel = 'Alto Risco';
-            $cor   = '#f97316';
+            $cor = '#f97316';
         } else {
             $grade = 'F';
             $nivel = 'Risco Crítico';
-            $cor   = '#ef4444';
+            $cor = '#ef4444';
         }
 
         return [
-            'score'         => $score,
-            'grade'         => $grade,
-            'nivel'         => $nivel,
-            'cor'           => $cor,
-            'penalidades'   => $penalidades,
+            'score' => $score,
+            'grade' => $grade,
+            'nivel' => $nivel,
+            'cor' => $cor,
+            'penalidades' => $penalidades,
             'total_abertos' => $openFindings->count(),
         ];
     }
@@ -324,8 +326,10 @@ class InstanciaCliente extends Model
     {
         if ($this->url_principal) {
             $parsed = parse_url($this->url_principal);
+
             return $parsed['host'] ?? null;
         }
+
         return $this->endereco_ip;
     }
 }

@@ -11,12 +11,12 @@ class RoleMiddleware
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      * @param  string  ...$roles
      */
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return redirect()->route('login');
         }
 
@@ -38,12 +38,12 @@ class RoleMiddleware
         }
 
         // 2. Verifica se o papel do usuário está na lista de papéis permitidos para esta rota
-        if (!in_array($user->role, $roles)) {
-            abort(403, 'Acesso Negado: Seu perfil (' . $user->role . ') não tem permissão para acessar esta área.');
+        if (! in_array($user->role, $roles)) {
+            abort(403, 'Acesso Negado: Seu perfil ('.$user->role.') não tem permissão para acessar esta área.');
         }
 
         // 3. Restrição específica para Auditor: se for auditor, SÓ pode passar se o método for GET (leitura)
-        if ($user->role === 'auditor' && !$request->isMethod('get')) {
+        if ($user->role === 'auditor' && ! $request->isMethod('get')) {
             abort(403, 'Acesso Negado: O perfil de Auditor possui permissão apenas de leitura (visualização).');
         }
 

@@ -80,6 +80,7 @@ class WeeklyPlanningBacklogService
                         ]);
                         $createdOrUpdated++;
                     }
+
                     continue;
                 }
 
@@ -137,7 +138,7 @@ class WeeklyPlanningBacklogService
                         ->where('origem', '!=', 'tier');
                 })
                 // 2. Ou tarefas manuais adicionadas pela governança
-                ->orWhereIn('origem', ['manual', 'Manual', 'agent']);
+                    ->orWhereIn('origem', ['manual', 'Manual', 'agent']);
             })
             ->orderByRaw("CASE prioridade WHEN 'Crítica' THEN 1 WHEN 'Alta' THEN 2 WHEN 'Média' THEN 3 WHEN 'Baixa' THEN 4 ELSE 5 END")
             ->orderBy('data_prevista');

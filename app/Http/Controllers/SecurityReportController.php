@@ -29,19 +29,19 @@ class SecurityReportController extends Controller
         }
 
         $stats = [
-            'total'       => $allFindings->count(),
-            'abertos'     => $allFindings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
-            'criticos'    => $allFindings->where('severidade', 'critico')->count(),
-            'altos'       => $allFindings->where('severidade', 'alto')->count(),
-            'medios'      => $allFindings->where('severidade', 'medio')->count(),
-            'baixos'      => $allFindings->where('severidade', 'baixo')->count(),
-            'info'        => $allFindings->where('severidade', 'informativo')->count(),
-            'fechados'    => $allFindings->where('status', 'fechado')->count(),
-            'regressoes'  => $allFindings->where('is_regression', true)->count(),
+            'total' => $allFindings->count(),
+            'abertos' => $allFindings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
+            'criticos' => $allFindings->where('severidade', 'critico')->count(),
+            'altos' => $allFindings->where('severidade', 'alto')->count(),
+            'medios' => $allFindings->where('severidade', 'medio')->count(),
+            'baixos' => $allFindings->where('severidade', 'baixo')->count(),
+            'info' => $allFindings->where('severidade', 'informativo')->count(),
+            'fechados' => $allFindings->where('status', 'fechado')->count(),
+            'regressoes' => $allFindings->where('is_regression', true)->count(),
         ];
 
         $html = view('reports.security.software', compact('software', 'allFindings', 'stats'))->render();
-        $safeName = Str::slug($software->nome) . '_relatorio_seguranca_' . date('Ymd');
+        $safeName = Str::slug($software->nome).'_relatorio_seguranca_'.date('Ymd');
 
         if ($request->boolean('preview') || $request->input('format') === 'html') {
             return response($html);
@@ -65,19 +65,19 @@ class SecurityReportController extends Controller
         }
 
         $stats = [
-            'total'      => $findings->count(),
-            'abertos'    => $findings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
-            'criticos'   => $findings->where('severidade', 'critico')->count(),
-            'altos'      => $findings->where('severidade', 'alto')->count(),
-            'medios'     => $findings->where('severidade', 'medio')->count(),
-            'baixos'     => $findings->where('severidade', 'baixo')->count(),
-            'info'       => $findings->where('severidade', 'informativo')->count(),
-            'fechados'   => $findings->where('status', 'fechado')->count(),
+            'total' => $findings->count(),
+            'abertos' => $findings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
+            'criticos' => $findings->where('severidade', 'critico')->count(),
+            'altos' => $findings->where('severidade', 'alto')->count(),
+            'medios' => $findings->where('severidade', 'medio')->count(),
+            'baixos' => $findings->where('severidade', 'baixo')->count(),
+            'info' => $findings->where('severidade', 'informativo')->count(),
+            'fechados' => $findings->where('status', 'fechado')->count(),
             'regressoes' => $findings->where('is_regression', true)->count(),
         ];
 
         $html = view('reports.security.engagement', compact('engagement', 'findings', 'stats'))->render();
-        $safeName = Str::slug($engagement->nome) . '_relatorio_' . date('Ymd');
+        $safeName = Str::slug($engagement->nome).'_relatorio_'.date('Ymd');
 
         if ($request->boolean('preview') || $request->input('format') === 'html') {
             return response($html);
@@ -96,19 +96,19 @@ class SecurityReportController extends Controller
         $findings = $engagementTest->findings;
 
         $stats = [
-            'total'      => $findings->count(),
-            'abertos'    => $findings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
-            'criticos'   => $findings->where('severidade', 'critico')->count(),
-            'altos'      => $findings->where('severidade', 'alto')->count(),
-            'medios'     => $findings->where('severidade', 'medio')->count(),
-            'baixos'     => $findings->where('severidade', 'baixo')->count(),
-            'info'       => $findings->where('severidade', 'informativo')->count(),
-            'fechados'   => $findings->where('status', 'fechado')->count(),
+            'total' => $findings->count(),
+            'abertos' => $findings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
+            'criticos' => $findings->where('severidade', 'critico')->count(),
+            'altos' => $findings->where('severidade', 'alto')->count(),
+            'medios' => $findings->where('severidade', 'medio')->count(),
+            'baixos' => $findings->where('severidade', 'baixo')->count(),
+            'info' => $findings->where('severidade', 'informativo')->count(),
+            'fechados' => $findings->where('status', 'fechado')->count(),
             'regressoes' => $findings->where('is_regression', true)->count(),
         ];
 
         $html = view('reports.security.test', compact('engagementTest', 'findings', 'stats'))->render();
-        $safeName = Str::slug($engagementTest->titulo) . '_teste_' . date('Ymd');
+        $safeName = Str::slug($engagementTest->titulo).'_teste_'.date('Ymd');
 
         if ($request->boolean('preview') || $request->input('format') === 'html') {
             return response($html);
@@ -125,7 +125,7 @@ class SecurityReportController extends Controller
         $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom']);
 
         $html = view('reports.security.finding', compact('finding'))->render();
-        $safeName = 'achado_' . $finding->id . '_' . Str::slug($finding->titulo);
+        $safeName = 'achado_'.$finding->id.'_'.Str::slug($finding->titulo);
 
         if ($request->boolean('preview') || $request->input('format') === 'html') {
             return response($html);

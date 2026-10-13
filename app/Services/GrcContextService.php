@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\ControleEvento;
+use App\Models\Finding;
 use App\Models\Incidente;
 use App\Models\Politica;
 use App\Models\Procedimento;
-use App\Models\Finding;
 use App\Models\Software;
 use App\Models\TierPolitica;
 use Illuminate\Support\Facades\Schema;

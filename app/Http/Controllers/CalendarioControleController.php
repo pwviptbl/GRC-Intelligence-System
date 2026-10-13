@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\ControleEvento;
-use App\Models\ControleEventoEtapa;
 use App\Models\ControleEventoAnexo;
+use App\Models\ControleEventoEtapa;
 use App\Models\PlanoAcaoItemEvidencia;
 use App\Models\Procedimento;
 use App\Models\Software;
@@ -12,15 +13,14 @@ use App\Models\User;
 use App\Rules\AllowedUploadExtension;
 use App\Services\CalendarioControleService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class CalendarioControleController extends Controller
 {
-    public function __construct(protected CalendarioControleService $service)
-    {
-    }
+    public function __construct(protected CalendarioControleService $service) {}
 
     public function index(Request $request)
     {
@@ -83,7 +83,7 @@ class CalendarioControleController extends Controller
             'effortOptions' => ControleEvento::EFFORT_OPTIONS,
             'demandTypeOptions' => ControleEvento::DEMAND_TYPE_OPTIONS,
             'kanbanMode' => true,
-            'clientes' => \App\Models\Cliente::query()->orderBy('nome')->get(),
+            'clientes' => Cliente::query()->orderBy('nome')->get(),
             'procedimentos' => Procedimento::query()->orderBy('titulo')->get(['id', 'titulo', 'tipo']),
             'usuariosOperacionais' => $usuariosOperacionais,
             'usuariosFiltro' => User::query()->where('active', true)->orderBy('name')->get(),
@@ -103,8 +103,8 @@ class CalendarioControleController extends Controller
             'executor_id' => ['nullable', 'integer', 'exists:users,id'],
             'revisor_id' => ['nullable', 'integer', 'different:executor_id', 'exists:users,id'],
             'prioridade' => ['required', 'in:Baixa,Média,Alta,Crítica'],
-            'esforco' => ['nullable', 'in:' . implode(',', ControleEvento::EFFORT_OPTIONS)],
-            'tipo_demanda' => ['required', 'in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
+            'esforco' => ['nullable', 'in:'.implode(',', ControleEvento::EFFORT_OPTIONS)],
+            'tipo_demanda' => ['required', 'in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS)],
             'esforco_estimado_horas' => ['nullable', 'numeric', 'min:0', 'max:9999'],
             'criterios_aceite' => ['nullable', 'string', 'max:5000'],
             'data_prevista' => ['nullable', 'date'],
@@ -289,7 +289,7 @@ class CalendarioControleController extends Controller
                 'titulo' => $step->nome_etapa,
                 'ordem' => $lastOrder + $index + 1,
                 'concluido' => false,
-                'observacoes' => trim("Procedimento base: {$procedure->titulo}\nResponsavel sugerido: " . ($step->responsavel ?: 'N/D') . "\nSLA sugerido: " . ($step->sla ?: 'N/D') . "\n\n{$step->descricao}"),
+                'observacoes' => trim("Procedimento base: {$procedure->titulo}\nResponsavel sugerido: ".($step->responsavel ?: 'N/D')."\nSLA sugerido: ".($step->sla ?: 'N/D')."\n\n{$step->descricao}"),
             ]);
         }
 
@@ -326,10 +326,10 @@ class CalendarioControleController extends Controller
             ? $this->filteredPrintQuery($request)->get()
             : collect();
 
-        $zipFileName = 'central_controles_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
-        $zipPath = storage_path('app/' . $zipFileName);
+        $zipFileName = 'central_controles_'.now()->format('Ymd_His').'_'.\Str::random(6).'.zip';
+        $zipPath = storage_path('app/'.$zipFileName);
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
@@ -361,7 +361,7 @@ class CalendarioControleController extends Controller
 
     public function generate(Request $request)
     {
-        if (!$this->tableAvailable()) {
+        if (! $this->tableAvailable()) {
             return redirect()->back()->withErrors('A tabela do calendario de controles ainda nao existe. Rode a migration antes de gerar eventos.');
         }
 
@@ -409,7 +409,7 @@ class CalendarioControleController extends Controller
                 ->map(function (array $item) {
                     $title = $item['software'] ?: $item['acao'];
 
-                    return "{$title}: falta " . implode(', ', $item['missing_fields']);
+                    return "{$title}: falta ".implode(', ', $item['missing_fields']);
                 })
                 ->implode(' | ');
 
@@ -434,30 +434,30 @@ class CalendarioControleController extends Controller
     {
         $this->authorizeCardWork($calendario_controle);
         $data = $request->validate([
-            'status'              => 'required|in:' . implode(',', ControleEvento::STATUS_OPTIONS),
+            'status' => 'required|in:'.implode(',', ControleEvento::STATUS_OPTIONS),
             'acao_controle_snapshot' => 'nullable|string|max:255',
-            'descricao'           => 'nullable|string|max:5000',
-            'criterios_aceite'    => 'nullable|string|max:5000',
-            'software_id'         => 'nullable|integer|exists:software,id',
-            'cliente_id'          => 'nullable|integer|exists:clientes,id',
+            'descricao' => 'nullable|string|max:5000',
+            'criterios_aceite' => 'nullable|string|max:5000',
+            'software_id' => 'nullable|integer|exists:software,id',
+            'cliente_id' => 'nullable|integer|exists:clientes,id',
             'responsavel_planejado' => 'nullable|string|max:255',
-            'executor_id'          => 'nullable|integer|exists:users,id',
-            'revisor_id'           => 'nullable|integer|different:executor_id|exists:users,id',
-            'prioridade'           => 'nullable|in:Baixa,Média,Alta,Crítica',
-            'observacoes_execucao'=> 'nullable|string|max:1000',
-            'data_prevista'       => 'nullable|date',
-            'modulo'              => 'nullable|string|max:255',
-            'categoria'           => 'nullable|in:' . implode(',', ControleEvento::CATEGORY_OPTIONS),
-            'rotina'              => 'nullable|string|max:255',
-            'esforco'             => 'nullable|in:' . implode(',', ControleEvento::EFFORT_OPTIONS),
+            'executor_id' => 'nullable|integer|exists:users,id',
+            'revisor_id' => 'nullable|integer|different:executor_id|exists:users,id',
+            'prioridade' => 'nullable|in:Baixa,Média,Alta,Crítica',
+            'observacoes_execucao' => 'nullable|string|max:1000',
+            'data_prevista' => 'nullable|date',
+            'modulo' => 'nullable|string|max:255',
+            'categoria' => 'nullable|in:'.implode(',', ControleEvento::CATEGORY_OPTIONS),
+            'rotina' => 'nullable|string|max:255',
+            'esforco' => 'nullable|in:'.implode(',', ControleEvento::EFFORT_OPTIONS),
             'esforco_estimado_horas' => 'nullable|numeric|min:0|max:9999',
-            'esforco_real_horas'  => 'nullable|numeric|min:0|max:9999',
+            'esforco_real_horas' => 'nullable|numeric|min:0|max:9999',
             'esforco_real_percebido' => 'nullable|in:menor,compativel,maior',
-            'motivo_bloqueio'     => 'nullable|required_if:status,bloqueado|string|max:2000',
-            'tipo_demanda'        => 'nullable|in:' . implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
-            'score_impacto'       => 'nullable|integer|min:1|max:5',
-            'score_exposicao'     => 'nullable|integer|min:1|max:5',
-            'score_confianca'     => 'nullable|integer|min:1|max:5',
+            'motivo_bloqueio' => 'nullable|required_if:status,bloqueado|string|max:2000',
+            'tipo_demanda' => 'nullable|in:'.implode(',', ControleEvento::DEMAND_TYPE_OPTIONS),
+            'score_impacto' => 'nullable|integer|min:1|max:5',
+            'score_exposicao' => 'nullable|integer|min:1|max:5',
+            'score_confianca' => 'nullable|integer|min:1|max:5',
             'triagem_observacoes' => 'nullable|string|max:1500',
         ]);
 
@@ -471,8 +471,8 @@ class CalendarioControleController extends Controller
         }
 
         // Processa mudança de data
-        if (!empty($data['data_prevista'])) {
-            $novaData = \Carbon\Carbon::parse($data['data_prevista']);
+        if (! empty($data['data_prevista'])) {
+            $novaData = Carbon::parse($data['data_prevista']);
             $data['data_prevista'] = $novaData;
 
             // Recalcula data_limite com base no SLA do snapshot
@@ -489,7 +489,7 @@ class CalendarioControleController extends Controller
             }
         }
 
-        if (in_array($data['status'], ['em_execucao', 'em_revisao', 'bloqueado'], true) && !$calendario_controle->iniciado_em) {
+        if (in_array($data['status'], ['em_execucao', 'em_revisao', 'bloqueado'], true) && ! $calendario_controle->iniciado_em) {
             $data['iniciado_em'] = now();
         }
 
@@ -674,8 +674,6 @@ class CalendarioControleController extends Controller
             $query->whereNotIn('status', ['sugestao', 'triagem', 'cancelado', 'dispensado']);
         }
 
-
-
         if ($request->filled('executor_id')) {
             match ($request->executor_id) {
                 'me' => $query->where('executor_id', auth()->id()),
@@ -693,13 +691,15 @@ class CalendarioControleController extends Controller
         }
 
         if ($request->filled('semana')) {
-            $weekStart = \Carbon\Carbon::parse($request->semana)->startOfWeek(\Carbon\Carbon::MONDAY);
+            $weekStart = Carbon::parse($request->semana)->startOfWeek(Carbon::MONDAY);
             $query->whereDate('semana_planejada', $weekStart->toDateString());
         }
 
         if ($request->filled('pendencia')) {
             match ($request->pendencia) {
-                'estimativa' => $query->where(function ($subQuery) { $subQuery->whereNull('esforco')->orWhereIn('esforco', ['GG', 'Programa']); }),
+                'estimativa' => $query->where(function ($subQuery) {
+                    $subQuery->whereNull('esforco')->orWhereIn('esforco', ['GG', 'Programa']);
+                }),
                 'executor' => $query->whereNull('executor_id'),
                 'prazo' => $query->whereNull('data_prevista'),
                 default => null,

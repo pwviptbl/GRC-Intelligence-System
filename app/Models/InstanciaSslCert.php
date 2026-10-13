@@ -34,8 +34,8 @@ class InstanciaSslCert extends Model
     public function getStatusBadgeAttribute(): array
     {
         return match ($this->status_certificado) {
-            'ok' => ['label' => 'Válido (' . $this->dias_restantes . 'd)', 'color' => '#10b981', 'bg' => 'rgba(16, 185, 129, 0.15)'],
-            'expirando' => ['label' => 'Vencendo em breve (' . $this->dias_restantes . 'd)', 'color' => '#f59e0b', 'bg' => 'rgba(245, 158, 11, 0.15)'],
+            'ok' => ['label' => 'Válido ('.$this->dias_restantes.'d)', 'color' => '#10b981', 'bg' => 'rgba(16, 185, 129, 0.15)'],
+            'expirando' => ['label' => 'Vencendo em breve ('.$this->dias_restantes.'d)', 'color' => '#f59e0b', 'bg' => 'rgba(245, 158, 11, 0.15)'],
             'expirado' => ['label' => 'Expirado', 'color' => '#ef4444', 'bg' => 'rgba(239, 68, 68, 0.15)'],
             default => ['label' => 'Inválido / Erro', 'color' => '#dc2626', 'bg' => 'rgba(220, 38, 38, 0.15)'],
         };

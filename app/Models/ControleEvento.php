@@ -180,7 +180,7 @@ class ControleEvento extends Model
 
     public function getTierLabelAttribute(): string
     {
-        return $this->tier ? 'T' . $this->tier : 'Geral';
+        return $this->tier ? 'T'.$this->tier : 'Geral';
     }
 
     public function getProgressLabelAttribute(): string

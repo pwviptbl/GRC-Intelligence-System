@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Engagement;
 use App\Models\EngagementTest;
+use App\Models\Finding;
+use App\Models\Software;
 use App\Rules\AllowedUploadExtension;
 use App\Services\FindingDeduplicationService;
+use App\Services\ScanImportService;
 use Illuminate\Http\Request;
 
 class EngagementTestController extends Controller
@@ -15,7 +18,7 @@ class EngagementTestController extends Controller
         $query = EngagementTest::with(['engagement.software', 'findings', 'retestOf'])->latest();
 
         if ($request->filled('software_id')) {
-            $query->whereHas('engagement', fn($q) => $q->where('software_id', $request->software_id));
+            $query->whereHas('engagement', fn ($q) => $q->where('software_id', $request->software_id));
         }
 
         if ($request->filled('engagement_id')) {
@@ -36,35 +39,35 @@ class EngagementTestController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('titulo', 'like', "%{$search}%")
-                  ->orWhere('ambiente', 'like', "%{$search}%")
-                  ->orWhere('notas', 'like', "%{$search}%");
+                    ->orWhere('ambiente', 'like', "%{$search}%")
+                    ->orWhere('notas', 'like', "%{$search}%");
             });
         }
 
         $tests = $query->paginate(20)->withQueryString();
 
         $stats = [
-            'total'         => EngagementTest::count(),
-            'concluidos'    => EngagementTest::where('status', 'concluido')->count(),
-            'em_andamento'  => EngagementTest::where('status', 'em_andamento')->count(),
-            'planejados'    => EngagementTest::where('status', 'planejado')->count(),
-            'total_findings'=> \App\Models\Finding::count(),
+            'total' => EngagementTest::count(),
+            'concluidos' => EngagementTest::where('status', 'concluido')->count(),
+            'em_andamento' => EngagementTest::where('status', 'em_andamento')->count(),
+            'planejados' => EngagementTest::where('status', 'planejado')->count(),
+            'total_findings' => Finding::count(),
         ];
 
-        $softwares = \App\Models\Software::where('ativo', true)->orderBy('nome')->get();
+        $softwares = Software::where('ativo', true)->orderBy('nome')->get();
         $engagements = Engagement::with('software:id,nome')->orderBy('nome')->get();
 
         return view('engagement-tests.index', compact('tests', 'stats', 'softwares', 'engagements'));
     }
-
 
     public function create(Request $request)
     {
         $engagementId = $request->input('engagement_id');
         $engagement = Engagement::with(['software', 'tests'])->findOrFail($engagementId);
         $availableTests = $engagement->tests;
+
         return view('engagement-tests.create', compact('engagement', 'availableTests'));
     }
 
@@ -82,16 +85,16 @@ class EngagementTestController extends Controller
         $engagementTest->load(['engagement.software', 'findings', 'retestOf', 'retests']);
 
         $findingStats = [
-            'total'          => $engagementTest->findings->count(),
-            'abertos'        => $engagementTest->findings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
-            'criticos'       => $engagementTest->findings->where('severidade', 'critico')->count(),
-            'altos'          => $engagementTest->findings->where('severidade', 'alto')->count(),
-            'medios'         => $engagementTest->findings->where('severidade', 'medio')->count(),
-            'baixos'         => $engagementTest->findings->where('severidade', 'baixo')->count(),
-            'informativos'   => $engagementTest->findings->where('severidade', 'informativo')->count(),
-            'fechados'       => $engagementTest->findings->where('status', 'fechado')->count(),
-            'duplicados'     => $engagementTest->findings->where('status', 'duplicado')->count(),
-            'regressoes'     => $engagementTest->findings->where('is_regression', true)->count(),
+            'total' => $engagementTest->findings->count(),
+            'abertos' => $engagementTest->findings->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
+            'criticos' => $engagementTest->findings->where('severidade', 'critico')->count(),
+            'altos' => $engagementTest->findings->where('severidade', 'alto')->count(),
+            'medios' => $engagementTest->findings->where('severidade', 'medio')->count(),
+            'baixos' => $engagementTest->findings->where('severidade', 'baixo')->count(),
+            'informativos' => $engagementTest->findings->where('severidade', 'informativo')->count(),
+            'fechados' => $engagementTest->findings->where('status', 'fechado')->count(),
+            'duplicados' => $engagementTest->findings->where('status', 'duplicado')->count(),
+            'regressoes' => $engagementTest->findings->where('is_regression', true)->count(),
             'falsos_positivos' => $engagementTest->findings->where('status', 'falso_positivo')->count(),
         ];
 
@@ -104,6 +107,7 @@ class EngagementTestController extends Controller
         $availableTests = EngagementTest::where('engagement_id', $engagementTest->engagement_id)
             ->where('id', '!=', $engagementTest->id)
             ->get();
+
         return view('engagement-tests.edit', compact('engagementTest', 'availableTests'));
     }
 
@@ -116,18 +120,17 @@ class EngagementTestController extends Controller
             ->with('success', 'Teste atualizado com sucesso!');
     }
 
-
     /**
      * Importa arquivo de scan e converte em Findings.
      */
-    public function importScan(Request $request, EngagementTest $engagementTest, \App\Services\ScanImportService $importService)
+    public function importScan(Request $request, EngagementTest $engagementTest, ScanImportService $importService)
     {
         $request->validate([
             'arquivo_scan' => ['required', 'file', 'max:51200', AllowedUploadExtension::scan()], // 50MB
             'formato_scan' => ['nullable', 'string', 'in:zap,nikto,nuclei,nmap,burp,semgrep,trivy,bandit,grype'],
         ], [
             'arquivo_scan.required' => 'Selecione o arquivo de scan para importar.',
-            'arquivo_scan.max'      => 'O arquivo de scan não pode ultrapassar 50MB.',
+            'arquivo_scan.max' => 'O arquivo de scan não pode ultrapassar 50MB.',
         ]);
 
         $file = $request->file('arquivo_scan');
@@ -175,18 +178,18 @@ class EngagementTestController extends Controller
     protected function validateTest(Request $request): array
     {
         return $request->validate([
-            'engagement_id'     => ['required', 'integer', 'exists:engagements,id'],
-            'titulo'            => ['required', 'string', 'max:255'],
-            'tipo_teste'        => ['required', 'in:pentest,dast,sast,sca,infra,nuclei,reteste,outro'],
-            'ferramenta'        => ['nullable', 'string', 'max:100'],
-            'ambiente'          => ['nullable', 'string', 'max:100'],
-            'data_inicio'       => ['nullable', 'date'],
-            'data_fim'          => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'status'            => ['required', 'in:planejado,em_andamento,concluido,cancelado'],
+            'engagement_id' => ['required', 'integer', 'exists:engagements,id'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'tipo_teste' => ['required', 'in:pentest,dast,sast,sca,infra,nuclei,reteste,outro'],
+            'ferramenta' => ['nullable', 'string', 'max:100'],
+            'ambiente' => ['nullable', 'string', 'max:100'],
+            'data_inicio' => ['nullable', 'date'],
+            'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'status' => ['required', 'in:planejado,em_andamento,concluido,cancelado'],
             'retest_of_test_id' => ['nullable', 'integer', 'exists:engagement_tests,id'],
-            'notas'             => ['nullable', 'string'],
+            'notas' => ['nullable', 'string'],
         ], [
-            'titulo.required'        => 'O título do teste é obrigatório.',
+            'titulo.required' => 'O título do teste é obrigatório.',
             'engagement_id.required' => 'O engajamento é obrigatório.',
         ]);
     }

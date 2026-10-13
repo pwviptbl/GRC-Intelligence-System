@@ -8,7 +8,6 @@ use App\Models\EngagementTest;
 use App\Models\Finding;
 use App\Models\InstanciaCliente;
 use App\Models\Software;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

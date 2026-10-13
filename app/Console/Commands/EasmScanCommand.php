@@ -27,6 +27,7 @@ class EasmScanCommand extends Command
 
         if ($instancias->isEmpty()) {
             $this->info('Nenhuma instância com URL ou IP configurado encontrada.');
+
             return self::SUCCESS;
         }
 
@@ -37,7 +38,7 @@ class EasmScanCommand extends Command
 
             try {
                 $resultado = $easmService->scanInstance($instancia);
-                
+
                 if ($resultado['ssl']) {
                     $this->info("   SSL: {$resultado['ssl']->status_certificado} ({$resultado['ssl']->dias_restantes} dias restantes)");
                 }
@@ -50,6 +51,7 @@ class EasmScanCommand extends Command
         }
 
         $this->info('Varredura EASM finalizada com sucesso!');
+
         return self::SUCCESS;
     }
 }

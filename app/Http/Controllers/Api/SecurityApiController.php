@@ -37,23 +37,23 @@ class SecurityApiController extends Controller
     public function storeEngagement(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'software_id'    => ['required', 'integer', 'exists:software,id'],
-            'nome'           => ['required', 'string', 'max:255'],
-            'tipo'           => ['required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
-            'descricao'      => ['nullable', 'string'],
+            'software_id' => ['required', 'integer', 'exists:software,id'],
+            'nome' => ['required', 'string', 'max:255'],
+            'tipo' => ['required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
+            'descricao' => ['nullable', 'string'],
             'versao_testada' => ['nullable', 'string', 'max:100'],
-            'ambiente'       => ['nullable', 'string', 'max:100'],
-            'lead'           => ['nullable', 'string', 'max:255'],
-            'data_inicio'    => ['nullable', 'date'],
-            'data_fim'       => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'status'         => ['nullable', 'in:planejado,ativo,concluido,cancelado'],
-            'notas'          => ['nullable', 'string'],
+            'ambiente' => ['nullable', 'string', 'max:100'],
+            'lead' => ['nullable', 'string', 'max:255'],
+            'data_inicio' => ['nullable', 'date'],
+            'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'status' => ['nullable', 'in:planejado,ativo,concluido,cancelado'],
+            'notas' => ['nullable', 'string'],
         ]);
 
         $engagement = Engagement::create($validated);
 
         return response()->json([
-            'message'    => 'Engajamento criado com sucesso.',
+            'message' => 'Engajamento criado com sucesso.',
             'engagement' => $engagement->load('software:id,nome'),
         ], 201);
     }
@@ -61,28 +61,29 @@ class SecurityApiController extends Controller
     public function getEngagement(Engagement $engagement): JsonResponse
     {
         $engagement->load(['software:id,nome', 'tests.findings']);
+
         return response()->json($engagement);
     }
 
     public function updateEngagement(Request $request, Engagement $engagement): JsonResponse
     {
         $validated = $request->validate([
-            'nome'           => ['sometimes', 'required', 'string', 'max:255'],
-            'tipo'           => ['sometimes', 'required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
-            'descricao'      => ['nullable', 'string'],
+            'nome' => ['sometimes', 'required', 'string', 'max:255'],
+            'tipo' => ['sometimes', 'required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
+            'descricao' => ['nullable', 'string'],
             'versao_testada' => ['nullable', 'string', 'max:100'],
-            'ambiente'       => ['nullable', 'string', 'max:100'],
-            'lead'           => ['nullable', 'string', 'max:255'],
-            'data_inicio'    => ['nullable', 'date'],
-            'data_fim'       => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'status'         => ['sometimes', 'required', 'in:planejado,ativo,concluido,cancelado'],
-            'notas'          => ['nullable', 'string'],
+            'ambiente' => ['nullable', 'string', 'max:100'],
+            'lead' => ['nullable', 'string', 'max:255'],
+            'data_inicio' => ['nullable', 'date'],
+            'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'status' => ['sometimes', 'required', 'in:planejado,ativo,concluido,cancelado'],
+            'notas' => ['nullable', 'string'],
         ]);
 
         $engagement->update($validated);
 
         return response()->json([
-            'message'    => 'Engajamento atualizado com sucesso.',
+            'message' => 'Engajamento atualizado com sucesso.',
             'engagement' => $engagement,
         ]);
     }
@@ -92,21 +93,22 @@ class SecurityApiController extends Controller
     public function getTests(Engagement $engagement): JsonResponse
     {
         $tests = $engagement->tests()->withCount('findings')->latest()->get();
+
         return response()->json($tests);
     }
 
     public function storeTest(Request $request, Engagement $engagement): JsonResponse
     {
         $validated = $request->validate([
-            'titulo'            => ['required', 'string', 'max:255'],
-            'tipo_teste'        => ['required', 'in:pentest,dast,sast,sca,infra,nuclei,reteste,outro'],
-            'ferramenta'        => ['nullable', 'string', 'max:100'],
-            'ambiente'          => ['nullable', 'string', 'max:100'],
-            'data_inicio'       => ['nullable', 'date'],
-            'data_fim'          => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'status'            => ['nullable', 'in:planejado,em_andamento,concluido,cancelado'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'tipo_teste' => ['required', 'in:pentest,dast,sast,sca,infra,nuclei,reteste,outro'],
+            'ferramenta' => ['nullable', 'string', 'max:100'],
+            'ambiente' => ['nullable', 'string', 'max:100'],
+            'data_inicio' => ['nullable', 'date'],
+            'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'status' => ['nullable', 'in:planejado,em_andamento,concluido,cancelado'],
             'retest_of_test_id' => ['nullable', 'integer', 'exists:engagement_tests,id'],
-            'notas'             => ['nullable', 'string'],
+            'notas' => ['nullable', 'string'],
         ]);
 
         $validated['engagement_id'] = $engagement->id;
@@ -114,13 +116,14 @@ class SecurityApiController extends Controller
 
         return response()->json([
             'message' => 'Teste criado com sucesso.',
-            'test'    => $test,
+            'test' => $test,
         ], 201);
     }
 
     public function getTest(EngagementTest $engagementTest): JsonResponse
     {
         $engagementTest->load(['engagement.software:id,nome', 'findings', 'retestOf:id,titulo']);
+
         return response()->json($engagementTest);
     }
 
@@ -162,7 +165,7 @@ class SecurityApiController extends Controller
             $query->where('status', $request->status);
         }
         if ($request->filled('software_id')) {
-            $query->whereHas('test.engagement', fn($q) => $q->where('software_id', $request->software_id));
+            $query->whereHas('test.engagement', fn ($q) => $q->where('software_id', $request->software_id));
         }
         if ($request->filled('test_id')) {
             $query->where('test_id', $request->test_id);
@@ -179,28 +182,29 @@ class SecurityApiController extends Controller
     public function getFinding(Finding $finding): JsonResponse
     {
         $finding->load(['test.engagement.software:id,nome', 'duplicadoDe', 'regressedFrom']);
+
         return response()->json($finding);
     }
 
     public function storeFinding(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'test_id'              => ['required', 'integer', 'exists:engagement_tests,id'],
-            'titulo'               => ['required', 'string', 'max:255'],
-            'descricao'            => ['required', 'string'],
-            'severidade'           => ['required', 'in:critico,alto,medio,baixo,informativo'],
-            'cvss_score'           => ['nullable', 'numeric', 'min:0', 'max:10'],
-            'cve_id'               => ['nullable', 'string', 'max:50'],
-            'cwe_id'               => ['nullable', 'string', 'max:50'],
-            'endpoint'             => ['nullable', 'string', 'max:1000'],
-            'parametro'            => ['nullable', 'string', 'max:500'],
-            'metodo_http'          => ['nullable', 'in:GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'],
-            'prova_conceito'       => ['nullable', 'string'],
-            'remediacao_sugerida'  => ['nullable', 'string'],
-            'status'               => ['nullable', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
-            'ativo_afetado'        => ['nullable', 'string', 'max:500'],
-            'responsavel'          => ['nullable', 'string', 'max:255'],
-            'sla_dias'             => ['nullable', 'integer', 'min:1'],
+            'test_id' => ['required', 'integer', 'exists:engagement_tests,id'],
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string'],
+            'severidade' => ['required', 'in:critico,alto,medio,baixo,informativo'],
+            'cvss_score' => ['nullable', 'numeric', 'min:0', 'max:10'],
+            'cve_id' => ['nullable', 'string', 'max:50'],
+            'cwe_id' => ['nullable', 'string', 'max:50'],
+            'endpoint' => ['nullable', 'string', 'max:1000'],
+            'parametro' => ['nullable', 'string', 'max:500'],
+            'metodo_http' => ['nullable', 'in:GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'],
+            'prova_conceito' => ['nullable', 'string'],
+            'remediacao_sugerida' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
+            'ativo_afetado' => ['nullable', 'string', 'max:500'],
+            'responsavel' => ['nullable', 'string', 'max:255'],
+            'sla_dias' => ['nullable', 'integer', 'min:1'],
             'data_limite_correcao' => ['nullable', 'date'],
         ]);
 
@@ -225,7 +229,7 @@ class SecurityApiController extends Controller
         $finding->update($data);
 
         return response()->json([
-            'message' => 'Status do achado atualizado para: ' . $finding->status_label,
+            'message' => 'Status do achado atualizado para: '.$finding->status_label,
             'finding' => $finding,
         ]);
     }

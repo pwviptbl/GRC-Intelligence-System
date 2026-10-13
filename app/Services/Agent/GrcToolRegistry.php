@@ -5,16 +5,17 @@ namespace App\Services\Agent;
 use App\Models\Atividade;
 use App\Models\Cliente;
 use App\Models\ControleEvento;
+use App\Models\Finding;
 use App\Models\Incidente;
 use App\Models\InstanciaCliente;
 use App\Models\LgpdItem;
 use App\Models\Politica;
 use App\Models\Procedimento;
-use App\Models\Finding;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
 use App\Models\User;
+use App\Services\ActivityCatalogCoverageService;
 use App\Services\ActivityRecurrenceService;
 use App\Services\GrcContextService;
 use Illuminate\Support\Facades\DB;
@@ -846,7 +847,7 @@ class GrcToolRegistry
 
     protected function activityCatalogCoverage(): array
     {
-        return app(\App\Services\ActivityCatalogCoverageService::class)->summary();
+        return app(ActivityCatalogCoverageService::class)->summary();
     }
 
     protected function listModuleCoverage(array $payload): array
@@ -858,7 +859,7 @@ class GrcToolRegistry
         ]);
 
         return array_slice(
-            app(\App\Services\ActivityCatalogCoverageService::class)->moduleCoverage(
+            app(ActivityCatalogCoverageService::class)->moduleCoverage(
                 $data['software_id'] ?? null,
                 (bool) ($data['only_uncovered'] ?? false)
             ),
@@ -929,6 +930,7 @@ class GrcToolRegistry
                             $createdModule->atividades()->sync($activityIds);
                         }
                     }
+
                     continue;
                 }
 
@@ -936,6 +938,7 @@ class GrcToolRegistry
                 if ($changes === [] && $activityIds === null) {
                     $result['unchanged']++;
                     $result['items'][] = ['id' => $existing->id, 'nome' => $existing->nome, 'action' => 'unchanged'];
+
                     continue;
                 }
 
@@ -1299,7 +1302,7 @@ class GrcToolRegistry
         }
 
         return $this->incidentPayload(Incidente::create($data)
-            ->load(['software:id,nome', 'cliente:id,nome', ]));
+            ->load(['software:id,nome', 'cliente:id,nome']));
     }
 
     protected function updateIncident(array $payload, bool $dryRun): array
@@ -1318,7 +1321,7 @@ class GrcToolRegistry
         $incidente->update($data);
 
         return $this->incidentPayload($incidente->refresh()
-            ->load(['software:id,nome', 'cliente:id,nome', ]));
+            ->load(['software:id,nome', 'cliente:id,nome']));
     }
 
     protected function createControlEvent(array $payload, bool $dryRun): array
@@ -1433,7 +1436,7 @@ class GrcToolRegistry
             'prioridade' => $priorityMap[$data['prioridade']] ?? 'Média',
             'status' => $statusMap[$data['status']] ?? 'planejado',
             'origem' => $data['origem'],
-        ])->load(['software:id,nome', 'cliente:id,nome', ]);
+        ])->load(['software:id,nome', 'cliente:id,nome']);
 
         return [
             'id' => $plano->id,

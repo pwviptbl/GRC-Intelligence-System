@@ -6,7 +6,9 @@ use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -44,11 +46,11 @@ class ProfileController extends Controller
     {
         $validated = $request->validateWithBag('updatePassword', [
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', \Illuminate\Validation\Rules\Password::min(8)->letters()->numbers()->symbols(), 'confirmed'],
+            'password' => ['required', Password::min(8)->letters()->numbers()->symbols(), 'confirmed'],
         ]);
 
         $request->user()->update([
-            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'password' => Hash::make($validated['password']),
         ]);
 
         return back()->with('status', 'password-updated');
@@ -103,5 +105,4 @@ class ProfileController extends Controller
 
         return redirect()->route('profile.edit')->with('status', 'api-token-generated');
     }
-
 }

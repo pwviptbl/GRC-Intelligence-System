@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -50,7 +51,7 @@ class BackupController extends Controller
         try {
             $zipName = $this->generateBackup('manual');
 
-            app(\App\Services\AuditLogService::class)->record(
+            app(AuditLogService::class)->record(
                 'backup.create',
                 'web',
                 request(),
@@ -61,12 +62,12 @@ class BackupController extends Controller
             );
 
             return redirect()->route('backups.index')
-                ->with('success', 'Backup gerado com sucesso: ' . $zipName);
+                ->with('success', 'Backup gerado com sucesso: '.$zipName);
         } catch (\Throwable $e) {
             report($e);
 
             return redirect()->route('backups.index')
-                ->with('error', 'Falha ao gerar backup: ' . $e->getMessage());
+                ->with('error', 'Falha ao gerar backup: '.$e->getMessage());
         }
     }
 
@@ -76,14 +77,14 @@ class BackupController extends Controller
 
         $backupDirPath = $this->backupDirectoryPath();
         $timestamp = now()->format('Ymd_His');
-        $tempDir = $backupDirPath . '/tmp_' . $timestamp . '_' . bin2hex(random_bytes(3));
-        $zipName = 'grc-backup-' . $timestamp . '.zip';
-        $zipPath = $backupDirPath . '/' . $zipName;
+        $tempDir = $backupDirPath.'/tmp_'.$timestamp.'_'.bin2hex(random_bytes(3));
+        $zipName = 'grc-backup-'.$timestamp.'.zip';
+        $zipPath = $backupDirPath.'/'.$zipName;
 
         File::ensureDirectoryExists($tempDir);
         try {
-            $dumpPath = $tempDir . '/database.sql';
-            $manifestPath = $tempDir . '/manifest.json';
+            $dumpPath = $tempDir.'/database.sql';
+            $manifestPath = $tempDir.'/manifest.json';
 
             $this->dumpDatabase($dumpPath);
 
@@ -123,16 +124,16 @@ class BackupController extends Controller
         $this->migrateLegacyBackups();
 
         $safeName = basename($file);
-        if ($safeName !== $file || !str_ends_with(strtolower($safeName), '.zip')) {
+        if ($safeName !== $file || ! str_ends_with(strtolower($safeName), '.zip')) {
             abort(404);
         }
 
-        $relativePath = self::BACKUP_DIR . '/' . $safeName;
-        if (!Storage::disk('local')->exists($relativePath)) {
+        $relativePath = self::BACKUP_DIR.'/'.$safeName;
+        if (! Storage::disk('local')->exists($relativePath)) {
             abort(404);
         }
 
-        app(\App\Services\AuditLogService::class)->record(
+        app(AuditLogService::class)->record(
             'backup.download',
             'web',
             request(),
@@ -150,25 +151,25 @@ class BackupController extends Controller
         $this->migrateLegacyBackups();
 
         $safeName = basename($file);
-        if ($safeName !== $file || !str_ends_with(strtolower($safeName), '.zip')) {
+        if ($safeName !== $file || ! str_ends_with(strtolower($safeName), '.zip')) {
             abort(404);
         }
 
-        $relativePath = self::BACKUP_DIR . '/' . $safeName;
+        $relativePath = self::BACKUP_DIR.'/'.$safeName;
         $disk = Storage::disk('local');
 
-        if (!$disk->exists($relativePath)) {
+        if (! $disk->exists($relativePath)) {
             abort(404);
         }
 
-        if (!$disk->delete($relativePath)) {
+        if (! $disk->delete($relativePath)) {
             return redirect()->route('backups.index')
-                ->with('error', 'Não foi possível excluir o backup: ' . $safeName);
+                ->with('error', 'Não foi possível excluir o backup: '.$safeName);
         }
 
         $disk->delete($this->metadataPath($safeName));
 
-        app(\App\Services\AuditLogService::class)->record(
+        app(AuditLogService::class)->record(
             'backup.delete',
             'web',
             request(),
@@ -179,17 +180,17 @@ class BackupController extends Controller
         );
 
         return redirect()->route('backups.index')
-            ->with('success', 'Backup excluído com sucesso: ' . $safeName);
+            ->with('success', 'Backup excluído com sucesso: '.$safeName);
     }
 
     public function toggleProtection(string $file): RedirectResponse
     {
         $safeName = $this->existingBackupName($file);
         $metadata = $this->readMetadata($safeName);
-        $metadata['protected'] = !(bool) ($metadata['protected'] ?? false);
+        $metadata['protected'] = ! (bool) ($metadata['protected'] ?? false);
         $this->writeMetadata($safeName, $metadata);
 
-        app(\App\Services\AuditLogService::class)->record(
+        app(AuditLogService::class)->record(
             'backup.toggle_protection',
             'web',
             request(),
@@ -218,7 +219,7 @@ class BackupController extends Controller
     public function verifyBackup(string $file): array
     {
         $safeName = $this->existingBackupName($file);
-        $path = Storage::disk('local')->path(self::BACKUP_DIR . '/' . $safeName);
+        $path = Storage::disk('local')->path(self::BACKUP_DIR.'/'.$safeName);
         $metadata = $this->readMetadata($safeName);
         $result = $this->inspectBackup($path, $metadata['checksum'] ?? null);
 
@@ -245,7 +246,7 @@ class BackupController extends Controller
                 'metadata' => $this->readMetadata(basename($path)),
             ])
             ->filter(fn (array $backup) => ($backup['metadata']['origin'] ?? 'manual') === 'automatic'
-                && !(bool) ($backup['metadata']['protected'] ?? false))
+                && ! (bool) ($backup['metadata']['protected'] ?? false))
             ->sortByDesc('modified')
             ->skip($retention);
 
@@ -268,34 +269,34 @@ class BackupController extends Controller
             'backup_file.max' => 'O backup deve ter no máximo 500MB.',
         ]);
 
-        $tempDir = $this->backupDirectoryPath() . '/restore_' . now()->format('Ymd_His') . '_' . bin2hex(random_bytes(3));
+        $tempDir = $this->backupDirectoryPath().'/restore_'.now()->format('Ymd_His').'_'.bin2hex(random_bytes(3));
         File::ensureDirectoryExists($tempDir);
 
-        $uploadedZipPath = $tempDir . '/restore.zip';
+        $uploadedZipPath = $tempDir.'/restore.zip';
         $request->file('backup_file')->move($tempDir, 'restore.zip');
 
         try {
             $this->extractZip($uploadedZipPath, $tempDir);
 
-            $dumpPath = $tempDir . '/database.sql';
-            if (!File::exists($dumpPath)) {
+            $dumpPath = $tempDir.'/database.sql';
+            if (! File::exists($dumpPath)) {
                 throw new RuntimeException('Arquivo database.sql não encontrado no backup.');
             }
 
             $this->restoreDatabase($dumpPath);
 
-            $uploadsPath = $tempDir . '/storage/app/public';
+            $uploadsPath = $tempDir.'/storage/app/public';
 
             if (File::isDirectory($uploadsPath)) {
                 $this->restoreUploads($uploadsPath, storage_path('app/public'));
             }
 
-            $privateFilesPath = $tempDir . '/storage/app/private';
+            $privateFilesPath = $tempDir.'/storage/app/private';
             if (File::isDirectory($privateFilesPath)) {
                 $this->restorePrivateFiles($privateFilesPath, storage_path('app/private'));
             }
 
-            app(\App\Services\AuditLogService::class)->record(
+            app(AuditLogService::class)->record(
                 'backup.restore',
                 'web',
                 $request,
@@ -314,7 +315,7 @@ class BackupController extends Controller
             report($e);
 
             return redirect()->route('backups.index')
-                ->with('error', 'Falha ao restaurar backup: ' . $e->getMessage());
+                ->with('error', 'Falha ao restaurar backup: '.$e->getMessage());
         } finally {
             File::deleteDirectory($tempDir);
         }
@@ -323,7 +324,7 @@ class BackupController extends Controller
     private function dumpDatabase(string $outputPath): void
     {
         $driver = config('database.default');
-        $conn = config('database.connections.' . $driver);
+        $conn = config('database.connections.'.$driver);
 
         if ($driver === 'pgsql') {
             $result = Process::env([
@@ -342,7 +343,7 @@ class BackupController extends Controller
             ]);
 
             if ($result->failed()) {
-                throw new RuntimeException('Erro ao executar pg_dump: ' . trim($result->errorOutput() ?: $result->output()));
+                throw new RuntimeException('Erro ao executar pg_dump: '.trim($result->errorOutput() ?: $result->output()));
             }
 
             return;
@@ -354,28 +355,28 @@ class BackupController extends Controller
                 '-h', (string) ($conn['host'] ?? '127.0.0.1'),
                 '-P', (string) ($conn['port'] ?? '3306'),
                 '-u', (string) ($conn['username'] ?? ''),
-                '--password=' . (string) ($conn['password'] ?? ''),
+                '--password='.(string) ($conn['password'] ?? ''),
                 '--single-transaction',
                 '--routines',
                 '--triggers',
-                '--result-file=' . $outputPath,
+                '--result-file='.$outputPath,
                 (string) ($conn['database'] ?? ''),
             ]);
 
             if ($result->failed()) {
-                throw new RuntimeException('Erro ao executar mysqldump: ' . trim($result->errorOutput() ?: $result->output()));
+                throw new RuntimeException('Erro ao executar mysqldump: '.trim($result->errorOutput() ?: $result->output()));
             }
 
             return;
         }
 
-        throw new RuntimeException('Driver de banco não suportado para backup automático: ' . $driver);
+        throw new RuntimeException('Driver de banco não suportado para backup automático: '.$driver);
     }
 
     private function restoreDatabase(string $dumpPath): void
     {
         $driver = config('database.default');
-        $conn = config('database.connections.' . $driver);
+        $conn = config('database.connections.'.$driver);
 
         if ($driver === 'pgsql') {
             $result = Process::env([
@@ -391,7 +392,7 @@ class BackupController extends Controller
             ]);
 
             if ($result->failed()) {
-                throw new RuntimeException('Erro ao restaurar com psql: ' . trim($result->errorOutput() ?: $result->output()));
+                throw new RuntimeException('Erro ao restaurar com psql: '.trim($result->errorOutput() ?: $result->output()));
             }
 
             return;
@@ -403,19 +404,19 @@ class BackupController extends Controller
                 '-h', (string) ($conn['host'] ?? '127.0.0.1'),
                 '-P', (string) ($conn['port'] ?? '3306'),
                 '-u', (string) ($conn['username'] ?? ''),
-                '--password=' . (string) ($conn['password'] ?? ''),
+                '--password='.(string) ($conn['password'] ?? ''),
                 '-D', (string) ($conn['database'] ?? ''),
-                '-e', 'source ' . $dumpPath,
+                '-e', 'source '.$dumpPath,
             ]);
 
             if ($result->failed()) {
-                throw new RuntimeException('Erro ao restaurar com mysql: ' . trim($result->errorOutput() ?: $result->output()));
+                throw new RuntimeException('Erro ao restaurar com mysql: '.trim($result->errorOutput() ?: $result->output()));
             }
 
             return;
         }
 
-        throw new RuntimeException('Driver de banco não suportado para restauração automática: ' . $driver);
+        throw new RuntimeException('Driver de banco não suportado para restauração automática: '.$driver);
     }
 
     private function buildZip(
@@ -424,13 +425,12 @@ class BackupController extends Controller
         string $manifestPath,
         string $publicUploadsDir,
         string $privateFilesDir,
-    ): void
-    {
-        if (!class_exists(ZipArchive::class)) {
+    ): void {
+        if (! class_exists(ZipArchive::class)) {
             throw new RuntimeException('Extensão ZIP não disponível no PHP.');
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $status = $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         if ($status !== true) {
             throw new RuntimeException('Não foi possível criar o arquivo zip de backup.');
@@ -455,16 +455,16 @@ class BackupController extends Controller
                     continue;
                 }
 
-                if (!$zip->setEncryptionIndex($index, ZipArchive::EM_AES_256, $password)) {
+                if (! $zip->setEncryptionIndex($index, ZipArchive::EM_AES_256, $password)) {
                     $zip->close();
                     File::delete($zipPath);
 
-                    throw new RuntimeException('Não foi possível criptografar o backup: ' . $name);
+                    throw new RuntimeException('Não foi possível criptografar o backup: '.$name);
                 }
             }
         }
 
-        if (!$zip->close()) {
+        if (! $zip->close()) {
             throw new RuntimeException('Não foi possível finalizar o arquivo zip de backup.');
         }
     }
@@ -486,11 +486,11 @@ class BackupController extends Controller
 
     private function extractZip(string $zipPath, string $extractTo): void
     {
-        if (!class_exists(ZipArchive::class)) {
+        if (! class_exists(ZipArchive::class)) {
             throw new RuntimeException('Extensão ZIP não disponível no PHP.');
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $status = $zip->open($zipPath);
         if ($status !== true) {
             throw new RuntimeException('Não foi possível abrir o arquivo zip para restauração.');
@@ -504,7 +504,7 @@ class BackupController extends Controller
 
             for ($index = 0; $index < $zip->numFiles; $index++) {
                 $name = $zip->getNameIndex($index);
-                if ($name === false || !$this->isSafeRestoreEntry($name)) {
+                if ($name === false || ! $this->isSafeRestoreEntry($name)) {
                     throw new RuntimeException('O backup contém um caminho de arquivo inválido.');
                 }
 
@@ -512,11 +512,11 @@ class BackupController extends Controller
                 $hasManifest = $hasManifest || $name === 'manifest.json';
             }
 
-            if (!$hasDatabaseDump || !$hasManifest) {
+            if (! $hasDatabaseDump || ! $hasManifest) {
                 throw new RuntimeException('O backup deve conter database.sql e manifest.json.');
             }
 
-            if (!$zip->extractTo($extractTo)) {
+            if (! $zip->extractTo($extractTo)) {
                 throw new RuntimeException('Não foi possível extrair o arquivo de backup. Se ele for criptografado, confira BACKUP_PASSWORD.');
             }
         } finally {
@@ -550,15 +550,15 @@ class BackupController extends Controller
             return ['valid' => false, 'reason' => 'Não foi possível calcular o checksum.', 'checksum' => null];
         }
 
-        if ($expectedChecksum && !hash_equals($expectedChecksum, $checksum)) {
+        if ($expectedChecksum && ! hash_equals($expectedChecksum, $checksum)) {
             return ['valid' => false, 'reason' => 'Checksum diferente do registrado.', 'checksum' => $checksum];
         }
 
-        if (!class_exists(ZipArchive::class)) {
+        if (! class_exists(ZipArchive::class)) {
             return ['valid' => false, 'reason' => 'Extensão ZIP não disponível.', 'checksum' => $checksum];
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($zipPath) !== true) {
             return ['valid' => false, 'reason' => 'Arquivo ZIP inválido.', 'checksum' => $checksum];
         }
@@ -574,7 +574,7 @@ class BackupController extends Controller
 
             for ($index = 0; $index < $zip->numFiles; $index++) {
                 $name = $zip->getNameIndex($index);
-                if ($name === false || !$this->isSafeRestoreEntry($name)) {
+                if ($name === false || ! $this->isSafeRestoreEntry($name)) {
                     return ['valid' => false, 'reason' => 'Caminho interno inválido.', 'checksum' => $checksum];
                 }
             }
@@ -590,7 +590,7 @@ class BackupController extends Controller
             }
 
             $manifest = json_decode($manifestContent, true);
-            if (!is_array($manifest)) {
+            if (! is_array($manifest)) {
                 return ['valid' => false, 'reason' => 'manifest.json inválido.', 'checksum' => $checksum];
             }
 
@@ -617,7 +617,7 @@ class BackupController extends Controller
             if (collect($excludedTopLevel)->contains(fn (string $directory) => $normalizedRelativePath === $directory || str_starts_with($normalizedRelativePath, $directory.'/'))) {
                 continue;
             }
-            $zipPath = $zipRoot . '/' . str_replace('\\', '/', $relativePath);
+            $zipPath = $zipRoot.'/'.str_replace('\\', '/', $relativePath);
 
             if ($item->isDir()) {
                 $zip->addEmptyDir($zipPath);
@@ -635,7 +635,7 @@ class BackupController extends Controller
 
         File::ensureDirectoryExists($targetDir);
 
-        if (!File::copyDirectory($sourceDir, $targetDir)) {
+        if (! File::copyDirectory($sourceDir, $targetDir)) {
             throw new RuntimeException('Não foi possível restaurar os uploads do backup.');
         }
     }
@@ -646,7 +646,7 @@ class BackupController extends Controller
 
         foreach (File::allFiles($targetDir) as $file) {
             $relativePath = ltrim(str_replace($targetDir, '', $file->getPathname()), DIRECTORY_SEPARATOR);
-            if (!str_starts_with(str_replace('\\', '/', $relativePath), 'backups/')) {
+            if (! str_starts_with(str_replace('\\', '/', $relativePath), 'backups/')) {
                 File::delete($file->getPathname());
             }
         }
@@ -666,6 +666,7 @@ class BackupController extends Controller
             $destination = $targetDir.DIRECTORY_SEPARATOR.$relativePath;
             if ($item->isDir()) {
                 File::ensureDirectoryExists($destination);
+
                 continue;
             }
 
@@ -681,17 +682,17 @@ class BackupController extends Controller
         $power = min($power, count($units) - 1);
         $value = $bytes / (1024 ** $power);
 
-        return number_format($value, $power === 0 ? 0 : 2, ',', '.') . ' ' . $units[$power];
+        return number_format($value, $power === 0 ? 0 : 2, ',', '.').' '.$units[$power];
     }
 
     private function existingBackupName(string $file): string
     {
         $safeName = basename($file);
-        if ($safeName !== $file || !str_ends_with(strtolower($safeName), '.zip')) {
+        if ($safeName !== $file || ! str_ends_with(strtolower($safeName), '.zip')) {
             abort(404);
         }
 
-        if (!Storage::disk('local')->exists(self::BACKUP_DIR . '/' . $safeName)) {
+        if (! Storage::disk('local')->exists(self::BACKUP_DIR.'/'.$safeName)) {
             abort(404);
         }
 
@@ -700,7 +701,7 @@ class BackupController extends Controller
 
     private function metadataPath(string $file): string
     {
-        return self::BACKUP_DIR . '/' . $file . '.meta.json';
+        return self::BACKUP_DIR.'/'.$file.'.meta.json';
     }
 
     private function readMetadata(string $file): array
@@ -708,7 +709,7 @@ class BackupController extends Controller
         $disk = Storage::disk('local');
         $path = $this->metadataPath($file);
 
-        if (!$disk->exists($path)) {
+        if (! $disk->exists($path)) {
             return [];
         }
 
@@ -737,10 +738,10 @@ class BackupController extends Controller
 
     private function migrateLegacyBackups(): void
     {
-        $legacyDir = storage_path('app/' . self::BACKUP_DIR);
+        $legacyDir = storage_path('app/'.self::BACKUP_DIR);
         $currentDir = $this->backupDirectoryPath();
 
-        if (!File::isDirectory($legacyDir)) {
+        if (! File::isDirectory($legacyDir)) {
             return;
         }
 
@@ -753,7 +754,7 @@ class BackupController extends Controller
                 continue;
             }
 
-            $target = $currentDir . DIRECTORY_SEPARATOR . $file->getFilename();
+            $target = $currentDir.DIRECTORY_SEPARATOR.$file->getFilename();
 
             if (File::exists($target)) {
                 continue;

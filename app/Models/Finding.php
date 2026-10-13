@@ -3,112 +3,112 @@
 namespace App\Models;
 
 use App\Services\FindingDeduplicationService;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Finding extends Model
 {
     public const DEFAULT_SLA_DAYS = [
-        "critico"     => 30,
-        "alto"        => 90,
-        "medio"       => 180,
-        "baixo"       => 365,
-        "informativo" => 730,
+        'critico' => 30,
+        'alto' => 90,
+        'medio' => 180,
+        'baixo' => 365,
+        'informativo' => 730,
     ];
 
     public const SEVERIDADE_OPTIONS = [
-        "critico"     => "Crítico",
-        "alto"        => "Alto",
-        "medio"       => "Médio",
-        "baixo"       => "Baixo",
-        "informativo" => "Informativo",
+        'critico' => 'Crítico',
+        'alto' => 'Alto',
+        'medio' => 'Médio',
+        'baixo' => 'Baixo',
+        'informativo' => 'Informativo',
     ];
 
     public const SEVERIDADE_COLORS = [
-        "critico"     => "#ef4444",
-        "alto"        => "#f97316",
-        "medio"       => "#eab308",
-        "baixo"       => "#3b82f6",
-        "informativo" => "#6b7280",
+        'critico' => '#ef4444',
+        'alto' => '#f97316',
+        'medio' => '#eab308',
+        'baixo' => '#3b82f6',
+        'informativo' => '#6b7280',
     ];
 
     public const STATUS_OPTIONS = [
-        "aberto"         => "Aberto",
-        "confirmado"     => "Confirmado",
-        "em_tratamento"  => "Em Tratamento",
-        "risco_aceito"   => "Risco Aceito",
-        "falso_positivo" => "Falso Positivo",
-        "fechado"        => "Fechado / Mitigado",
-        "duplicado"      => "Duplicado",
+        'aberto' => 'Aberto',
+        'confirmado' => 'Confirmado',
+        'em_tratamento' => 'Em Tratamento',
+        'risco_aceito' => 'Risco Aceito',
+        'falso_positivo' => 'Falso Positivo',
+        'fechado' => 'Fechado / Mitigado',
+        'duplicado' => 'Duplicado',
     ];
 
     public const STATUS_COLORS = [
-        "aberto"         => "#ef4444",
-        "confirmado"     => "#f97316",
-        "em_tratamento"  => "#eab308",
-        "risco_aceito"   => "#8b5cf6",
-        "falso_positivo" => "#6b7280",
-        "fechado"        => "#22c55e",
-        "duplicado"      => "#6b7280",
+        'aberto' => '#ef4444',
+        'confirmado' => '#f97316',
+        'em_tratamento' => '#eab308',
+        'risco_aceito' => '#8b5cf6',
+        'falso_positivo' => '#6b7280',
+        'fechado' => '#22c55e',
+        'duplicado' => '#6b7280',
     ];
 
     protected $attributes = [
-        'status'         => 'aberto',
-        'is_regression'  => false,
+        'status' => 'aberto',
+        'is_regression' => false,
         'falso_positivo' => false,
-        'aceito_risco'   => false,
+        'aceito_risco' => false,
     ];
 
     protected $fillable = [
-        "test_id",
-        "titulo",
-        "descricao",
-        "severidade",
-        "cvss_score",
-        "cve_id",
-        "cwe_id",
-        "endpoint",
-        "parametro",
-        "metodo_http",
-        "prova_conceito",
-        "remediacao_sugerida",
-        "status",
-        "falso_positivo",
-        "aceito_risco",
-        "is_regression",
-        "duplicado_de_id",
-        "regressed_from_id",
-        "hash_dedup",
-        "ativo_afetado",
-        "responsavel",
-        "sla_dias",
-        "data_limite_correcao",
-        "detectado_em",
-        "corrigido_em",
+        'test_id',
+        'titulo',
+        'descricao',
+        'severidade',
+        'cvss_score',
+        'cve_id',
+        'cwe_id',
+        'endpoint',
+        'parametro',
+        'metodo_http',
+        'prova_conceito',
+        'remediacao_sugerida',
+        'status',
+        'falso_positivo',
+        'aceito_risco',
+        'is_regression',
+        'duplicado_de_id',
+        'regressed_from_id',
+        'hash_dedup',
+        'ativo_afetado',
+        'responsavel',
+        'sla_dias',
+        'data_limite_correcao',
+        'detectado_em',
+        'corrigido_em',
     ];
 
     protected $casts = [
-        "test_id"              => "integer",
-        "cvss_score"           => "decimal:1",
-        "sla_dias"             => "integer",
-        "falso_positivo"       => "boolean",
-        "aceito_risco"         => "boolean",
-        "is_regression"        => "boolean",
-        "data_limite_correcao" => "date",
-        "detectado_em"         => "date",
-        "corrigido_em"         => "date",
-        "duplicado_de_id"      => "integer",
-        "regressed_from_id"    => "integer",
+        'test_id' => 'integer',
+        'cvss_score' => 'decimal:1',
+        'sla_dias' => 'integer',
+        'falso_positivo' => 'boolean',
+        'aceito_risco' => 'boolean',
+        'is_regression' => 'boolean',
+        'data_limite_correcao' => 'date',
+        'detectado_em' => 'date',
+        'corrigido_em' => 'date',
+        'duplicado_de_id' => 'integer',
+        'regressed_from_id' => 'integer',
     ];
 
     protected $appends = [
-        "sla_status",
-        "dias_restantes",
-        "severidade_label",
-        "status_label",
-        "status_color",
-        "severidade_color",
+        'sla_status',
+        'dias_restantes',
+        'severidade_label',
+        'status_label',
+        'status_color',
+        'severidade_color',
     ];
 
     protected static function booted(): void
@@ -164,16 +164,17 @@ class Finding extends Model
             }
         }
 
-        $str = implode("|", [
-            strtolower(trim($this->titulo ?? "")),
-            strtolower(trim($this->endpoint ?? "")),
-            strtolower(trim($this->cwe_id ?? "")),
+        $str = implode('|', [
+            strtolower(trim($this->titulo ?? '')),
+            strtolower(trim($this->endpoint ?? '')),
+            strtolower(trim($this->cwe_id ?? '')),
             (string) $softwareId,
         ]);
-        return hash("sha256", $str);
+
+        return hash('sha256', $str);
     }
 
-    public function controles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function controles(): BelongsToMany
     {
         return $this->belongsToMany(Atividade::class, 'finding_atividades', 'finding_id', 'atividade_id')
             ->withTimestamps()
@@ -182,17 +183,17 @@ class Finding extends Model
 
     public function test(): BelongsTo
     {
-        return $this->belongsTo(EngagementTest::class, "test_id");
+        return $this->belongsTo(EngagementTest::class, 'test_id');
     }
 
     public function duplicadoDe(): BelongsTo
     {
-        return $this->belongsTo(Finding::class, "duplicado_de_id");
+        return $this->belongsTo(Finding::class, 'duplicado_de_id');
     }
 
     public function regressedFrom(): BelongsTo
     {
-        return $this->belongsTo(Finding::class, "regressed_from_id");
+        return $this->belongsTo(Finding::class, 'regressed_from_id');
     }
 
     public function getDiasRestantesAttribute(): ?int
@@ -200,22 +201,30 @@ class Finding extends Model
         if (! $this->data_limite_correcao) {
             return null;
         }
+
         return (int) now()->startOfDay()->diffInDays($this->data_limite_correcao->startOfDay(), false);
     }
 
     public function getSlaStatusAttribute(): string
     {
-        if (in_array($this->status, ["fechado", "falso_positivo", "risco_aceito", "duplicado"])) {
-            return "concluido";
+        if (in_array($this->status, ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])) {
+            return 'concluido';
         }
         if (! $this->data_limite_correcao) {
-            return "sem_prazo";
+            return 'sem_prazo';
         }
         $dias = $this->dias_restantes;
-        if ($dias < 0)  return "atrasado";
-        if ($dias <= 3) return "critico";
-        if ($dias <= 7) return "alerta";
-        return "em_dia";
+        if ($dias < 0) {
+            return 'atrasado';
+        }
+        if ($dias <= 3) {
+            return 'critico';
+        }
+        if ($dias <= 7) {
+            return 'alerta';
+        }
+
+        return 'em_dia';
     }
 
     public function getSeveridadeLabelAttribute(): string
@@ -230,11 +239,11 @@ class Finding extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return self::STATUS_COLORS[$this->status] ?? "#6b7280";
+        return self::STATUS_COLORS[$this->status] ?? '#6b7280';
     }
 
     public function getSeveridadeColorAttribute(): string
     {
-        return self::SEVERIDADE_COLORS[$this->severidade] ?? "#6b7280";
+        return self::SEVERIDADE_COLORS[$this->severidade] ?? '#6b7280';
     }
 }

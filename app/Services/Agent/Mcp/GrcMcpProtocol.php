@@ -84,7 +84,7 @@ class GrcMcpProtocol
 
             if ($this->registry->requiresConfirmation($tool['name'])) {
                 $schema['properties']['confirm'] = [
-                    'type'        => 'boolean',
+                    'type' => 'boolean',
                     'description' => 'Use true para confirmar a gravacao. Sem esse campo, a ferramenta roda em dry-run.',
                 ];
             }
@@ -94,12 +94,12 @@ class GrcMcpProtocol
             $securitySchemes = $this->securityFor($tool);
 
             return [
-                'name'            => $tool['name'],
-                'title'           => str_replace('_', ' ', ucfirst($tool['name'])),
-                'description'     => $this->descriptionFor($tool),
-                'inputSchema'     => $schema,
+                'name' => $tool['name'],
+                'title' => str_replace('_', ' ', ucfirst($tool['name'])),
+                'description' => $this->descriptionFor($tool),
+                'inputSchema' => $schema,
                 'securitySchemes' => $securitySchemes,
-                '_meta'           => ['securitySchemes' => $securitySchemes],
+                '_meta' => ['securitySchemes' => $securitySchemes],
             ];
         }, $this->registry->listTools());
     }
@@ -162,7 +162,7 @@ class GrcMcpProtocol
 
         return [
             [
-                'type'   => 'oauth2',
+                'type' => 'oauth2',
                 'scopes' => [$scope],
             ],
         ];

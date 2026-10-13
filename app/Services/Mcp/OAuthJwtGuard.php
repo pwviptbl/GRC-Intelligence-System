@@ -2,10 +2,11 @@
 
 namespace App\Services\Mcp;
 
-use Firebase\JWT\CachedKeySet;
+use Firebase\JWT\BeforeValidException;
+use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use GuzzleHttp\Psr7\HttpFactory;
+use Firebase\JWT\SignatureInvalidException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -53,9 +54,9 @@ final class OAuthJwtGuard
      */
     public static function validate(string $rawToken, array $config): self
     {
-        $issuer   = rtrim((string) ($config['issuer'] ?? ''), '/').'/';
+        $issuer = rtrim((string) ($config['issuer'] ?? ''), '/').'/';
         $audience = (string) ($config['audience'] ?? '');
-        $leeway   = (int) ($config['leeway_seconds'] ?? 30);
+        $leeway = (int) ($config['leeway_seconds'] ?? 30);
 
         if ($issuer === '/' || $audience === '') {
             throw new OAuthJwtException('oauth_not_configured', 'MCP OAuth não está configurado.');
@@ -69,11 +70,11 @@ final class OAuthJwtGuard
         try {
             /** @var stdClass $payload */
             $payload = JWT::decode($rawToken, $keys);
-        } catch (\Firebase\JWT\ExpiredException $e) {
+        } catch (ExpiredException $e) {
             throw new OAuthJwtException('token_expired', 'Token expirado.', $e);
-        } catch (\Firebase\JWT\BeforeValidException $e) {
+        } catch (BeforeValidException $e) {
             throw new OAuthJwtException('token_not_yet_valid', 'Token ainda não é válido.', $e);
-        } catch (\Firebase\JWT\SignatureInvalidException $e) {
+        } catch (SignatureInvalidException $e) {
             throw new OAuthJwtException('invalid_signature', 'Assinatura JWT inválida.', $e);
         } catch (\UnexpectedValueException $e) {
             throw new OAuthJwtException('invalid_token', 'Token JWT malformado: '.$e->getMessage(), $e);
@@ -120,7 +121,7 @@ final class OAuthJwtGuard
             : [];
 
         $fromPermissions = $payload->permissions ?? null;
-        $permissionList  = is_array($fromPermissions)
+        $permissionList = is_array($fromPermissions)
             ? array_filter(array_map('strval', $fromPermissions))
             : [];
 
@@ -149,11 +150,12 @@ final class OAuthJwtGuard
      * uma chamada HTTP a cada requisição MCP.
      *
      * @return array<string, Key>
+     *
      * @throws OAuthJwtException
      */
     private static function fetchKeys(array $config): array
     {
-        $issuer  = rtrim((string) ($config['issuer'] ?? ''), '/').'/';
+        $issuer = rtrim((string) ($config['issuer'] ?? ''), '/').'/';
         $jwksUri = (string) ($config['jwks_uri'] ?? '');
         $cacheTtl = (int) ($config['jwks_cache_ttl'] ?? 600);
 
@@ -175,7 +177,7 @@ final class OAuthJwtGuard
                 return $response->json();
             } catch (\Throwable $e) {
                 Log::error('MCP OAuth: falha ao buscar JWKS', [
-                    'uri'   => $jwksUri,
+                    'uri' => $jwksUri,
                     'error' => $e->getMessage(),
                 ]);
                 throw new OAuthJwtException('jwks_fetch_failed', 'Falha ao buscar chaves JWKS: '.$e->getMessage(), $e);
@@ -200,6 +202,7 @@ final class OAuthJwtGuard
      * Transforma o array JWKS em um mapa kid → Key compatível com firebase/jwt.
      *
      * @return array<string, Key>
+     *
      * @throws \InvalidArgumentException
      */
     private static function parseJwks(array $jwks): array
@@ -214,7 +217,7 @@ final class OAuthJwtGuard
             $kty = strtoupper((string) $keyData['kty']);
             $alg = (string) ($keyData['alg'] ?? match ($kty) {
                 'RSA' => 'RS256',
-                'EC'  => 'ES256',
+                'EC' => 'ES256',
                 default => '',
             });
 
@@ -304,7 +307,7 @@ final class OAuthJwtGuard
         }
 
         $curveOid = $oids[$crv];
-        $ecOid    = "\x2a\x86\x48\xce\x3d\x02\x01"; // id-ecPublicKey
+        $ecOid = "\x2a\x86\x48\xce\x3d\x02\x01"; // id-ecPublicKey
 
         // UncompressedPoint = 0x04 || x || y
         $point = "\x04".$x.$y;
@@ -337,7 +340,7 @@ final class OAuthJwtGuard
 
         // AlgorithmIdentifier: SEQUENCE { OID rsaEncryption, NULL }
         $rsaOid = "\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01"; // rsaEncryption OID
-        $algId  = self::derSequence(self::derOid($rsaOid)."\x05\x00");
+        $algId = self::derSequence(self::derOid($rsaOid)."\x05\x00");
 
         // SubjectPublicKeyInfo: SEQUENCE { AlgorithmIdentifier, BIT STRING }
         return self::derSequence($algId.self::derBitString($rsaKey));
@@ -361,7 +364,7 @@ final class OAuthJwtGuard
     private static function derInteger(string $bytes): string
     {
         // Garante que o byte mais significativo não seja interpretado como negativo
-        if (ord($bytes[0]) > 0x7f) {
+        if (ord($bytes[0]) > 0x7F) {
             $bytes = "\x00".$bytes;
         }
 
@@ -378,7 +381,7 @@ final class OAuthJwtGuard
             return "\x81".chr($length);
         }
 
-        return "\x82".chr($length >> 8).chr($length & 0xff);
+        return "\x82".chr($length >> 8).chr($length & 0xFF);
     }
 
     private static function base64UrlDecode(string $data): string|false

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Procedimento;
+use App\Models\Software;
 use App\Services\GeminiService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ class ProcedimentoController extends Controller
     public function index()
     {
         $procedimentos = Procedimento::with('etapas')->latest()->get();
+
         return view('procedimentos.index', compact('procedimentos'));
     }
 
@@ -79,60 +81,61 @@ class ProcedimentoController extends Controller
 
     public function generateIA(Request $request, GeminiService $gemini)
     {
-                $validated = $request->validate([
-                        'titulo' => 'required|string|max:255',
-                        'prompt_adicional' => 'nullable|string|max:2000',
-                ]);
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'prompt_adicional' => 'nullable|string|max:2000',
+        ]);
 
-                $titulo = $validated['titulo'];
-                $promptAdicional = trim($validated['prompt_adicional'] ?? '');
+        $titulo = $validated['titulo'];
+        $promptAdicional = trim($validated['prompt_adicional'] ?? '');
 
-                $prompt = "Crie um procedimento operacional padrão para o título: '{$titulo}'.\n"
-                        . "Responda OBRIGATORIAMENTE em JSON no seguinte formato:\n"
-                        . "{\n"
-                        . "  \"tipo\": \"procedimento_json\",\n"
-                        . "  \"etapas\": [\n"
-                        . "    {\"nome_etapa\": \"...\", \"responsavel\": \"...\", \"sla\": \"...\", \"descricao\": \"...\"}\n"
-                        . "  ]\n"
-                        . "}\n"
-                        . "Não use Markdown no JSON. Seja técnico."
-                        . "\nPriorize etapas acionáveis, com ordem lógica, validação e critérios de conclusão.";
+        $prompt = "Crie um procedimento operacional padrão para o título: '{$titulo}'.\n"
+                ."Responda OBRIGATORIAMENTE em JSON no seguinte formato:\n"
+                ."{\n"
+                ."  \"tipo\": \"procedimento_json\",\n"
+                ."  \"etapas\": [\n"
+                ."    {\"nome_etapa\": \"...\", \"responsavel\": \"...\", \"sla\": \"...\", \"descricao\": \"...\"}\n"
+                ."  ]\n"
+                ."}\n"
+                .'Não use Markdown no JSON. Seja técnico.'
+                ."\nPriorize etapas acionáveis, com ordem lógica, validação e critérios de conclusão.";
 
-                if ($promptAdicional !== '') {
-                        $prompt .= "\n\nContexto e foco adicional informado pelo usuário:\n" . $promptAdicional
-                                . "\n\nAjuste as etapas para respeitar este foco sem quebrar o formato JSON exigido.";
-                }
-        
+        if ($promptAdicional !== '') {
+            $prompt .= "\n\nContexto e foco adicional informado pelo usuário:\n".$promptAdicional
+                    ."\n\nAjuste as etapas para respeitar este foco sem quebrar o formato JSON exigido.";
+        }
+
         $response = $gemini->chat($prompt);
-        
+
         // Se a resposta vier dentro de uma chave 'resposta' (texto puro) ao invés do JSON de etapas
-        if (isset($response['resposta']) && !isset($response['etapas'])) {
+        if (isset($response['resposta']) && ! isset($response['etapas'])) {
             // Tenta extrair JSON do texto caso a IA tenha vacilado
             preg_match('/\{.*\}/s', $response['resposta'], $matches);
-            if (!empty($matches)) {
+            if (! empty($matches)) {
                 $json = json_decode($matches[0], true);
                 if (isset($json['etapas'])) {
                     return response()->json(['etapas' => $json['etapas']]);
                 }
             }
+
             return response()->json(['error' => 'Formato inválido'], 500);
         }
-        
+
         return response()->json($response);
     }
 
     public function suggestIA(GeminiService $gemini)
     {
-        $procedimentosAtuais = \App\Models\Procedimento::pluck('titulo')->toArray();
-        $softwares = \App\Models\Software::pluck('nome')->toArray();
-        
-        $contexto = "Softwares no inventário: " . implode(', ', $softwares) . ". ";
-        $contexto .= "Procedimentos já documentados: " . implode(', ', $procedimentosAtuais) . ". ";
-        
-        $prompt = $contexto . "Com base nesses softwares e procedimentos, sugira 3 novos procedimentos operacionais (POPs) que seriam importantes para manter a segurança, backup ou operação desses ativos. Para cada sugestão, dê um título curto e uma justificativa técnica de 1 frase. Responda em texto simples, sem Markdown.";
-        
+        $procedimentosAtuais = Procedimento::pluck('titulo')->toArray();
+        $softwares = Software::pluck('nome')->toArray();
+
+        $contexto = 'Softwares no inventário: '.implode(', ', $softwares).'. ';
+        $contexto .= 'Procedimentos já documentados: '.implode(', ', $procedimentosAtuais).'. ';
+
+        $prompt = $contexto.'Com base nesses softwares e procedimentos, sugira 3 novos procedimentos operacionais (POPs) que seriam importantes para manter a segurança, backup ou operação desses ativos. Para cada sugestão, dê um título curto e uma justificativa técnica de 1 frase. Responda em texto simples, sem Markdown.';
+
         $sugestoes = $gemini->generateGovernance($prompt);
-        
+
         return response()->json(['sugestoes' => $sugestoes]);
     }
 
@@ -143,6 +146,7 @@ class ProcedimentoController extends Controller
         if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
             $html = view('procedimentos.print', ['procedimentos' => $procedimentos, 'isPdfMode' => true])->render();
             $safeTitle = \Str::slug($procedimento->titulo) ?: "procedimento_{$procedimento->id}";
+
             return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
         }
 
@@ -152,16 +156,17 @@ class ProcedimentoController extends Controller
     public function printAll()
     {
         $procedimentos = Procedimento::with('etapas')->latest()->get();
+
         return view('procedimentos.print', compact('procedimentos'));
     }
 
     public function exportZip()
     {
         $procedimentos = Procedimento::with('etapas')->latest()->get();
-        $zipFileName = 'procedimentos_operacionais_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
-        $zipPath = storage_path('app/' . $zipFileName);
+        $zipFileName = 'procedimentos_operacionais_'.now()->format('Ymd_His').'_'.\Str::random(6).'.zip';
+        $zipPath = storage_path('app/'.$zipFileName);
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             abort(500, 'Não foi possível gerar o pacote ZIP.');
         }
@@ -203,7 +208,7 @@ class ProcedimentoController extends Controller
 
         // Sincronização de Etapas
         $etapaIdsEnviados = collect($validated['etapas'])->pluck('id')->filter()->toArray();
-        
+
         // Remove etapas que não vieram no request
         $procedimento->etapas()->whereNotIn('id', $etapaIdsEnviados)->delete();
 
@@ -216,7 +221,7 @@ class ProcedimentoController extends Controller
                 'sla' => $etapaData['sla'] ?? '',
             ];
 
-            if (!empty($etapaData['id'])) {
+            if (! empty($etapaData['id'])) {
                 $procedimento->etapas()->where('id', $etapaData['id'])->update($data);
             } else {
                 $procedimento->etapas()->create($data);
@@ -232,6 +237,7 @@ class ProcedimentoController extends Controller
     public function destroy(Procedimento $procedimento)
     {
         $procedimento->delete();
+
         return redirect()->back()->with('success', 'Procedimento removido.');
     }
 }

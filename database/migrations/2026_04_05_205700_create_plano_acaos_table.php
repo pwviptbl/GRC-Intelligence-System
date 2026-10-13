@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('descricao');
             $table->string('origem')->default('');
             $table->integer('origem_id')->nullable(); // Mantido para referências genéricas
-            
+
             // Relacionamentos Estruturados
             $table->foreignId('software_id')->nullable()->constrained('software')->nullOnDelete();
             $table->foreignId('cliente_id')->nullable()->constrained('clientes')->nullOnDelete();

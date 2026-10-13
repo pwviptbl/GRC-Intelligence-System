@@ -62,7 +62,7 @@ return [
          * Ferramentas de leitura exigem scope_read.
          * Ferramentas de escrita exigem scope_write.
          */
-        'scope_read'  => env('MCP_OAUTH_REQUIRED_SCOPES_READ', 'grc:read'),
+        'scope_read' => env('MCP_OAUTH_REQUIRED_SCOPES_READ', 'grc:read'),
         'scope_write' => env('MCP_OAUTH_REQUIRED_SCOPES_WRITE', 'grc:write'),
 
         /*

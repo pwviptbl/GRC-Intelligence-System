@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Engagement;
-use App\Models\Software;
 use App\Models\InstanciaCliente;
+use App\Models\Software;
 use Illuminate\Http\Request;
 
 class EngagementController extends Controller
@@ -25,13 +25,13 @@ class EngagementController extends Controller
         }
 
         $engagements = $query->latest()->paginate(20)->withQueryString();
-        $softwares   = Software::where('ativo', true)->orderBy('nome')->get();
+        $softwares = Software::where('ativo', true)->orderBy('nome')->get();
 
         $stats = [
-            'total'     => Engagement::count(),
-            'ativos'    => Engagement::where('status', 'ativo')->count(),
-            'concluidos'=> Engagement::where('status', 'concluido')->count(),
-            'planejados'=> Engagement::where('status', 'planejado')->count(),
+            'total' => Engagement::count(),
+            'ativos' => Engagement::where('status', 'ativo')->count(),
+            'concluidos' => Engagement::where('status', 'concluido')->count(),
+            'planejados' => Engagement::where('status', 'planejado')->count(),
         ];
 
         return view('engagements.index', compact('engagements', 'softwares', 'stats'));
@@ -42,6 +42,7 @@ class EngagementController extends Controller
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
         $selectedSoftwareId = $request->input('software_id');
         $instancias = InstanciaCliente::with(['cliente', 'software'])->orderBy('nome_ambiente')->get();
+
         return view('engagements.create', compact('softwares', 'selectedSoftwareId', 'instancias'));
     }
 
@@ -53,7 +54,7 @@ class EngagementController extends Controller
 
         $engagement = Engagement::create($validated);
 
-        if (!empty($instanciaIds)) {
+        if (! empty($instanciaIds)) {
             $engagement->instancias()->sync($instanciaIds);
         }
         $engagement->syncInstanciasPorBranch();
@@ -67,10 +68,10 @@ class EngagementController extends Controller
         $engagement->load(['software', 'tests.findings', 'instancias.cliente']);
 
         $findingStats = [
-            'total'     => 0,
-            'abertos'   => 0,
-            'criticos'  => 0,
-            'fechados'  => 0,
+            'total' => 0,
+            'abertos' => 0,
+            'criticos' => 0,
+            'fechados' => 0,
         ];
 
         foreach ($engagement->tests as $test) {
@@ -90,6 +91,7 @@ class EngagementController extends Controller
 
         $allFindings = $engagement->tests->flatMap->findings->sortBy(function ($f) {
             $order = ['critico' => 1, 'alto' => 2, 'medio' => 3, 'baixo' => 4, 'informativo' => 5];
+
             return $order[$f->severidade] ?? 99;
         });
 
@@ -101,6 +103,7 @@ class EngagementController extends Controller
         $engagement->load('instancias');
         $softwares = Software::where('ativo', true)->orderBy('nome')->get();
         $instancias = InstanciaCliente::with(['cliente', 'software'])->orderBy('nome_ambiente')->get();
+
         return view('engagements.edit', compact('engagement', 'softwares', 'instancias'));
     }
 
@@ -122,6 +125,7 @@ class EngagementController extends Controller
     public function destroy(Engagement $engagement)
     {
         $engagement->delete();
+
         return redirect()->route('engagements.index')
             ->with('success', 'Engajamento removido.');
     }
@@ -129,25 +133,25 @@ class EngagementController extends Controller
     protected function validateEngagement(Request $request): array
     {
         return $request->validate([
-            'software_id'          => ['required', 'integer', 'exists:software,id'],
-            'nome'                 => ['required', 'string', 'max:255'],
-            'tipo'                 => ['required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
-            'descricao'            => ['nullable', 'string'],
-            'versao_testada'       => ['nullable', 'string', 'max:100'],
-            'branch_testada'       => ['nullable', 'string', 'max:100'],
+            'software_id' => ['required', 'integer', 'exists:software,id'],
+            'nome' => ['required', 'string', 'max:255'],
+            'tipo' => ['required', 'in:pentest,dast,sast,sca,auditoria,infra,outro'],
+            'descricao' => ['nullable', 'string'],
+            'versao_testada' => ['nullable', 'string', 'max:100'],
+            'branch_testada' => ['nullable', 'string', 'max:100'],
             'auto_propagar_branch' => ['nullable', 'boolean'],
-            'instancia_ids'        => ['nullable', 'array'],
-            'instancia_ids.*'      => ['integer', 'exists:instancia_clientes,id'],
-            'ambiente'             => ['nullable', 'string', 'max:100'],
-            'lead'                 => ['nullable', 'string', 'max:255'],
-            'data_inicio'          => ['nullable', 'date'],
-            'data_fim'             => ['nullable', 'date', 'after_or_equal:data_inicio'],
-            'status'               => ['required', 'in:planejado,ativo,concluido,cancelado'],
-            'notas'                => ['nullable', 'string'],
+            'instancia_ids' => ['nullable', 'array'],
+            'instancia_ids.*' => ['integer', 'exists:instancia_clientes,id'],
+            'ambiente' => ['nullable', 'string', 'max:100'],
+            'lead' => ['nullable', 'string', 'max:255'],
+            'data_inicio' => ['nullable', 'date'],
+            'data_fim' => ['nullable', 'date', 'after_or_equal:data_inicio'],
+            'status' => ['required', 'in:planejado,ativo,concluido,cancelado'],
+            'notas' => ['nullable', 'string'],
         ], [
-            'nome.required'        => 'O nome do engajamento é obrigatório.',
+            'nome.required' => 'O nome do engajamento é obrigatório.',
             'software_id.required' => 'Selecione o sistema (ativo) para este engajamento.',
-            'tipo.required'        => 'O tipo do engajamento é obrigatório.',
+            'tipo.required' => 'O tipo do engajamento é obrigatório.',
         ]);
     }
 }

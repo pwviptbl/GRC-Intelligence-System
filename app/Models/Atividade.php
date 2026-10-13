@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Atividade extends Model
 {
@@ -91,10 +92,11 @@ class Atividade extends Model
     public function getSoftwareLabelAttribute(): string
     {
         if ($this->relationLoaded('softwareModulos') && $this->softwareModulos->isNotEmpty()) {
-            $softwares = $this->softwareModulos->map(fn($m) => $m->software?->nome)->filter()->unique()->values();
+            $softwares = $this->softwareModulos->map(fn ($m) => $m->software?->nome)->filter()->unique()->values();
             if ($softwares->isNotEmpty()) {
                 $list = implode(', ', $softwares->slice(0, 2)->all());
-                return $softwares->count() > 2 ? $list . ' (+'.($softwares->count() - 2).')' : $list;
+
+                return $softwares->count() > 2 ? $list.' (+'.($softwares->count() - 2).')' : $list;
             }
         }
 
@@ -106,7 +108,7 @@ class Atividade extends Model
         return $this->tier_minimo ? 'Tier '.$this->tier_minimo : 'Padrão';
     }
 
-    public function findings(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function findings(): BelongsToMany
     {
         return $this->belongsToMany(Finding::class, 'finding_atividades', 'atividade_id', 'finding_id')
             ->withTimestamps()

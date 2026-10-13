@@ -23,7 +23,7 @@ class AuthenticateApiKey
 
         if (! $token) {
             return response()->json([
-                'error'   => 'Unauthorized',
+                'error' => 'Unauthorized',
                 'message' => 'Token de API não fornecido. Use o header "X-API-Key" ou "Authorization: Bearer <token>".',
             ], 401);
         }
@@ -32,7 +32,7 @@ class AuthenticateApiKey
 
         if (! $user) {
             return response()->json([
-                'error'   => 'Unauthorized',
+                'error' => 'Unauthorized',
                 'message' => 'Token de API inválido.',
             ], 401);
         }

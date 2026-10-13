@@ -44,10 +44,10 @@ class TierPoliticaController extends Controller
             ? $this->filteredQuery($request)->get()
             : collect();
 
-        $zipFileName = 'acoes_tier_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
-        $zipPath = storage_path('app/' . $zipFileName);
+        $zipFileName = 'acoes_tier_'.now()->format('Ymd_His').'_'.\Str::random(6).'.zip';
+        $zipPath = storage_path('app/'.$zipFileName);
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             abort(500, 'Não foi possível gerar o pacote ZIP.');
         }

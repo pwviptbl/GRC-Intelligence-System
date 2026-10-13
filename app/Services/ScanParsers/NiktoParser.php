@@ -3,6 +3,7 @@
 namespace App\Services\ScanParsers;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class NiktoParser extends BaseScanParser
 {
@@ -74,16 +75,16 @@ class NiktoParser extends BaseScanParser
             }
 
             $findings->push([
-                'titulo'              => 'Nikto: ' . \Illuminate\Support\Str::limit($desc, 80),
-                'descricao'           => $desc,
-                'severidade'          => $severity,
-                'cvss_score'          => null,
-                'cve_id'              => $cveId,
-                'cwe_id'              => null,
-                'endpoint'            => $uri ?: null,
-                'parametro'           => null,
-                'metodo_http'         => $method ?: 'GET',
-                'prova_conceito'      => $osvdb ? "OSVDB ID: {$osvdb}" : null,
+                'titulo' => 'Nikto: '.Str::limit($desc, 80),
+                'descricao' => $desc,
+                'severidade' => $severity,
+                'cvss_score' => null,
+                'cve_id' => $cveId,
+                'cwe_id' => null,
+                'endpoint' => $uri ?: null,
+                'parametro' => null,
+                'metodo_http' => $method ?: 'GET',
+                'prova_conceito' => $osvdb ? "OSVDB ID: {$osvdb}" : null,
                 'remediacao_sugerida' => null,
             ]);
         }
@@ -123,16 +124,16 @@ class NiktoParser extends BaseScanParser
             }
 
             $findings->push([
-                'titulo'              => 'Nikto: ' . \Illuminate\Support\Str::limit($desc, 80),
-                'descricao'           => $desc,
-                'severidade'          => $severity,
-                'cvss_score'          => null,
-                'cve_id'              => $cveId,
-                'cwe_id'              => null,
-                'endpoint'            => $uri,
-                'parametro'           => null,
-                'metodo_http'         => 'GET',
-                'prova_conceito'      => $line,
+                'titulo' => 'Nikto: '.Str::limit($desc, 80),
+                'descricao' => $desc,
+                'severidade' => $severity,
+                'cvss_score' => null,
+                'cve_id' => $cveId,
+                'cwe_id' => null,
+                'endpoint' => $uri,
+                'parametro' => null,
+                'metodo_http' => 'GET',
+                'prova_conceito' => $line,
                 'remediacao_sugerida' => null,
             ]);
         }

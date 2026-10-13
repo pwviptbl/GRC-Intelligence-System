@@ -44,19 +44,19 @@ class BanditParser extends BaseScanParser
             $code = $res['code'] ?? '';
             $severity = $this->normalizeSeverity($res['issue_severity'] ?? 'medio');
             $cwe = $res['issue_cwe'] ?? [];
-            $cweId = isset($cwe['id']) ? 'CWE-' . $cwe['id'] : null;
+            $cweId = isset($cwe['id']) ? 'CWE-'.$cwe['id'] : null;
 
             $findings->push([
-                'titulo'              => "Bandit [{$testId}]: {$issueText} em {$filename}:{$line}",
-                'descricao'           => "Teste: {$testName} ({$testId})\nArquivo: {$filename}\nLinha: {$line}\n\nDetalhes:\n{$issueText}",
-                'severidade'          => $severity,
-                'cvss_score'          => null,
-                'cve_id'              => null,
-                'cwe_id'              => $cweId,
-                'endpoint'            => "{$filename}:{$line}",
-                'parametro'           => "Linha {$line}",
-                'metodo_http'         => null,
-                'prova_conceito'      => $code ? "Código analisado:\n{$code}" : null,
+                'titulo' => "Bandit [{$testId}]: {$issueText} em {$filename}:{$line}",
+                'descricao' => "Teste: {$testName} ({$testId})\nArquivo: {$filename}\nLinha: {$line}\n\nDetalhes:\n{$issueText}",
+                'severidade' => $severity,
+                'cvss_score' => null,
+                'cve_id' => null,
+                'cwe_id' => $cweId,
+                'endpoint' => "{$filename}:{$line}",
+                'parametro' => "Linha {$line}",
+                'metodo_http' => null,
+                'prova_conceito' => $code ? "Código analisado:\n{$code}" : null,
                 'remediacao_sugerida' => $res['more_info'] ?? null,
             ]);
         }

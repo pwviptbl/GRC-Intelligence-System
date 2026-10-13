@@ -2,12 +2,13 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Services\GeminiService;
+use Illuminate\Console\Command;
 
 class TestGemini extends Command
 {
     protected $signature = 'test:gemini';
+
     protected $description = 'Testa a conexão com a API do Gemini';
 
     public function handle(GeminiService $gemini)

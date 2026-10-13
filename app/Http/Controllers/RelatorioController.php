@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use App\Models\Software;
-use App\Models\Incidente;
 use App\Models\ControleEvento;
+use App\Models\Incidente;
 use App\Models\Politica;
+use App\Models\Software;
 use Illuminate\Http\Request;
 
 class RelatorioController extends Controller
@@ -15,6 +15,7 @@ class RelatorioController extends Controller
     {
         $clientes = Cliente::orderBy('nome')->get();
         $softwares = Software::orderBy('nome')->get();
+
         return view('relatorios.index', compact('clientes', 'softwares'));
     }
 
@@ -23,7 +24,7 @@ class RelatorioController extends Controller
         $queryIncidentes = Incidente::with(['software', 'cliente']);
         $queryPlanos = ControleEvento::with(['etapas.evidencias', 'software', 'cliente'])
             ->whereNotIn('status', ['sugestao', 'triagem', 'dispensado', 'cancelado']);
-        
+
         // Filtro por Data
         if ($request->inicio) {
             $queryIncidentes->where('created_at', '>=', $request->inicio);

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Engagement;
 use App\Models\EngagementTest;
 use App\Models\Finding;
-use Illuminate\Support\Collection;
 
 class FindingDeduplicationService
 {
@@ -18,6 +17,7 @@ class FindingDeduplicationService
             if ($subject->relationLoaded('engagement') && $subject->engagement) {
                 return (int) $subject->engagement->software_id;
             }
+
             return (int) (Engagement::where('id', $subject->engagement_id)->value('software_id') ?? 0);
         }
 
@@ -27,6 +27,7 @@ class FindingDeduplicationService
 
         if ($subject->test_id) {
             $test = EngagementTest::find($subject->test_id);
+
             return $test ? $this->getSoftwareId($test) : 0;
         }
 
@@ -172,9 +173,9 @@ class FindingDeduplicationService
             if (! in_array($finding->hash_dedup, $retestHashes, true)) {
                 $finding->status = 'fechado';
                 $finding->corrigido_em = now()->toDateString();
-                
-                $nota = "\n[Mitigado automaticamente via Reteste #{$retest->id} '{$retest->titulo}' em " . now()->format('d/m/Y H:i') . "]";
-                $finding->remediacao_sugerida = trim(($finding->remediacao_sugerida ?? '') . $nota);
+
+                $nota = "\n[Mitigado automaticamente via Reteste #{$retest->id} '{$retest->titulo}' em ".now()->format('d/m/Y H:i').']';
+                $finding->remediacao_sugerida = trim(($finding->remediacao_sugerida ?? '').$nota);
                 $finding->save();
 
                 $mitigated[] = $finding->id;
@@ -187,7 +188,7 @@ class FindingDeduplicationService
             'retest' => $retest,
             'mitigated_count' => count($mitigated),
             'mitigated_ids' => $mitigated,
-            'message' => count($mitigated) . " achado(s) do teste original foram mitigados e fechados com sucesso.",
+            'message' => count($mitigated).' achado(s) do teste original foram mitigados e fechados com sucesso.',
         ];
     }
 }

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('plano_acao_id')->constrained('plano_acaos')->cascadeOnDelete();
             $table->string('titulo');
             $table->boolean('concluido')->default(false);
-            $table->text('observacoes')->nullable(); 
+            $table->text('observacoes')->nullable();
             $table->timestamps();
         });
 

@@ -146,8 +146,8 @@ class McpController extends Controller
         } catch (OAuthJwtException $e) {
             Log::warning('MCP OAuth: token rejeitado', [
                 'error_code' => $e->errorCode,
-                'error'      => $e->getMessage(),
-                'ip'         => $request->ip(),
+                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
             ]);
 
             // Erros de configuração devolvem 503, erros de token devolvem 401
@@ -155,13 +155,13 @@ class McpController extends Controller
 
             $error = match ($e->errorCode) {
                 'oauth_not_configured' => $this->jsonRpcError(-32002, 'MCP OAuth authentication is not configured.', $status),
-                'token_expired'        => $this->jsonRpcError(-32001, 'Token expired.', $status)
+                'token_expired' => $this->jsonRpcError(-32001, 'Token expired.', $status)
                     ->withHeaders($this->wwwAuthenticateHeader('invalid_token', 'Token expired.')),
-                'invalid_issuer'       => $this->jsonRpcError(-32001, 'Invalid token issuer.', $status)
+                'invalid_issuer' => $this->jsonRpcError(-32001, 'Invalid token issuer.', $status)
                     ->withHeaders($this->wwwAuthenticateHeader('invalid_token', 'Invalid issuer.')),
-                'invalid_audience'     => $this->jsonRpcError(-32001, 'Invalid token audience.', $status)
+                'invalid_audience' => $this->jsonRpcError(-32001, 'Invalid token audience.', $status)
                     ->withHeaders($this->wwwAuthenticateHeader('invalid_token', 'Invalid audience.')),
-                default                => $this->jsonRpcError(-32001, 'Unauthorized.', $status)
+                default => $this->jsonRpcError(-32001, 'Unauthorized.', $status)
                     ->withHeaders($this->wwwAuthenticateHeader('invalid_token', $e->getMessage())),
             };
 
@@ -333,14 +333,14 @@ class McpController extends Controller
             targetId: $name,
             statusCode: 200,
             context: [
-                'tool'              => $name,
-                'arguments'         => $arguments,
-                'before'            => $resultData['before'] ?? null,
-                'after'             => $resultData['after'] ?? $resultData['created'] ?? $resultData['data'] ?? null,
-                'auth_mode'         => config('mcp.auth_mode', 'bearer'),
+                'tool' => $name,
+                'arguments' => $arguments,
+                'before' => $resultData['before'] ?? null,
+                'after' => $resultData['after'] ?? $resultData['created'] ?? $resultData['data'] ?? null,
+                'auth_mode' => config('mcp.auth_mode', 'bearer'),
                 'token_fingerprint' => $this->tokenFingerprint,
-                'oauth_subject'     => null, // não armazenamos sub para privacidade
-                'ok'                => ! ($message['result']['isError'] ?? false),
+                'oauth_subject' => null, // não armazenamos sub para privacidade
+                'ok' => ! ($message['result']['isError'] ?? false),
             ],
         );
     }
@@ -351,9 +351,9 @@ class McpController extends Controller
 
     protected function unauthorizedOAuthResponse(): JsonResponse
     {
-        $resourceUrl   = (string) config('mcp.oauth.resource_url', '');
-        $metadataUrl   = rtrim(config('app.url', ''), '/');
-        $metadataUrl  .= '/.well-known/oauth-protected-resource';
+        $resourceUrl = (string) config('mcp.oauth.resource_url', '');
+        $metadataUrl = rtrim(config('app.url', ''), '/');
+        $metadataUrl .= '/.well-known/oauth-protected-resource';
 
         $wwwAuthenticate = 'Bearer realm="grc-mcp"';
         if ($resourceUrl !== '') {
@@ -371,8 +371,8 @@ class McpController extends Controller
      */
     protected function wwwAuthenticateHeader(string $error, string $description = ''): array
     {
-        $resourceUrl  = (string) config('mcp.oauth.resource_url', '');
-        $metadataUrl  = rtrim(config('app.url', ''), '/').'/.well-known/oauth-protected-resource';
+        $resourceUrl = (string) config('mcp.oauth.resource_url', '');
+        $metadataUrl = rtrim(config('app.url', ''), '/').'/.well-known/oauth-protected-resource';
 
         $value = 'Bearer realm="grc-mcp"';
         $value .= ', error="'.$error.'"';
@@ -400,9 +400,9 @@ class McpController extends Controller
     {
         return response()->json([
             'jsonrpc' => '2.0',
-            'id'      => null,
-            'error'   => [
-                'code'    => $code,
+            'id' => null,
+            'error' => [
+                'code' => $code,
                 'message' => $message,
             ],
         ], $status);

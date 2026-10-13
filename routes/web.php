@@ -1,33 +1,33 @@
 <?php
 
 use App\Http\Controllers\AlertController;
-use App\Http\Controllers\BackupController;
+use App\Http\Controllers\Api\SecurityApiController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AuditoriaController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CalendarioControleController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EngagementController;
+use App\Http\Controllers\EngagementTestController;
 use App\Http\Controllers\EstrategiaController;
+use App\Http\Controllers\FindingController;
 use App\Http\Controllers\IncidenteController;
 use App\Http\Controllers\InstanciaClienteController;
 use App\Http\Controllers\LgpdController;
 use App\Http\Controllers\McpController;
-use App\Http\Controllers\WellKnownMcpController;
-use App\Http\Controllers\PoliticaController;
 use App\Http\Controllers\PlanejamentoSemanalController;
+use App\Http\Controllers\PoliticaController;
 use App\Http\Controllers\ProcedimentoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RelatorioController;
-use App\Http\Controllers\EngagementController;
-use App\Http\Controllers\EngagementTestController;
-use App\Http\Controllers\FindingController;
 use App\Http\Controllers\SecurityReportController;
-use App\Http\Controllers\Api\SecurityApiController;
-use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\TierPoliticaController;
 use App\Http\Controllers\TreinamentoController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WellKnownMcpController;
+use App\Http\Middleware\AuthenticateApiKey;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
@@ -127,45 +127,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/incidentes/evidencia/{evidencia}/download', [IncidenteController::class, 'downloadEvidence'])->name('incidentes.download_evidence');
         Route::delete('/incidentes/evidencia/{evidencia}', [IncidenteController::class, 'removeEvidence'])->middleware('role:admin,governanca,operacional')->name('incidentes.remove_evidence');
 
+        Route::middleware('role:admin,governanca')->group(function () {
+            Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
+            Route::get('/calendario_controles/export/zip', [CalendarioControleController::class, 'exportZip'])->name('calendario_controles.export.zip');
+            Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
+            Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
+            Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');
+            Route::post('/calendario_controles/plan-triaged', [CalendarioControleController::class, 'planTriaged'])->name('calendario_controles.plan_triaged');
+            Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->name('calendario_controles.discard_suggestions');
+            Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->name('calendario_controles.destroy');
 
-    Route::middleware('role:admin,governanca')->group(function () {
-        Route::get('/calendario_controles', [CalendarioControleController::class, 'index'])->name('calendario_controles.index');
-        Route::get('/calendario_controles/export/zip', [CalendarioControleController::class, 'exportZip'])->name('calendario_controles.export.zip');
-        Route::get('/calendario_controles/export/all', [CalendarioControleController::class, 'printAll'])->name('calendario_controles.export.all');
-        Route::post('/calendario_controles/generate', [CalendarioControleController::class, 'generate'])->name('calendario_controles.generate');
-        Route::post('/calendario_controles/approve-suggestions', [CalendarioControleController::class, 'approveSuggestions'])->name('calendario_controles.approve_suggestions');
-        Route::post('/calendario_controles/plan-triaged', [CalendarioControleController::class, 'planTriaged'])->name('calendario_controles.plan_triaged');
-        Route::post('/calendario_controles/discard-suggestions', [CalendarioControleController::class, 'discardSuggestions'])->name('calendario_controles.discard_suggestions');
-        Route::delete('/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'destroy'])->name('calendario_controles.destroy');
+            Route::get('/planejamento_semanal', [PlanejamentoSemanalController::class, 'index'])->name('planejamento_semanal.index');
+            Route::post('/planejamento_semanal/atribuir', [PlanejamentoSemanalController::class, 'assign'])->name('planejamento_semanal.assign');
+            Route::post('/planejamento_semanal/distribuir', [PlanejamentoSemanalController::class, 'autoAssign'])->name('planejamento_semanal.auto_assign');
+            Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->name('planejamento_semanal.close');
+            Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->name('planejamento_semanal.remove');
+        });
 
-        Route::get('/planejamento_semanal', [PlanejamentoSemanalController::class, 'index'])->name('planejamento_semanal.index');
-        Route::post('/planejamento_semanal/atribuir', [PlanejamentoSemanalController::class, 'assign'])->name('planejamento_semanal.assign');
-        Route::post('/planejamento_semanal/distribuir', [PlanejamentoSemanalController::class, 'autoAssign'])->name('planejamento_semanal.auto_assign');
-        Route::post('/planejamento_semanal/fechar', [PlanejamentoSemanalController::class, 'close'])->name('planejamento_semanal.close');
-        Route::delete('/planejamento_semanal/{calendario_controle}', [PlanejamentoSemanalController::class, 'remove'])->name('planejamento_semanal.remove');
-    });
-
-    Route::middleware('role:admin,governanca,operacional')->group(function () {
-        Route::match(['put', 'patch'], '/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
-        Route::get('/plano_acoes', fn () => redirect()->route('calendario_controles.kanban'))->name('plano_acoes.index');
-        Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
-        Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->middleware('role:admin,governanca')->name('calendario_controles.store_manual');
-        Route::post('/execucao_controles/lote/atribuir', [CalendarioControleController::class, 'bulkAssignExecutor'])->middleware('role:admin,governanca')->name('calendario_controles.bulk_assign_executor');
-        Route::post('/execucao_controles/{calendario_controle}/notas', [CalendarioControleController::class, 'addNote'])->name('calendario_controles.add_note');
-        Route::post('/execucao_controles/{calendario_controle}/anexos', [CalendarioControleController::class, 'addAttachment'])->name('calendario_controles.add_attachment');
-        Route::get('/execucao_controles/anexos/{anexo}/download', [CalendarioControleController::class, 'downloadAttachment'])->name('calendario_controles.download_attachment');
-        Route::delete('/execucao_controles/anexos/{anexo}', [CalendarioControleController::class, 'removeAttachment'])->name('calendario_controles.remove_attachment');
-        Route::get('/execucao_controles/{calendario_controle}', [CalendarioControleController::class, 'showExecution'])->name('calendario_controles.show_execution');
-        Route::post('/execucao_controles/{calendario_controle}/etapas', [CalendarioControleController::class, 'addStep'])->name('calendario_controles.add_step');
-        Route::post('/execucao_controles/{calendario_controle}/importar-procedimento', [CalendarioControleController::class, 'importProcedure'])->name('calendario_controles.import_procedure');
-        Route::patch('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'updateStep'])->name('calendario_controles.update_step');
-        Route::delete('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'removeStep'])->name('calendario_controles.remove_step');
-        Route::delete('/execucao_controles/evidencias/{evidencia}', [CalendarioControleController::class, 'removeStepEvidence'])->name('calendario_controles.remove_step_evidence');
-        Route::get('/execucao_controles/evidencias/{evidencia}/download', [CalendarioControleController::class, 'downloadStepEvidence'])->name('calendario_controles.download_step_evidence');
-        Route::post('/incidentes', [IncidenteController::class, 'store'])->name('incidentes.store');
-        Route::patch('/incidentes/{incidente}', [IncidenteController::class, 'update'])->name('incidentes.update');
-        Route::delete('/incidentes/{incidente}', [IncidenteController::class, 'destroy'])->name('incidentes.destroy');
-    });
+        Route::middleware('role:admin,governanca,operacional')->group(function () {
+            Route::match(['put', 'patch'], '/calendario_controles/{calendario_controle}', [CalendarioControleController::class, 'update'])->name('calendario_controles.update');
+            Route::get('/plano_acoes', fn () => redirect()->route('calendario_controles.kanban'))->name('plano_acoes.index');
+            Route::get('/execucao_controles', [CalendarioControleController::class, 'kanban'])->name('calendario_controles.kanban');
+            Route::post('/execucao_controles', [CalendarioControleController::class, 'storeManual'])->middleware('role:admin,governanca')->name('calendario_controles.store_manual');
+            Route::post('/execucao_controles/lote/atribuir', [CalendarioControleController::class, 'bulkAssignExecutor'])->middleware('role:admin,governanca')->name('calendario_controles.bulk_assign_executor');
+            Route::post('/execucao_controles/{calendario_controle}/notas', [CalendarioControleController::class, 'addNote'])->name('calendario_controles.add_note');
+            Route::post('/execucao_controles/{calendario_controle}/anexos', [CalendarioControleController::class, 'addAttachment'])->name('calendario_controles.add_attachment');
+            Route::get('/execucao_controles/anexos/{anexo}/download', [CalendarioControleController::class, 'downloadAttachment'])->name('calendario_controles.download_attachment');
+            Route::delete('/execucao_controles/anexos/{anexo}', [CalendarioControleController::class, 'removeAttachment'])->name('calendario_controles.remove_attachment');
+            Route::get('/execucao_controles/{calendario_controle}', [CalendarioControleController::class, 'showExecution'])->name('calendario_controles.show_execution');
+            Route::post('/execucao_controles/{calendario_controle}/etapas', [CalendarioControleController::class, 'addStep'])->name('calendario_controles.add_step');
+            Route::post('/execucao_controles/{calendario_controle}/importar-procedimento', [CalendarioControleController::class, 'importProcedure'])->name('calendario_controles.import_procedure');
+            Route::patch('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'updateStep'])->name('calendario_controles.update_step');
+            Route::delete('/execucao_controles/etapas/{etapa}', [CalendarioControleController::class, 'removeStep'])->name('calendario_controles.remove_step');
+            Route::delete('/execucao_controles/evidencias/{evidencia}', [CalendarioControleController::class, 'removeStepEvidence'])->name('calendario_controles.remove_step_evidence');
+            Route::get('/execucao_controles/evidencias/{evidencia}/download', [CalendarioControleController::class, 'downloadStepEvidence'])->name('calendario_controles.download_step_evidence');
+            Route::post('/incidentes', [IncidenteController::class, 'store'])->name('incidentes.store');
+            Route::patch('/incidentes/{incidente}', [IncidenteController::class, 'update'])->name('incidentes.update');
+            Route::delete('/incidentes/{incidente}', [IncidenteController::class, 'destroy'])->name('incidentes.destroy');
+        });
 
         Route::get('/lgpd', [LgpdController::class, 'index'])->name('lgpd.index');
         Route::get('/lgpd/export/report', [LgpdController::class, 'printAll'])->name('lgpd.export.all');
@@ -219,7 +218,6 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-
 
 // --- API REST v1 (DefectDojo-style) ---
 Route::prefix('api/v1')->middleware([AuthenticateApiKey::class])->group(function () {

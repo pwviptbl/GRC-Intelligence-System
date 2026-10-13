@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Atividade;
 use App\Models\ControleEvento;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
-use App\Models\Atividade;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -389,5 +389,4 @@ class WeeklyPlanningTest extends TestCase
             ->assertOk()
             ->assertDontSee('Controle Orfao Sem Modulo');
     }
-
 }

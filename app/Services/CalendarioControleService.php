@@ -70,7 +70,7 @@ class CalendarioControleService
                         $query->where('ativo', true)
                             ->where(function ($q) use ($tier) {
                                 $q->whereNull('tier_minimo')
-                                  ->orWhere('tier_minimo', '>=', $tier);
+                                    ->orWhere('tier_minimo', '>=', $tier);
                             })
                             ->with('tierPolitica');
                     }])
@@ -120,7 +120,7 @@ class CalendarioControleService
                     ->where('ativo', true)
                     ->where(function ($q) use ($tier) {
                         $q->whereNull('tier_minimo')
-                          ->orWhere('tier_minimo', '>=', $tier);
+                            ->orWhere('tier_minimo', '>=', $tier);
                     })
                     ->where(function ($query) use ($software) {
                         $query->where('software_id', $software->id)

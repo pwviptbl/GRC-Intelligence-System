@@ -57,16 +57,16 @@ class GrypeParser extends BaseScanParser
             }
 
             $findings->push([
-                'titulo'              => "Grype: {$pkgName} ({$cveId})",
-                'descricao'           => "Pacote: {$pkgName}\nVersão: {$installedVer}\nFix: {$fixStr}\n\n{$desc}",
-                'severidade'          => $severity,
-                'cvss_score'          => $cvssScore,
-                'cve_id'              => $cveId,
-                'cwe_id'              => null,
-                'endpoint'            => "{$pkgName} @ {$installedVer}",
-                'parametro'           => "Versão {$installedVer}",
-                'metodo_http'         => null,
-                'prova_conceito'      => "Pacote afetado: {$pkgName}\nTipo: " . ($artifact['type'] ?? '') . "\nVersão instalada: {$installedVer}\nVersão de correção: {$fixStr}\nDataSource: " . ($vuln['dataSource'] ?? ''),
+                'titulo' => "Grype: {$pkgName} ({$cveId})",
+                'descricao' => "Pacote: {$pkgName}\nVersão: {$installedVer}\nFix: {$fixStr}\n\n{$desc}",
+                'severidade' => $severity,
+                'cvss_score' => $cvssScore,
+                'cve_id' => $cveId,
+                'cwe_id' => null,
+                'endpoint' => "{$pkgName} @ {$installedVer}",
+                'parametro' => "Versão {$installedVer}",
+                'metodo_http' => null,
+                'prova_conceito' => "Pacote afetado: {$pkgName}\nTipo: ".($artifact['type'] ?? '')."\nVersão instalada: {$installedVer}\nVersão de correção: {$fixStr}\nDataSource: ".($vuln['dataSource'] ?? ''),
                 'remediacao_sugerida' => ! empty($fixVersions) ? "Atualize o pacote {$pkgName} para: {$fixStr}" : null,
             ]);
         }

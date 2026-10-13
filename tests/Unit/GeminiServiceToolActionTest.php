@@ -17,8 +17,8 @@ class GeminiServiceToolActionTest extends TestCase
             'argumentos' => [
                 'titulo' => 'Risco de teste do chat',
                 'descricao' => 'Ação de escrita deve exigir confirmação.',
-                'severidade'    => 'Alta',
-                'status'        => 'aberto',
+                'severidade' => 'Alta',
+                'status' => 'aberto',
                 'data_deteccao' => '2026-10-01',
                 'detectado_por' => 'Analista',
             ],

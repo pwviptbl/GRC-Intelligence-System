@@ -22,9 +22,9 @@ class DefectDojoPhase1Test extends TestCase
     private function makeSoftware(): Software
     {
         return Software::create([
-            'nome'       => 'App Teste DefectDojo',
+            'nome' => 'App Teste DefectDojo',
             'tecnologia' => 'Laravel',
-            'ativo'      => true,
+            'ativo' => true,
         ]);
     }
 
@@ -32,10 +32,10 @@ class DefectDojoPhase1Test extends TestCase
     {
         return Engagement::create([
             'software_id' => $sw->id,
-            'nome'        => $nome,
-            'tipo'        => 'pentest',
-            'status'      => 'ativo',
-            'lead'        => 'analista@empresa.com',
+            'nome' => $nome,
+            'tipo' => 'pentest',
+            'status' => 'ativo',
+            'lead' => 'analista@empresa.com',
         ]);
     }
 
@@ -43,32 +43,32 @@ class DefectDojoPhase1Test extends TestCase
     {
         return EngagementTest::create([
             'engagement_id' => $eng->id,
-            'titulo'        => $titulo,
-            'tipo_teste'    => 'dast',
-            'ferramenta'    => 'OWASP ZAP',
-            'status'        => 'concluido',
+            'titulo' => $titulo,
+            'tipo_teste' => 'dast',
+            'ferramenta' => 'OWASP ZAP',
+            'status' => 'concluido',
         ]);
     }
 
     private function makeFinding(EngagementTest $test, string $titulo = 'SQLi crítico', string $sev = 'critico'): Finding
     {
         return Finding::create([
-            'test_id'    => $test->id,
-            'titulo'     => $titulo,
-            'descricao'  => 'Descrição do achado de segurança encontrado no teste.',
+            'test_id' => $test->id,
+            'titulo' => $titulo,
+            'descricao' => 'Descrição do achado de segurança encontrado no teste.',
             'severidade' => $sev,
-            'status'     => 'aberto',
+            'status' => 'aberto',
         ]);
     }
 
     public function test_engagement_is_created_with_correct_attributes(): void
     {
-        $sw  = $this->makeSoftware();
+        $sw = $this->makeSoftware();
         $eng = $this->makeEngagement($sw, 'Pentest Q4 2026');
 
         $this->assertDatabaseHas('engagements', [
-            'nome'   => 'Pentest Q4 2026',
-            'tipo'   => 'pentest',
+            'nome' => 'Pentest Q4 2026',
+            'tipo' => 'pentest',
             'status' => 'ativo',
         ]);
         $this->assertEquals('Pentest', $eng->tipo_label);
@@ -77,8 +77,8 @@ class DefectDojoPhase1Test extends TestCase
 
     public function test_finding_gets_automatic_sla_by_severity(): void
     {
-        $sw   = $this->makeSoftware();
-        $eng  = $this->makeEngagement($sw);
+        $sw = $this->makeSoftware();
+        $eng = $this->makeEngagement($sw);
         $test = $this->makeTest($eng);
 
         $critico = $this->makeFinding($test, 'SQLi crítico', 'critico');
@@ -94,18 +94,18 @@ class DefectDojoPhase1Test extends TestCase
     /** @test */
     public function finding_dedup_hash_is_generated_as_sha256(): void
     {
-        $sw   = $this->makeSoftware();
-        $eng  = $this->makeEngagement($sw);
+        $sw = $this->makeSoftware();
+        $eng = $this->makeEngagement($sw);
         $test = $this->makeTest($eng);
 
         $f = Finding::create([
-            'test_id'    => $test->id,
-            'titulo'     => 'XSS refletido',
-            'descricao'  => 'Cross-site scripting no campo de busca da aplicação',
+            'test_id' => $test->id,
+            'titulo' => 'XSS refletido',
+            'descricao' => 'Cross-site scripting no campo de busca da aplicação',
             'severidade' => 'alto',
-            'cwe_id'     => 'CWE-79',
-            'endpoint'   => '/busca',
-            'status'     => 'aberto',
+            'cwe_id' => 'CWE-79',
+            'endpoint' => '/busca',
+            'status' => 'aberto',
         ]);
 
         $this->assertNotNull($f->hash_dedup);
@@ -115,7 +115,7 @@ class DefectDojoPhase1Test extends TestCase
     public function test_engagements_index_is_accessible(): void
     {
         $user = $this->makeUser();
-        $sw   = $this->makeSoftware();
+        $sw = $this->makeSoftware();
         $this->makeEngagement($sw, 'Pentest ABC 2026');
 
         $response = $this->actingAs($user)->get(route('engagements.index'));
@@ -126,8 +126,8 @@ class DefectDojoPhase1Test extends TestCase
     public function test_engagement_show_displays_tests_and_findings_stats(): void
     {
         $user = $this->makeUser();
-        $sw   = $this->makeSoftware();
-        $eng  = $this->makeEngagement($sw, 'Eng Show Test');
+        $sw = $this->makeSoftware();
+        $eng = $this->makeEngagement($sw, 'Eng Show Test');
         $test = $this->makeTest($eng, 'Scan ZAP Detalhado');
 
         $response = $this->actingAs($user)->get(route('engagements.show', $eng));
@@ -138,10 +138,10 @@ class DefectDojoPhase1Test extends TestCase
 
     public function test_finding_status_can_be_updated_to_closed(): void
     {
-        $user    = $this->makeUser();
-        $sw      = $this->makeSoftware();
-        $eng     = $this->makeEngagement($sw);
-        $test    = $this->makeTest($eng);
+        $user = $this->makeUser();
+        $sw = $this->makeSoftware();
+        $eng = $this->makeEngagement($sw);
+        $test = $this->makeTest($eng);
         $finding = $this->makeFinding($test, 'Vuln para fechar', 'medio');
 
         $response = $this->actingAs($user)
@@ -155,10 +155,10 @@ class DefectDojoPhase1Test extends TestCase
 
     public function test_finding_show_displays_full_hierarchy(): void
     {
-        $user    = $this->makeUser();
-        $sw      = $this->makeSoftware();
-        $eng     = $this->makeEngagement($sw, 'Eng Breadcrumb');
-        $test    = $this->makeTest($eng, 'Test Breadcrumb');
+        $user = $this->makeUser();
+        $sw = $this->makeSoftware();
+        $eng = $this->makeEngagement($sw, 'Eng Breadcrumb');
+        $test = $this->makeTest($eng, 'Test Breadcrumb');
         $finding = $this->makeFinding($test, 'Finding Breadcrumb');
 
         $response = $this->actingAs($user)->get(route('findings.show', $finding));
@@ -171,8 +171,8 @@ class DefectDojoPhase1Test extends TestCase
     public function test_findings_index_shows_all_findings_with_severity_stats(): void
     {
         $user = $this->makeUser();
-        $sw   = $this->makeSoftware();
-        $eng  = $this->makeEngagement($sw);
+        $sw = $this->makeSoftware();
+        $eng = $this->makeEngagement($sw);
         $test = $this->makeTest($eng);
 
         $this->makeFinding($test, 'SQLi Crítico', 'critico');

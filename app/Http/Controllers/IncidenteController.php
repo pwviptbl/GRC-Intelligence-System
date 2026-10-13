@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Incidente;
 use App\Models\IncidenteEvidencia;
+use App\Models\Software;
 use App\Rules\AllowedUploadExtension;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -14,8 +16,9 @@ class IncidenteController extends Controller
     public function index()
     {
         $incidentes = Incidente::with(['software', 'cliente', 'evidencias'])->latest()->get();
-        $clientes = \App\Models\Cliente::orderBy('nome')->get();
-        $softwares = \App\Models\Software::orderBy('nome')->get();
+        $clientes = Cliente::orderBy('nome')->get();
+        $softwares = Software::orderBy('nome')->get();
+
         return view('incidentes.index', compact('incidentes', 'clientes', 'softwares'));
     }
 
@@ -50,6 +53,7 @@ class IncidenteController extends Controller
     {
         Storage::disk('local')->delete($evidencia->arquivo_caminho);
         $evidencia->delete();
+
         return response()->json(['success' => true]);
     }
 
@@ -60,6 +64,7 @@ class IncidenteController extends Controller
         $data['software_id'] = $data['software_id'] ?: null;
         $data['cliente_id'] = $data['cliente_id'] ?: null;
         Incidente::create($data);
+
         return redirect()->back()->with('success', 'Incidente registrado.');
     }
 
@@ -70,6 +75,7 @@ class IncidenteController extends Controller
         $data['software_id'] = $data['software_id'] ?: null;
         $data['cliente_id'] = $data['cliente_id'] ?: null;
         $incidente->update($data);
+
         return redirect()->back()->with('success', 'Incidente atualizado com sucesso!');
     }
 
@@ -80,6 +86,7 @@ class IncidenteController extends Controller
         if ($request->boolean('pdf') || $request->input('format') === 'pdf') {
             $html = view('incidentes.print', ['incidentes' => $incidentes, 'isPdfMode' => true])->render();
             $safeTitle = \Str::slug($incidente->titulo) ?: "incidente_{$incidente->id}";
+
             return Pdf::loadHTML($html)->setPaper('a4', 'portrait')->download("{$safeTitle}.pdf");
         }
 
@@ -89,16 +96,17 @@ class IncidenteController extends Controller
     public function printAll()
     {
         $incidentes = Incidente::latest()->get();
+
         return view('incidentes.print', compact('incidentes'));
     }
 
     public function exportZip()
     {
         $incidentes = Incidente::latest()->get();
-        $zipFileName = 'relatorio_incidentes_' . now()->format('Ymd_His') . '_' . \Str::random(6) . '.zip';
-        $zipPath = storage_path('app/' . $zipFileName);
+        $zipFileName = 'relatorio_incidentes_'.now()->format('Ymd_His').'_'.\Str::random(6).'.zip';
+        $zipPath = storage_path('app/'.$zipFileName);
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             abort(500, 'Nao foi possivel gerar o pacote ZIP.');
         }
@@ -119,11 +127,12 @@ class IncidenteController extends Controller
     {
         $paths = $incidente->evidencias()->pluck('arquivo_caminho')->filter()->toArray();
 
-        if (!empty($paths)) {
+        if (! empty($paths)) {
             Storage::disk('local')->delete($paths);
         }
 
         $incidente->delete();
+
         return redirect()->back()->with('success', 'Incidente removido.');
     }
 

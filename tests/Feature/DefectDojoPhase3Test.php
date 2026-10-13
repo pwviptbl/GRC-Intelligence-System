@@ -7,10 +7,6 @@ use App\Models\EngagementTest;
 use App\Models\Finding;
 use App\Models\Software;
 use App\Models\User;
-use App\Services\ScanImportService;
-use App\Services\ScanParsers\BanditParser;
-use App\Services\ScanParsers\BurpParser;
-use App\Services\ScanParsers\GrypeParser;
 use App\Services\ScanParsers\NiktoParser;
 use App\Services\ScanParsers\NmapParser;
 use App\Services\ScanParsers\NucleiParser;
@@ -34,9 +30,9 @@ class DefectDojoPhase3Test extends TestCase
     private function makeSoftware(): Software
     {
         return Software::create([
-            'nome'       => 'Sistema de Cobrança Cloud',
+            'nome' => 'Sistema de Cobrança Cloud',
             'tecnologia' => 'Node/Laravel',
-            'ativo'      => true,
+            'ativo' => true,
         ]);
     }
 
@@ -45,15 +41,16 @@ class DefectDojoPhase3Test extends TestCase
         $sw = $this->makeSoftware();
         $eng = Engagement::create([
             'software_id' => $sw->id,
-            'nome'        => 'Ciclo de Testes Automatizados',
-            'tipo'        => 'dast',
-            'status'      => 'ativo',
+            'nome' => 'Ciclo de Testes Automatizados',
+            'tipo' => 'dast',
+            'status' => 'ativo',
         ]);
+
         return EngagementTest::create([
             'engagement_id' => $eng->id,
-            'titulo'        => 'Bateria de Scans',
-            'tipo_teste'    => 'dast',
-            'status'        => 'planejado',
+            'titulo' => 'Bateria de Scans',
+            'tipo_teste' => 'dast',
+            'status' => 'planejado',
         ]);
     }
 
@@ -76,15 +73,15 @@ class DefectDojoPhase3Test extends TestCase
                                     'method' => 'POST',
                                     'param' => 'username',
                                     'evidence' => "' OR '1'='1",
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ]);
 
-        $parser = new ZapParser();
+        $parser = new ZapParser;
         $this->assertTrue($parser->canParse('zap_report.json', $json));
 
         $findings = $parser->parse($json);
@@ -103,7 +100,7 @@ class DefectDojoPhase3Test extends TestCase
     {
         $jsonl = '{"template-id":"cve-2021-44228","info":{"name":"Apache Log4j RCE","severity":"critical","classification":{"cve-id":["CVE-2021-44228"],"cwe-id":["CWE-502"],"cvss-score":10.0},"remediation":"Upgrade log4j"},"type":"http","matched-at":"https://app.empresa.com/search","curl-command":"curl -X GET https://app.empresa.com/search"}';
 
-        $parser = new NucleiParser();
+        $parser = new NucleiParser;
         $this->assertTrue($parser->canParse('nuclei_output.json', $jsonl));
 
         $findings = $parser->parse($jsonl);
@@ -121,7 +118,7 @@ class DefectDojoPhase3Test extends TestCase
 
     public function test_nmap_xml_parser(): void
     {
-        $xml = <<<XML
+        $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <nmaprun scanner="nmap" version="7.94">
   <host>
@@ -140,7 +137,7 @@ class DefectDojoPhase3Test extends TestCase
 </nmaprun>
 XML;
 
-        $parser = new NmapParser();
+        $parser = new NmapParser;
         $this->assertTrue($parser->canParse('nmap.xml', $xml));
 
         $findings = $parser->parse($xml);
@@ -153,7 +150,7 @@ XML;
 
     public function test_nikto_text_parser(): void
     {
-        $txt = <<<TXT
+        $txt = <<<'TXT'
 - Nikto v2.1.6
 + Target IP:          10.0.0.15
 + Target Hostname:    web.empresa.com
@@ -161,7 +158,7 @@ XML;
 + /phpinfo.php: Output from the phpinfo() function was found.
 TXT;
 
-        $parser = new NiktoParser();
+        $parser = new NiktoParser;
         $this->assertTrue($parser->canParse('nikto.txt', $txt));
 
         $findings = $parser->parse($txt);
@@ -184,13 +181,13 @@ TXT;
                         'metadata' => [
                             'cwe' => ['CWE-89'],
                             'fix' => 'Use parameter binding: DB::select("SELECT * FROM users WHERE id = ?", [$id]);',
-                        ]
-                    ]
-                ]
-            ]
+                        ],
+                    ],
+                ],
+            ],
         ]);
 
-        $parser = new SemgrepParser();
+        $parser = new SemgrepParser;
         $this->assertTrue($parser->canParse('semgrep.json', $json));
 
         $findings = $parser->parse($json);
@@ -222,15 +219,15 @@ TXT;
                             'Description' => 'OpenSSL vulnerability in cipher processing',
                             'CweIDs' => ['CWE-130'],
                             'CVSS' => [
-                                'nvd' => ['V3Score' => 7.5]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                'nvd' => ['V3Score' => 7.5],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ]);
 
-        $parser = new TrivyParser();
+        $parser = new TrivyParser;
         $this->assertTrue($parser->canParse('trivy.json', $json));
 
         $findings = $parser->parse($json);
@@ -266,12 +263,12 @@ TXT;
                                     'uri' => 'https://sistema.teste/search',
                                     'param' => 'q',
                                     'method' => 'GET',
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ]);
 
         $uploadedFile = UploadedFile::fake()->createWithContent('zap_scan.json', $zapJson);
@@ -287,9 +284,9 @@ TXT;
         // Valida que o finding foi criado no banco
         $this->assertDatabaseHas('findings', [
             'test_id' => $test->id,
-            'titulo'  => 'Cross-Site Scripting (Reflected)',
-            'cwe_id'  => 'CWE-79',
-            'status'  => 'aberto',
+            'titulo' => 'Cross-Site Scripting (Reflected)',
+            'cwe_id' => 'CWE-79',
+            'status' => 'aberto',
         ]);
 
         $test->refresh();
@@ -299,9 +296,9 @@ TXT;
         // 2. Cria um segundo teste e reenvia o mesmo scan (deve ser marcado como DUPLICADO automaticamente!)
         $test2 = EngagementTest::create([
             'engagement_id' => $test->engagement_id,
-            'titulo'        => 'Segundo Teste ZAP',
-            'tipo_teste'    => 'dast',
-            'status'        => 'planejado',
+            'titulo' => 'Segundo Teste ZAP',
+            'tipo_teste' => 'dast',
+            'status' => 'planejado',
         ]);
 
         $uploadedFile2 = UploadedFile::fake()->createWithContent('zap_scan2.json', $zapJson);

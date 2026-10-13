@@ -77,19 +77,19 @@ class ZapParser extends BaseScanParser
                 $method = $firstInst['method'] ?? $alert['method'] ?? null;
                 $evidence = $firstInst['evidence'] ?? $alert['evidence'] ?? null;
 
-                $cweId = isset($alert['cweid']) && $alert['cweid'] > 0 ? 'CWE-' . $alert['cweid'] : null;
+                $cweId = isset($alert['cweid']) && $alert['cweid'] > 0 ? 'CWE-'.$alert['cweid'] : null;
 
                 $findings->push([
-                    'titulo'              => $alert['alert'] ?? $alert['name'] ?? 'Alerta ZAP',
-                    'descricao'           => $alert['desc'] ?? $alert['description'] ?? '',
-                    'severidade'          => $this->normalizeSeverity($alert['riskdesc'] ?? $alert['riskcode'] ?? 'medio'),
-                    'cvss_score'          => null,
-                    'cve_id'              => null,
-                    'cwe_id'              => $cweId,
-                    'endpoint'            => $uri,
-                    'parametro'           => $param,
-                    'metodo_http'         => $method,
-                    'prova_conceito'      => $evidence ? "Evidence: " . $evidence : null,
+                    'titulo' => $alert['alert'] ?? $alert['name'] ?? 'Alerta ZAP',
+                    'descricao' => $alert['desc'] ?? $alert['description'] ?? '',
+                    'severidade' => $this->normalizeSeverity($alert['riskdesc'] ?? $alert['riskcode'] ?? 'medio'),
+                    'cvss_score' => null,
+                    'cve_id' => null,
+                    'cwe_id' => $cweId,
+                    'endpoint' => $uri,
+                    'parametro' => $param,
+                    'metodo_http' => $method,
+                    'prova_conceito' => $evidence ? 'Evidence: '.$evidence : null,
                     'remediacao_sugerida' => $alert['solution'] ?? null,
                 ]);
             }
@@ -106,7 +106,7 @@ class ZapParser extends BaseScanParser
 
         foreach ($alertItems as $item) {
             $cwe = (string) $item->cweid;
-            $cweId = $cwe !== '' && $cwe !== '0' ? 'CWE-' . $cwe : null;
+            $cweId = $cwe !== '' && $cwe !== '0' ? 'CWE-'.$cwe : null;
 
             $uri = (string) $item->uri;
             $param = (string) $item->param;
@@ -114,16 +114,16 @@ class ZapParser extends BaseScanParser
             $evidence = (string) $item->evidence;
 
             $findings->push([
-                'titulo'              => (string) $item->alert,
-                'descricao'           => (string) $item->desc,
-                'severidade'          => $this->normalizeSeverity((string) $item->riskdesc ?: (string) $item->riskcode),
-                'cvss_score'          => null,
-                'cve_id'              => null,
-                'cwe_id'              => $cweId,
-                'endpoint'            => $uri ?: null,
-                'parametro'           => $param ?: null,
-                'metodo_http'         => $method ?: null,
-                'prova_conceito'      => $evidence ? "Evidence: " . $evidence : null,
+                'titulo' => (string) $item->alert,
+                'descricao' => (string) $item->desc,
+                'severidade' => $this->normalizeSeverity((string) $item->riskdesc ?: (string) $item->riskcode),
+                'cvss_score' => null,
+                'cve_id' => null,
+                'cwe_id' => $cweId,
+                'endpoint' => $uri ?: null,
+                'parametro' => $param ?: null,
+                'metodo_http' => $method ?: null,
+                'prova_conceito' => $evidence ? 'Evidence: '.$evidence : null,
                 'remediacao_sugerida' => (string) $item->solution ?: null,
             ]);
         }

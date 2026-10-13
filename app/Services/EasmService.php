@@ -17,11 +17,11 @@ class EasmService
      * Portas mais comuns para varredura de perímetro externo
      */
     public const DEFAULT_PORTS = [
-        80   => ['servico' => 'http', 'risco' => false],
-        443  => ['servico' => 'https', 'risco' => false],
-        21   => ['servico' => 'ftp', 'risco' => true],
-        22   => ['servico' => 'ssh', 'risco' => true],
-        25   => ['servico' => 'smtp', 'risco' => false],
+        80 => ['servico' => 'http', 'risco' => false],
+        443 => ['servico' => 'https', 'risco' => false],
+        21 => ['servico' => 'ftp', 'risco' => true],
+        22 => ['servico' => 'ssh', 'risco' => true],
+        25 => ['servico' => 'smtp', 'risco' => false],
         3306 => ['servico' => 'mysql', 'risco' => true],
         5432 => ['servico' => 'postgresql', 'risco' => true],
         8080 => ['servico' => 'http-alt', 'risco' => false],
@@ -62,7 +62,7 @@ class EasmService
                 'ultimo_scan_em' => now(),
             ]);
         } catch (\Throwable $e) {
-            Log::error("Erro no scan EASM da instancia #{$instancia->id}: " . $e->getMessage());
+            Log::error("Erro no scan EASM da instancia #{$instancia->id}: ".$e->getMessage());
             $instancia->update(['scan_status' => 'falha']);
             throw $e;
         }
@@ -78,12 +78,12 @@ class EasmService
         $host = null;
         if ($instancia->url_principal) {
             $parsed = parse_url($instancia->url_principal);
-            if (!empty($parsed['host'])) {
+            if (! empty($parsed['host'])) {
                 $host = $parsed['host'];
             }
         }
 
-        if (!$host && $instancia->endereco_ip) {
+        if (! $host && $instancia->endereco_ip) {
             $host = $instancia->endereco_ip;
         }
 
@@ -104,14 +104,14 @@ class EasmService
     public function checkSsl(InstanciaCliente $instancia): ?InstanciaSslCert
     {
         $host = $this->resolveTargetHost($instancia);
-        if (!$host) {
+        if (! $host) {
             return null;
         }
 
         $port = 443;
         if ($instancia->url_principal) {
             $parsed = parse_url($instancia->url_principal);
-            if (!empty($parsed['port'])) {
+            if (! empty($parsed['port'])) {
                 $port = (int) $parsed['port'];
             }
         }
@@ -121,7 +121,7 @@ class EasmService
                 'capture_peer_cert' => true,
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-            ]
+            ],
         ]);
 
         $timeout = 4;
@@ -134,8 +134,9 @@ class EasmService
             $g
         );
 
-        if (!$client) {
+        if (! $client) {
             Log::info("EASM SSL check falhou para {$host}:{$port} - {$errstr} ({$errno})");
+
             return null;
         }
 
@@ -147,13 +148,13 @@ class EasmService
         }
 
         $cert = openssl_x509_parse($params['options']['ssl']['peer_certificate']);
-        if (!$cert) {
+        if (! $cert) {
             return null;
         }
 
         $validFrom = isset($cert['validFrom_time_t']) ? Carbon::createFromTimestamp($cert['validFrom_time_t']) : null;
         $validTo = isset($cert['validTo_time_t']) ? Carbon::createFromTimestamp($cert['validTo_time_t']) : null;
-        
+
         $diasRestantes = null;
         $statusCertificado = 'ok';
 
@@ -169,7 +170,7 @@ class EasmService
             }
         }
 
-        $issuer = is_array($cert['issuer'] ?? null) 
+        $issuer = is_array($cert['issuer'] ?? null)
             ? ($cert['issuer']['O'] ?? $cert['issuer']['CN'] ?? json_encode($cert['issuer']))
             : ($cert['issuer'] ?? 'Desconhecido');
 
@@ -262,7 +263,7 @@ class EasmService
         return EngagementTest::firstOrCreate(
             [
                 'engagement_id' => $engagement->id,
-                'titulo' => 'Varredura Perimetral de Ambientes (' . ($instancia->nome_ambiente ?: 'Ambiente #' . $instancia->id) . ')',
+                'titulo' => 'Varredura Perimetral de Ambientes ('.($instancia->nome_ambiente ?: 'Ambiente #'.$instancia->id).')',
                 'tipo_teste' => 'infra',
             ],
             [

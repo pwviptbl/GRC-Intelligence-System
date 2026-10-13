@@ -71,10 +71,12 @@ abstract class BaseScanParser implements ScanParserInterface
             $xml = simplexml_load_string($content);
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
+
             return $xml ?: null;
         } catch (\Throwable $e) {
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
+
             return null;
         }
     }

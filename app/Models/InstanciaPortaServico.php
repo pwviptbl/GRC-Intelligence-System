@@ -32,6 +32,7 @@ class InstanciaPortaServico extends Model
     {
         // Portas críticas comumente associadas a risco quando públicas
         $riskyPorts = [21, 22, 23, 445, 1433, 1521, 3306, 3389, 5432, 6379, 9200, 27017];
+
         return in_array($this->porta, $riskyPorts, true);
     }
 }

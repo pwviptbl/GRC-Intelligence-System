@@ -19,15 +19,16 @@ class DefectDojoPhase4Test extends TestCase
     {
         $user = User::factory()->create(['role' => 'admin']);
         $user->generateApiToken();
+
         return $user;
     }
 
     private function makeSoftware(): Software
     {
         return Software::create([
-            'nome'       => 'Sistema Gateway Pix',
+            'nome' => 'Sistema Gateway Pix',
             'tecnologia' => 'Go/Laravel',
-            'ativo'      => true,
+            'ativo' => true,
         ]);
     }
 
@@ -36,25 +37,25 @@ class DefectDojoPhase4Test extends TestCase
         $sw = $this->makeSoftware();
         $eng = Engagement::create([
             'software_id' => $sw->id,
-            'nome'        => 'Pentest API Pix Q4',
-            'tipo'        => 'pentest',
-            'status'      => 'ativo',
+            'nome' => 'Pentest API Pix Q4',
+            'tipo' => 'pentest',
+            'status' => 'ativo',
         ]);
         $test = EngagementTest::create([
             'engagement_id' => $eng->id,
-            'titulo'        => 'DAST nos endpoints de pagamento',
-            'tipo_teste'    => 'dast',
-            'ferramenta'    => 'OWASP ZAP',
-            'status'        => 'concluido',
+            'titulo' => 'DAST nos endpoints de pagamento',
+            'tipo_teste' => 'dast',
+            'ferramenta' => 'OWASP ZAP',
+            'status' => 'concluido',
         ]);
         $finding = Finding::create([
-            'test_id'        => $test->id,
-            'titulo'         => 'Replay Attack no endpoint de webhook',
-            'descricao'      => 'Ausência de nonce / timestamp na validação de webhook',
-            'severidade'     => 'alto',
-            'endpoint'       => '/api/webhook/pix',
-            'cwe_id'         => 'CWE-294',
-            'status'         => 'aberto',
+            'test_id' => $test->id,
+            'titulo' => 'Replay Attack no endpoint de webhook',
+            'descricao' => 'Ausência de nonce / timestamp na validação de webhook',
+            'severidade' => 'alto',
+            'endpoint' => '/api/webhook/pix',
+            'cwe_id' => 'CWE-294',
+            'status' => 'aberto',
             'prova_conceito' => 'POST /api/webhook/pix payload replicado sem erro',
         ]);
 
@@ -77,7 +78,7 @@ class DefectDojoPhase4Test extends TestCase
         $resOk->assertStatus(200);
 
         // Bearer header também deve funcionar
-        $resBearer = $this->withHeader('Authorization', 'Bearer ' . $user->api_token)->getJson('/api/v1/engagements');
+        $resBearer = $this->withHeader('Authorization', 'Bearer '.$user->api_token)->getJson('/api/v1/engagements');
         $resBearer->assertStatus(200);
     }
 
@@ -89,10 +90,10 @@ class DefectDojoPhase4Test extends TestCase
         // 1. POST /api/v1/engagements
         $payload = [
             'software_id' => $sw->id,
-            'nome'        => 'Pentest via REST API',
-            'tipo'        => 'pentest',
-            'status'      => 'ativo',
-            'lead'        => 'sec-eng@empresa.com',
+            'nome' => 'Pentest via REST API',
+            'tipo' => 'pentest',
+            'status' => 'ativo',
+            'lead' => 'sec-eng@empresa.com',
         ];
         $resPost = $this->withHeader('X-API-Key', $user->api_token)
             ->postJson('/api/v1/engagements', $payload);
@@ -123,7 +124,7 @@ class DefectDojoPhase4Test extends TestCase
         // 1. POST /api/v1/engagements/{id}/tests
         $resTest = $this->withHeader('X-API-Key', $user->api_token)
             ->postJson("/api/v1/engagements/{$eng->id}/tests", [
-                'titulo'     => 'DAST Test via API',
+                'titulo' => 'DAST Test via API',
                 'tipo_teste' => 'dast',
                 'ferramenta' => 'OWASP ZAP',
             ]);
@@ -141,11 +142,11 @@ class DefectDojoPhase4Test extends TestCase
                             'riskdesc' => 'Low',
                             'cweid' => '1021',
                             'desc' => 'Clickjacking vulnerability',
-                            'instances' => [['uri' => 'https://api.empresa.com/']]
-                        ]
-                    ]
-                ]
-            ]
+                            'instances' => [['uri' => 'https://api.empresa.com/']],
+                        ],
+                    ],
+                ],
+            ],
         ]);
         $uploaded = UploadedFile::fake()->createWithContent('zap_api.json', $zapJson);
 
@@ -160,7 +161,7 @@ class DefectDojoPhase4Test extends TestCase
 
         $this->assertDatabaseHas('findings', [
             'test_id' => $testId,
-            'titulo'  => 'Header X-Frame-Options ausente',
+            'titulo' => 'Header X-Frame-Options ausente',
         ]);
     }
 
@@ -176,12 +177,12 @@ class DefectDojoPhase4Test extends TestCase
 
         // 2. POST /api/v1/findings
         $resCreate = $this->withHeader('X-API-Key', $user->api_token)->postJson('/api/v1/findings', [
-            'test_id'    => $test->id,
-            'titulo'     => 'SSRF em endpoint de consulta',
-            'descricao'  => 'Requisição para metadados de nuvem',
+            'test_id' => $test->id,
+            'titulo' => 'SSRF em endpoint de consulta',
+            'descricao' => 'Requisição para metadados de nuvem',
             'severidade' => 'critico',
-            'endpoint'   => '/proxy/fetch',
-            'cwe_id'     => 'CWE-918',
+            'endpoint' => '/proxy/fetch',
+            'cwe_id' => 'CWE-918',
         ]);
         $resCreate->assertStatus(201);
         $newFindingId = $resCreate->json('finding.id');

@@ -11,6 +11,6 @@ class Politica extends Model
         'categoria',
         'versao',
         'status',
-        'conteudo'
+        'conteudo',
     ];
 }
