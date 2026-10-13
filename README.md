@@ -29,7 +29,8 @@ php artisan migrate
 ```
 
 ### 📑 Popular Dados de Sistema (Essencial)
-Para criar o usuário administrador inicial (**admin@admin.com / admin123**) e o Guia LGPD:
+Para criar o usuário administrador inicial (**admin@admin.com**) e o Guia LGPD.
+A senha é lida de `ADMIN_INITIAL_PASSWORD` no `.env`; se ausente, uma senha aleatória é gerada e exibida uma única vez no terminal. Rodar o seeder novamente não altera um admin já existente. Troque a senha no primeiro acesso:
 ```bash
 ./vendor/bin/sail artisan db:seed --class=AdminSeeder
 ./vendor/bin/sail artisan db:seed --class=LgpdSeeder
