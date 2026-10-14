@@ -79,6 +79,7 @@
         'abertos'    => ['label' => 'Em Aberto', 'count' => $stats['abertos']],
         'regressoes' => ['label' => '⚠️ Regressões', 'count' => $stats['regressoes']],
         'duplicados' => ['label' => '🔗 Duplicados', 'count' => $stats['duplicados']],
+        'aceitos'    => ['label' => '🤝 Risco Aceito', 'count' => $stats['aceitos']],
         'fechados'   => ['label' => 'Fechados / Mitigados', 'count' => null],
       ];
     @endphp
@@ -334,10 +335,15 @@
                             @csrf @method('PATCH')
                             <select name="status" onchange="this.form.submit()" class="form-select" style="height:30px; font-size:11px; padding:2px 8px; width:100%; background:{{ $f->status_color }}18; color:{{ $f->status_color }}; border:1px solid {{ $f->status_color }}44; font-weight:600; border-radius:6px;">
                                 @foreach(\App\Models\Finding::STATUS_OPTIONS as $k => $v)
-                                    <option value="{{ $k }}" {{ $f->status === $k ? 'selected' : '' }}>{{ $v }}</option>
+                                    <option value="{{ $k }}" {{ $f->status === $k ? 'selected' : '' }} @disabled($k === 'risco_aceito' && $f->status !== 'risco_aceito')>{{ $v }}</option>
                                 @endforeach
                             </select>
                         </form>
+                        @if($f->status === 'risco_aceito' && $f->risco_aceito_expira_em)
+                            <div style="font-size:10px; color:#a78bfa; margin-top:3px;">
+                                Aceito até {{ $f->risco_aceito_expira_em->format('d/m/Y') }}
+                            </div>
+                        @endif
                     </td>
                     <td style="text-align:right">
                         <div style="display:inline-flex; align-items:center; gap:6px;">

@@ -2,13 +2,34 @@
 
 namespace App\Models;
 
+use App\Services\AuditLogService;
 use App\Services\FindingDeduplicationService;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Finding extends Model
 {
+    /**
+     * Validade máxima de um aceite de risco, por severidade. Ao vencer, o
+     * achado é reaberto automaticamente (findings:expire-risk-acceptances).
+     */
+    public const RISK_ACCEPTANCE_MAX_DAYS = [
+        'critico' => 90,
+        'alto' => 180,
+        'medio' => 365,
+        'baixo' => 365,
+        'informativo' => 365,
+    ];
+
+    /** Status para o qual o achado volta quando o aceite de risco vence. */
+    public const RISK_ACCEPTANCE_REOPEN_STATUS = 'confirmado';
+
+    /** Motivo do fim do aceite, registrado na auditoria (revogado ou expirado). */
+    public ?string $riskEndReason = null;
+
     public const DEFAULT_SLA_DAYS = [
         'critico' => 30,
         'alto' => 90,
@@ -100,6 +121,9 @@ class Finding extends Model
         'corrigido_em' => 'date',
         'duplicado_de_id' => 'integer',
         'regressed_from_id' => 'integer',
+        'risco_aceito_por' => 'integer',
+        'risco_aceito_em' => 'datetime',
+        'risco_aceito_expira_em' => 'date',
     ];
 
     protected $appends = [
@@ -148,6 +172,115 @@ class Finding extends Model
                 }
             }
         });
+
+        // O aceite de risco só vale enquanto o status for risco_aceito: ao sair
+        // dele, por qualquer caminho (tela, edição, API ou expiração), os dados
+        // do aceite são limpos. O histórico fica em audit_events.
+        static::saving(function (Finding $finding) {
+            $finding->aceito_risco = $finding->status === 'risco_aceito';
+
+            if ($finding->status !== 'risco_aceito' && $finding->getOriginal('status') === 'risco_aceito') {
+                $finding->forceFill([
+                    'risco_aceito_justificativa' => null,
+                    'risco_aceito_controles_compensatorios' => null,
+                    'risco_aceito_por' => null,
+                    'risco_aceito_em' => null,
+                    'risco_aceito_expira_em' => null,
+                ]);
+            }
+        });
+
+        static::updated(function (Finding $finding) {
+            if ($finding->wasChanged('status') && $finding->getOriginal('status') === 'risco_aceito') {
+                $expirado = $finding->riskEndReason === 'expirado';
+                $finding->auditRisk($expirado ? 'finding.risk_acceptance_expired' : 'finding.risk_acceptance_revoked', [
+                    'novo_status' => $finding->status,
+                    'justificativa' => $finding->getOriginal('risco_aceito_justificativa'),
+                    'aprovador_id' => $finding->getOriginal('risco_aceito_por'),
+                    'expira_em' => $finding->getOriginal('risco_aceito_expira_em')?->toDateString(),
+                ]);
+                $finding->riskEndReason = null;
+            }
+        });
+    }
+
+    /**
+     * Registra o aceite formal de risco: quem aprovou, por quê e até quando.
+     */
+    public function acceptRisk(User $approver, string $justificativa, CarbonInterface $expiraEm, ?string $controlesCompensatorios = null): void
+    {
+        $this->forceFill([
+            'status' => 'risco_aceito',
+            'risco_aceito_justificativa' => $justificativa,
+            'risco_aceito_controles_compensatorios' => $controlesCompensatorios ?: null,
+            'risco_aceito_por' => $approver->id,
+            'risco_aceito_em' => now(),
+            'risco_aceito_expira_em' => $expiraEm->toDateString(),
+        ])->save();
+
+        $this->auditRisk('finding.risk_accepted', [
+            'justificativa' => $justificativa,
+            'controles_compensatorios' => $controlesCompensatorios ?: null,
+            'aprovador_id' => $approver->id,
+            'expira_em' => $expiraEm->toDateString(),
+            'severidade' => $this->severidade,
+        ], $approver->id);
+    }
+
+    /**
+     * Reabre o achado porque o prazo do aceite de risco acabou.
+     */
+    public function expireRiskAcceptance(): void
+    {
+        $this->riskEndReason = 'expirado';
+        $this->status = self::RISK_ACCEPTANCE_REOPEN_STATUS;
+        $this->save();
+    }
+
+    /**
+     * Aceites cujo prazo já passou (a validade inclui o próprio dia de expiração).
+     */
+    public function scopeRiskAcceptanceExpired(Builder $query): Builder
+    {
+        return $query->where('status', 'risco_aceito')
+            ->whereNotNull('risco_aceito_expira_em')
+            ->whereDate('risco_aceito_expira_em', '<', now()->toDateString());
+    }
+
+    /**
+     * Status que podem ser atribuídos diretamente (tela, edição e API).
+     * "Risco aceito" só entra pelo aceite formal, salvo se o achado já estiver nele.
+     *
+     * @return list<string>
+     */
+    public static function assignableStatuses(?self $finding = null): array
+    {
+        $statuses = array_keys(self::STATUS_OPTIONS);
+        if ($finding?->status === 'risco_aceito') {
+            return $statuses;
+        }
+
+        return array_values(array_diff($statuses, ['risco_aceito']));
+    }
+
+    public function riskAcceptanceMaxDate(): CarbonInterface
+    {
+        return now()->startOfDay()->addDays(self::RISK_ACCEPTANCE_MAX_DAYS[$this->severidade] ?? 365);
+    }
+
+    protected function auditRisk(string $action, array $context, ?int $userId = null): void
+    {
+        $console = app()->runningInConsole() && ! app()->runningUnitTests();
+
+        app(AuditLogService::class)->record(
+            $action,
+            $console ? 'console' : 'web',
+            $console ? null : request(),
+            $userId ?? auth()->id(),
+            'Finding',
+            $this->id,
+            context: array_filter($context, static fn ($value) => $value !== null),
+        );
     }
 
     public function generateDedupHash(): string
@@ -194,6 +327,11 @@ class Finding extends Model
     public function regressedFrom(): BelongsTo
     {
         return $this->belongsTo(Finding::class, 'regressed_from_id');
+    }
+
+    public function riscoAceitoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'risco_aceito_por');
     }
 
     public function getDiasRestantesAttribute(): ?int

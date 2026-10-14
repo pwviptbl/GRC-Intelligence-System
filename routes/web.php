@@ -193,6 +193,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('findings', FindingController::class);
         Route::patch('/findings/{finding}/status', [FindingController::class, 'updateStatus'])->name('findings.update_status');
         Route::post('/findings/{finding}/controles', [FindingController::class, 'syncControles'])->name('findings.sync_controles');
+        Route::post('/findings/{finding}/aceite-risco', [FindingController::class, 'acceptRisk'])->middleware('role:admin,governanca')->name('findings.accept_risk');
         Route::post('/treinamentos/{treinamento}/alunos', [TreinamentoController::class, 'addAlunos'])->name('treinamentos.add_alunos');
     });
 });

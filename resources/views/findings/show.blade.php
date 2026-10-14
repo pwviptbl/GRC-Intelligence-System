@@ -261,15 +261,139 @@
                     <div style="display:flex; gap:8px;">
                         <select name="status" class="form-select" style="flex:1; height:36px; font-size:12px; background:{{ $finding->status_color }}18; color:{{ $finding->status_color }}; border:1px solid {{ $finding->status_color }}44; font-weight:600;">
                             @foreach(\App\Models\Finding::STATUS_OPTIONS as $k => $v)
-                                <option value="{{ $k }}" {{ $finding->status === $k ? 'selected' : '' }}>{{ $v }}</option>
+                                @if($k === 'risco_aceito' && $finding->status !== 'risco_aceito')
+                                    <option value="{{ $k }}" disabled>{{ $v }} (use o aceite formal abaixo)</option>
+                                @else
+                                    <option value="{{ $k }}" {{ $finding->status === $k ? 'selected' : '' }}>{{ $v }}</option>
+                                @endif
                             @endforeach
                         </select>
                         <button type="submit" class="btn-save" style="height:36px; padding:0 14px; font-size:12px;">
                             Salvar
                         </button>
                     </div>
+                    @if($finding->status === 'risco_aceito')
+                        <div style="font-size:11px; color:var(--text-3); margin-top:8px; line-height:1.5;">
+                            Mudar o status encerra o aceite de risco (fica registrado no histórico).
+                        </div>
+                    @endif
                 </form>
             </div>
+
+            {{-- Aceite Formal de Risco --}}
+            @php
+                $canAcceptRisk = in_array(auth()->user()?->role, ['admin', 'governanca']);
+                $riskOpen = in_array($finding->status, ['aberto', 'confirmado', 'em_tratamento']);
+            @endphp
+            @if($finding->status === 'risco_aceito' || $riskOpen || $riskHistory->isNotEmpty())
+            <div class="finding-card" style="border-left:4px solid #8b5cf6;">
+                <h4 style="font-size:12px; text-transform:uppercase; color:var(--text-3); font-weight:700; margin:0 0 12px;">
+                    🤝 Aceite de Risco
+                </h4>
+
+                @if($finding->status === 'risco_aceito')
+                    @php $diasAceite = $finding->risco_aceito_expira_em ? (int) now()->startOfDay()->diffInDays($finding->risco_aceito_expira_em, false) : null; @endphp
+                    <div style="font-size:12px; color:var(--text-2); line-height:1.6;">
+                        @if($finding->risco_aceito_expira_em)
+                            <div style="margin-bottom:8px;">
+                                @if($diasAceite < 0)
+                                    <span class="sla-badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border-color:rgba(239,68,68,0.4);">
+                                        Vencido em {{ $finding->risco_aceito_expira_em->format('d/m/Y') }}: será reaberto
+                                    </span>
+                                @elseif($diasAceite <= 15)
+                                    <span class="sla-badge" style="background:rgba(234,179,8,0.15); color:#eab308; border-color:rgba(234,179,8,0.4);">
+                                        Vence em {{ $diasAceite }} dia(s), em {{ $finding->risco_aceito_expira_em->format('d/m/Y') }}
+                                    </span>
+                                @else
+                                    <span class="sla-badge" style="background:rgba(139,92,246,0.12); color:#a78bfa; border-color:rgba(139,92,246,0.35);">
+                                        Válido até {{ $finding->risco_aceito_expira_em->format('d/m/Y') }}
+                                    </span>
+                                @endif
+                            </div>
+                        @else
+                            <div style="margin-bottom:8px; color:#eab308;">Aceite antigo, sem justificativa nem validade registradas. Revogue e registre um aceite formal.</div>
+                        @endif
+                        @if($finding->riscoAceitoPor)
+                            <div><strong>Aprovado por:</strong> {{ $finding->riscoAceitoPor->name }}</div>
+                        @endif
+                        @if($finding->risco_aceito_em)
+                            <div><strong>Em:</strong> {{ $finding->risco_aceito_em->format('d/m/Y H:i') }}</div>
+                        @endif
+                        @if($finding->risco_aceito_justificativa)
+                            <div style="margin-top:8px;"><strong>Justificativa:</strong></div>
+                            <div style="white-space:pre-wrap; color:var(--text-2);">{{ $finding->risco_aceito_justificativa }}</div>
+                        @endif
+                        @if($finding->risco_aceito_controles_compensatorios)
+                            <div style="margin-top:8px;"><strong>Controles compensatórios:</strong></div>
+                            <div style="white-space:pre-wrap; color:var(--text-2);">{{ $finding->risco_aceito_controles_compensatorios }}</div>
+                        @endif
+                    </div>
+                    <form method="POST" action="{{ route('findings.update_status', $finding) }}" style="margin-top:12px;" onsubmit="return confirm('Revogar o aceite de risco e reabrir o achado como Confirmado?')">
+                        @csrf @method('PATCH')
+                        <input type="hidden" name="status" value="{{ \App\Models\Finding::RISK_ACCEPTANCE_REOPEN_STATUS }}">
+                        <button type="submit" class="btn-action" style="width:100%; padding:8px 14px; background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3); border-radius:8px; font-size:12px; cursor:pointer;">
+                            Revogar aceite e reabrir
+                        </button>
+                    </form>
+                @elseif($riskOpen && $canAcceptRisk)
+                    <details {{ $errors->hasAny(['justificativa', 'controles_compensatorios', 'expira_em']) ? 'open' : '' }}>
+                        <summary style="cursor:pointer; font-size:12px; color:#a78bfa; font-weight:600;">Aceitar o risco formalmente</summary>
+                        <form method="POST" action="{{ route('findings.accept_risk', $finding) }}" style="margin-top:12px; display:grid; gap:10px;">
+                            @csrf
+                            <div>
+                                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); font-weight:600; margin-bottom:4px;">Justificativa *</label>
+                                <textarea name="justificativa" rows="4" class="form-input" style="width:100%; font-size:12px;" required minlength="20" placeholder="Por que o risco será aceito em vez de corrigido?">{{ old('justificativa') }}</textarea>
+                                @error('justificativa')<div style="color:#f87171; font-size:11px; margin-top:4px;">{{ $message }}</div>@enderror
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); font-weight:600; margin-bottom:4px;">Controles compensatórios</label>
+                                <textarea name="controles_compensatorios" rows="2" class="form-input" style="width:100%; font-size:12px;" placeholder="Ex.: WAF bloqueando o vetor, acesso restrito à VPN">{{ old('controles_compensatorios') }}</textarea>
+                                @error('controles_compensatorios')<div style="color:#f87171; font-size:11px; margin-top:4px;">{{ $message }}</div>@enderror
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); font-weight:600; margin-bottom:4px;">Válido até *</label>
+                                <input type="date" name="expira_em" class="form-input" style="width:100%; font-size:12px;" required
+                                       min="{{ now()->addDay()->toDateString() }}" max="{{ $finding->riskAcceptanceMaxDate()->toDateString() }}"
+                                       value="{{ old('expira_em') }}">
+                                <div style="font-size:11px; color:var(--text-3); margin-top:4px;">
+                                    Máximo de {{ \App\Models\Finding::RISK_ACCEPTANCE_MAX_DAYS[$finding->severidade] ?? 365 }} dias para severidade {{ $finding->severidade_label }}. Ao vencer, o achado é reaberto.
+                                </div>
+                                @error('expira_em')<div style="color:#f87171; font-size:11px; margin-top:4px;">{{ $message }}</div>@enderror
+                            </div>
+                            <div style="font-size:11px; color:var(--text-3);">Você ({{ auth()->user()->name }}) ficará registrado como aprovador.</div>
+                            <button type="submit" class="btn-save" style="width:100%; height:34px; font-size:12px; background:#8b5cf6; border-color:#8b5cf6;">
+                                Registrar aceite de risco
+                            </button>
+                        </form>
+                    </details>
+                @elseif($riskOpen)
+                    <div style="font-size:12px; color:var(--text-3);">O aceite formal de risco é feito por um usuário com perfil Admin ou Governança.</div>
+                @endif
+
+                @if($riskHistory->isNotEmpty())
+                    <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--border);">
+                        <div style="font-size:10px; text-transform:uppercase; color:var(--text-3); font-weight:600; margin-bottom:6px;">Histórico</div>
+                        @foreach($riskHistory as $event)
+                            @php
+                                $labels = [
+                                    'finding.risk_accepted' => 'Risco aceito',
+                                    'finding.risk_acceptance_revoked' => 'Aceite revogado',
+                                    'finding.risk_acceptance_expired' => 'Aceite vencido (reaberto automaticamente)',
+                                ];
+                            @endphp
+                            <div style="font-size:11px; color:var(--text-2); margin-bottom:6px; line-height:1.5;">
+                                <strong>{{ $labels[$event->action] ?? $event->action }}</strong>
+                                · {{ $event->created_at->format('d/m/Y H:i') }}
+                                @if($event->user) · {{ $event->user->name }} @endif
+                                @if($event->action === 'finding.risk_accepted' && ! empty($event->context['expira_em']))
+                                    · até {{ \Carbon\Carbon::parse($event->context['expira_em'])->format('d/m/Y') }}
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+            @endif
 
             {{-- Prazo de SLA & Vencimento --}}
             <div class="finding-card">
@@ -280,6 +404,10 @@
                     @if($finding->status === 'fechado')
                         <span class="sla-badge" style="background:rgba(34,197,94,0.12); color:#22c55e; border-color:rgba(34,197,94,0.3);">
                             ✅ Corrigido e Mitigado
+                        </span>
+                    @elseif($finding->status === 'risco_aceito')
+                        <span class="sla-badge" style="background:rgba(139,92,246,0.12); color:#a78bfa; border-color:rgba(139,92,246,0.35);">
+                            🤝 SLA suspenso: risco aceito{{ $finding->risco_aceito_expira_em ? ' até '.$finding->risco_aceito_expira_em->format('d/m/Y') : '' }}
                         </span>
                     @elseif($finding->sla_status === 'atrasado')
                         <span class="sla-badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border-color:rgba(239,68,68,0.4);">
@@ -338,13 +466,13 @@
 
                 {{-- Seletor de Controles para Vincular --}}
                 @if(isset($availableControles) && $availableControles->isNotEmpty())
-                    <form method="POST" action="{{ route('findings.controles.sync', $finding) }}">
+                    <form method="POST" action="{{ route('findings.sync_controles', $finding) }}">
                         @csrf
                         <div class="form-group" style="margin-bottom:8px;">
                             <label style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-3); font-weight:600; margin-bottom:4px;">
                                 Vincular Controles (Ctrl+Clique)
                             </label>
-                            <select name="controles[]" multiple class="form-select" style="height:90px; font-size:11px; width:100%;">
+                            <select name="atividade_ids[]" multiple class="form-select" style="height:90px; font-size:11px; width:100%;">
                                 @foreach($availableControles as $act)
                                     <option value="{{ $act->id }}" {{ $finding->controles->contains('id', $act->id) ? 'selected' : '' }}>
                                         {{ $act->atividade }} ({{ $act->categoria ?? 'Geral' }})

@@ -40,7 +40,7 @@
     <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Status</label>
     <select name="status" class="form-input" style="width:100%;padding:10px">
       @foreach(\App\Models\Finding::STATUS_OPTIONS as $k => $v)
-        <option value="{{ $k }}" {{ old('status', $finding->status ?? 'aberto') === $k ? 'selected' : '' }}>{{ $v }}</option>
+        <option value="{{ $k }}" {{ old('status', $finding->status ?? 'aberto') === $k ? 'selected' : '' }} @disabled($k === 'risco_aceito' && ($finding->status ?? null) !== 'risco_aceito')>{{ $v }}{{ $k === 'risco_aceito' && ($finding->status ?? null) !== 'risco_aceito' ? ' (aceite formal na ficha do achado)' : '' }}</option>
       @endforeach
     </select>
   </div>

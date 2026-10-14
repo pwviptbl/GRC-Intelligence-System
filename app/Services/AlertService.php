@@ -110,6 +110,27 @@ class AlertService
             ];
         }
 
+        // 4b. Aceites de Risco Vencendo nos Próximos 15 Dias (Atenção)
+        $aceitesVencendo = Finding::query()
+            ->where('status', 'risco_aceito')
+            ->whereNotNull('risco_aceito_expira_em')
+            ->whereBetween('risco_aceito_expira_em', [$today, Carbon::today()->addDays(15)->toDateString()])
+            ->count();
+
+        if ($aceitesVencendo > 0) {
+            $alerts[] = [
+                'id' => 'findings_aceites_vencendo',
+                'severity' => 'warning',
+                'category' => 'Segurança',
+                'icon' => '🤝',
+                'title' => 'Aceites de Risco Vencendo em 15 Dias',
+                'count' => $aceitesVencendo,
+                'description' => "{$aceitesVencendo} aceite(s) de risco vencem nos próximos 15 dias; ao vencer, o achado é reaberto.",
+                'action_label' => 'Revisar Aceites',
+                'action_url' => route('findings.index', ['tab' => 'aceitos']),
+            ];
+        }
+
         // 5. Ciclo de Auditoria / Pentest de Softwares Vencido (> 6 meses sem testes)
         $softwaresAtivos = Software::where('ativo', true)->get();
         $softwaresCicloVencido = 0;

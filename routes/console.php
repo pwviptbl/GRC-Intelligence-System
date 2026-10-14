@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BackupController;
+use App\Models\Finding;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -43,8 +44,24 @@ Artisan::command('backups:verify {file?}', function (BackupController $backups) 
     return $failed === 0 ? Command::SUCCESS : Command::FAILURE;
 })->purpose('Verifica estrutura e checksum dos backups sem restaurar dados');
 
+Artisan::command('findings:expire-risk-acceptances', function () {
+    $expirados = Finding::riskAcceptanceExpired()->get();
+    foreach ($expirados as $finding) {
+        $venceuEm = $finding->risco_aceito_expira_em->format('d/m/Y');
+        $finding->expireRiskAcceptance();
+        $this->line("Achado #{$finding->id} reaberto (aceite de risco venceu em {$venceuEm}): {$finding->titulo}");
+    }
+
+    $this->info("Aceites de risco vencidos reabertos: {$expirados->count()}");
+})->purpose('Reabre os achados cujo aceite de risco venceu');
+
 Schedule::command('backups:run')
     ->weeklyOn(1, '02:00')
+    ->withoutOverlapping();
+
+// Aceites de risco vencidos voltam a ser achados em aberto
+Schedule::command('findings:expire-risk-acceptances')
+    ->dailyAt('00:15')
     ->withoutOverlapping();
 
 // Varredura diária de perímetro e certificados SSL (EASM)

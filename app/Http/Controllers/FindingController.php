@@ -3,14 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Atividade;
+use App\Models\AuditEvent;
 use App\Models\Engagement;
 use App\Models\EngagementTest;
 use App\Models\Finding;
 use App\Models\Software;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 class FindingController extends Controller
 {
+    public const STATUS_HINT = 'Status inválido. Para aceitar o risco, use o formulário "Aceitar risco" na ficha do achado (exige justificativa e validade).';
+
     public function index(Request $request)
     {
         $query = Finding::with(['test.engagement.software', 'duplicadoDe', 'regressedFrom'])->latest();
@@ -25,6 +30,8 @@ class FindingController extends Controller
             $query->where('status', 'duplicado');
         } elseif ($tab === 'fechados') {
             $query->where('status', 'fechado');
+        } elseif ($tab === 'aceitos') {
+            $query->where('status', 'risco_aceito');
         }
 
         if ($request->filled('severidade')) {
@@ -91,6 +98,7 @@ class FindingController extends Controller
             'regressoes' => Finding::where('is_regression', true)
                 ->whereNotIn('status', ['fechado', 'falso_positivo'])->count(),
             'duplicados' => Finding::where('status', 'duplicado')->count(),
+            'aceitos' => Finding::where('status', 'risco_aceito')->count(),
             'atrasados' => Finding::whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
                 ->whereNotNull('data_limite_correcao')
                 ->whereDate('data_limite_correcao', '<', now())->count(),
@@ -109,7 +117,7 @@ class FindingController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $this->validateFinding($request);
+        $validated = $this->validateFinding($request, null);
         $finding = Finding::create($validated);
 
         $msg = 'Achado criado com sucesso!';
@@ -124,7 +132,7 @@ class FindingController extends Controller
 
     public function show(Finding $finding)
     {
-        $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom', 'controles']);
+        $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom', 'controles', 'riscoAceitoPor']);
         $softwareId = $finding->test?->engagement?->software_id;
         $availableControles = Atividade::where(function ($q) use ($softwareId) {
             if ($softwareId) {
@@ -132,7 +140,14 @@ class FindingController extends Controller
             }
         })->where('ativo', true)->orderBy('atividade')->get();
 
-        return view('findings.show', compact('finding', 'availableControles'));
+        $riskHistory = AuditEvent::with('user:id,name')
+            ->where('target_type', 'Finding')
+            ->where('target_id', (string) $finding->id)
+            ->where('action', 'like', 'finding.risk_%')
+            ->latest('id')
+            ->get();
+
+        return view('findings.show', compact('finding', 'availableControles', 'riskHistory'));
     }
 
     public function edit(Finding $finding)
@@ -144,7 +159,7 @@ class FindingController extends Controller
 
     public function update(Request $request, Finding $finding)
     {
-        $validated = $this->validateFinding($request);
+        $validated = $this->validateFinding($request, $finding);
         $finding->update($validated);
 
         return redirect()->route('findings.show', $finding)
@@ -154,8 +169,8 @@ class FindingController extends Controller
     public function updateStatus(Request $request, Finding $finding)
     {
         $validated = $request->validate([
-            'status' => ['required', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
-        ]);
+            'status' => ['required', Rule::in(Finding::assignableStatuses($finding))],
+        ], ['status.in' => self::STATUS_HINT]);
 
         $data = ['status' => $validated['status']];
         if ($validated['status'] === 'fechado' && ! $finding->corrigido_em) {
@@ -164,14 +179,44 @@ class FindingController extends Controller
         if ($validated['status'] === 'falso_positivo') {
             $data['falso_positivo'] = true;
         }
-        if ($validated['status'] === 'risco_aceito') {
-            $data['aceito_risco'] = true;
-        }
 
         $finding->update($data);
         $label = Finding::STATUS_OPTIONS[$validated['status']] ?? $validated['status'];
 
         return redirect()->back()->with('success', "Status atualizado para: {$label}");
+    }
+
+    /**
+     * Aceite formal de risco: justificativa, aprovador (usuário logado, admin
+     * ou governança) e validade limitada pela severidade. Ao vencer, o achado
+     * é reaberto pelo comando findings:expire-risk-acceptances.
+     */
+    public function acceptRisk(Request $request, Finding $finding)
+    {
+        if (! in_array($finding->status, ['aberto', 'confirmado', 'em_tratamento'])) {
+            return redirect()->route('findings.show', $finding)
+                ->with('error', 'Só é possível aceitar o risco de achados em aberto, confirmados ou em tratamento.');
+        }
+
+        $maxDate = $finding->riskAcceptanceMaxDate();
+        $validated = $request->validate([
+            'justificativa' => ['required', 'string', 'min:20', 'max:5000'],
+            'controles_compensatorios' => ['nullable', 'string', 'max:5000'],
+            'expira_em' => ['required', 'date', 'after:today', 'before_or_equal:'.$maxDate->toDateString()],
+        ], [
+            'justificativa.required' => 'Informe a justificativa do aceite de risco.',
+            'justificativa.min' => 'A justificativa precisa ter pelo menos 20 caracteres.',
+            'expira_em.required' => 'Informe até quando o risco fica aceito.',
+            'expira_em.after' => 'A validade do aceite precisa ser uma data futura.',
+            'expira_em.before_or_equal' => 'Para severidade '.$finding->severidade_label.', o aceite vale no máximo '
+                .(Finding::RISK_ACCEPTANCE_MAX_DAYS[$finding->severidade] ?? 365).' dias (até '.$maxDate->format('d/m/Y').').',
+        ]);
+
+        $expiraEm = Carbon::parse($validated['expira_em']);
+        $finding->acceptRisk($request->user(), $validated['justificativa'], $expiraEm, $validated['controles_compensatorios'] ?? null);
+
+        return redirect()->route('findings.show', $finding)
+            ->with('success', 'Risco aceito formalmente até '.$expiraEm->format('d/m/Y').'.');
     }
 
     /**
@@ -204,7 +249,7 @@ class FindingController extends Controller
             ->with('success', 'Achado removido.');
     }
 
-    protected function validateFinding(Request $request): array
+    protected function validateFinding(Request $request, ?Finding $finding): array
     {
         return $request->validate([
             'test_id' => ['required', 'integer', 'exists:engagement_tests,id'],
@@ -219,9 +264,8 @@ class FindingController extends Controller
             'metodo_http' => ['nullable', 'in:GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'],
             'prova_conceito' => ['nullable', 'string'],
             'remediacao_sugerida' => ['nullable', 'string'],
-            'status' => ['required', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
+            'status' => ['required', Rule::in(Finding::assignableStatuses($finding))],
             'falso_positivo' => ['boolean'],
-            'aceito_risco' => ['boolean'],
             'ativo_afetado' => ['nullable', 'string', 'max:500'],
             'responsavel' => ['nullable', 'string', 'max:255'],
             'sla_dias' => ['nullable', 'integer', 'min:1'],
@@ -232,6 +276,7 @@ class FindingController extends Controller
             'titulo.required' => 'O título do achado é obrigatório.',
             'descricao.required' => 'A descrição do achado é obrigatória.',
             'severidade.required' => 'A severidade é obrigatória.',
+            'status.in' => self::STATUS_HINT,
         ]);
     }
 }

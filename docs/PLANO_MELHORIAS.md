@@ -134,7 +134,16 @@ O `AlertService` já calcula os alertas (`getAlertSummary`), mas eles só aparec
 
 1. **Responsáveis como identidades:** os campos de texto `responsavel` e `detectado_por` (cerca de 12 colunas) passam a ser FKs para `users`, mantendo o texto como fallback na migração. Fica viável cobrar, filtrar "meus itens" e notificar.
 2. **Ciclo de vida de políticas e procedimentos:** dono, aprovador, vigência, `proxima_revisao`, status `rascunho → em revisão → aprovado → obsoleto` e histórico de versões (tabela `politica_versoes`). Alerta de revisão vencida pela Etapa 3.
-3. **Aceite formal de risco em findings:** status "risco aceito" com justificativa, aprovador e data de expiração, que reabre automaticamente ao vencer.
+3. ✅ **Aceite formal de risco em findings:** concluído em 2026-10-14.
+   - O status "Risco Aceito" só entra pelo formulário de aceite na ficha do achado, restrito a Admin e Governança. Exige justificativa (mínimo de 20 caracteres) e validade; controles compensatórios são opcionais. Quem registra fica como aprovador.
+   - A validade máxima depende da severidade: 90 dias para crítico, 180 para alto e 365 para os demais (`Finding::RISK_ACCEPTANCE_MAX_DAYS`).
+   - Troca rápida de status, edição e `PATCH /api/v1/findings/{id}/status` recusam "risco_aceito" sem o aceite formal.
+   - O comando `findings:expire-risk-acceptances` roda todo dia às 00:15 e reabre como "Confirmado" os achados cujo aceite venceu. O aceite vale até o fim do dia de expiração.
+   - Aceitar, revogar e vencer ficam em `audit_events`, com histórico na ficha. Ao sair de "Risco Aceito", os dados do aceite são limpos do achado.
+   - Também entraram: aba "Risco Aceito" na listagem, alerta de aceites vencendo em 15 dias, o aceite no PDF da ficha e a SLA exibida como suspensa.
+   - Bugs corrigidos junto:
+     - A ficha do achado dava 500 sempre que havia controles para vincular, porque usava uma rota inexistente (`findings.controles.sync`).
+     - Com a config em cache (`artisan optimize`), `php artisan test` ignorava o `phpunit.xml` e apontava para o banco de produção. O `migrate:fresh` foi barrado por o ambiente ser production e os testes rodam em transação, então nenhum dado foi alterado. Agora o `phpunit.xml` usa arquivos de cache próprios e o `TestCase` aborta se o ambiente não for `testing`.
 4. **Evidência reutilizável:** entidade polimórfica `evidencias` com hash, MIME, período coberto, validade, coletor e aprovador, ligada a controles, incidentes e LGPD. Unifica as três tabelas de anexos atuais.
 5. **Mapeamento de frameworks:** tabelas `frameworks` e `requisitos`, mais um pivot com atividades e controles. Seed com LGPD (já existe `lgpd_items`), ISO 27001:2022 Anexo A e CIS v8 IG1. Mostrar % de conformidade e gaps por framework.
 6. ✅ **Desempenho das listagens:** a medição mostrou que o problema não era volume (as tabelas que crescem já são paginadas), e sim consultas N+1 nos cálculos de postura de segurança, que estão em `$appends` e eram refeitos a cada serialização. A correção foi um cache por requisição (`App\Support\PostureCache`), invalidado em qualquer escrita de software, instância, engajamento, teste ou finding. /atividades caiu de 782 para 219 ms (375 para 45 consultas), /execucao_controles de 435 para 180 ms e /instancias de 804 para 422 ms. Pendente: calcular a postura das instâncias em lote, o que deve levar /instancias para menos de 150 ms.

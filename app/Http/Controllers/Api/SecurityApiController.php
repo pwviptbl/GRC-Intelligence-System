@@ -10,6 +10,7 @@ use App\Rules\AllowedUploadExtension;
 use App\Services\ScanImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SecurityApiController extends Controller
 {
@@ -201,7 +202,7 @@ class SecurityApiController extends Controller
             'metodo_http' => ['nullable', 'in:GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS'],
             'prova_conceito' => ['nullable', 'string'],
             'remediacao_sugerida' => ['nullable', 'string'],
-            'status' => ['nullable', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
+            'status' => ['nullable', Rule::in(Finding::assignableStatuses())],
             'ativo_afetado' => ['nullable', 'string', 'max:500'],
             'responsavel' => ['nullable', 'string', 'max:255'],
             'sla_dias' => ['nullable', 'integer', 'min:1'],
@@ -219,8 +220,8 @@ class SecurityApiController extends Controller
     public function updateFindingStatus(Request $request, Finding $finding): JsonResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'in:aberto,confirmado,em_tratamento,risco_aceito,falso_positivo,fechado,duplicado'],
-        ]);
+            'status' => ['required', Rule::in(Finding::assignableStatuses($finding))],
+        ], ['status.in' => 'Status inválido. O aceite de risco exige justificativa, aprovador e validade e é feito na ficha do achado, na interface web.']);
 
         $data = ['status' => $validated['status']];
         if ($validated['status'] === 'fechado' && ! $finding->corrigido_em) {

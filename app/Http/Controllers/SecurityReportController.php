@@ -122,7 +122,7 @@ class SecurityReportController extends Controller
      */
     public function findingReport(Request $request, Finding $finding)
     {
-        $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom']);
+        $finding->load(['test.engagement.software', 'duplicadoDe', 'regressedFrom', 'riscoAceitoPor']);
 
         $html = view('reports.security.finding', compact('finding'))->render();
         $safeName = 'achado_'.$finding->id.'_'.Str::slug($finding->titulo);

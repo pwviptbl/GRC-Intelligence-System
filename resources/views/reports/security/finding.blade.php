@@ -42,6 +42,25 @@
       <td class="meta-cell meta-lbl">SLA Limite</td>
       <td class="meta-cell">{{ $finding->data_limite_correcao?->format('d/m/Y') ?: 'Sem prazo' }} ({{ $finding->sla_dias }} dias)</td>
     </tr>
+    @if($finding->status === 'risco_aceito')
+      <tr>
+        <td class="meta-cell meta-lbl">Aceite de Risco</td>
+        <td class="meta-cell" colspan="3">
+          @if($finding->risco_aceito_expira_em)
+            Válido até <strong>{{ $finding->risco_aceito_expira_em->format('d/m/Y') }}</strong>,
+            aprovado por {{ $finding->riscoAceitoPor?->name ?? 'usuário removido' }} em {{ $finding->risco_aceito_em?->format('d/m/Y') }}.
+            @if($finding->risco_aceito_justificativa)
+              <br><strong>Justificativa:</strong> {{ $finding->risco_aceito_justificativa }}
+            @endif
+            @if($finding->risco_aceito_controles_compensatorios)
+              <br><strong>Controles compensatórios:</strong> {{ $finding->risco_aceito_controles_compensatorios }}
+            @endif
+          @else
+            Aceite antigo, sem justificativa nem validade registradas.
+          @endif
+        </td>
+      </tr>
+    @endif
     @if($finding->is_regression)
       <tr>
         <td class="meta-cell meta-lbl" style="color:#dc2626">⚠️ Regressão</td>
