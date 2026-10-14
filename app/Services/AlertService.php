@@ -266,10 +266,9 @@ class AlertService
 
         // 11. Certificados SSL Expirando ou Expirados (EASM - Limite <= 2 dias)
         $sslCriticos = InstanciaSslCert::query()
-            ->where(function ($q) {
-                $q->where('status_certificado', 'expirado')
-                    ->orWhere('dias_restantes', '<=', 2);
-            })
+            // Pela validade, não pelo dias_restantes gravado na última varredura
+            ->whereNotNull('valido_ate')
+            ->where('valido_ate', '<', now()->startOfSecond()->addDays(InstanciaSslCert::DIAS_ALERTA + 1))
             ->get();
 
         $countSsl = $sslCriticos->count();
@@ -296,7 +295,7 @@ class AlertService
         // 12. Portas de Risco Expostas na Internet (EASM)
         $portasCriticas = InstanciaPortaServico::query()
             ->whereHas('instancia', fn ($q) => $q->where('status_exposicao', 'publico'))
-            ->whereIn('porta', [21, 22, 23, 445, 1433, 1521, 3306, 3389, 5432, 6379, 9200, 27017])
+            ->whereIn('porta', InstanciaPortaServico::RISKY_PORTS)
             ->where('estado', 'open')
             ->count();
 

@@ -246,6 +246,11 @@
             </div>
         </div>
     </div>
+    @if($instancia->scan_erro)
+        <div style="margin-top: 12px; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 12px; line-height: 1.5;">
+            ⚠️ A última varredura não conseguiu verificar tudo: {{ $instancia->scan_erro }}
+        </div>
+    @endif
 </div>
 
 <!-- Card Certificado SSL -->
@@ -261,8 +266,12 @@
                 Emissor: <strong style="color: var(--text-1);">{{ $cert->emissor }}</strong>
             </div>
             <div style="font-size: 13px; color: var(--text-2);">
-                Válido de: <strong style="color: var(--text-1);">{{ optional($cert->valido_de)->format('d/m/Y') }}</strong> até <strong style="color: var(--text-1);">{{ optional($cert->valido_ate)->format('d/m/Y') }}</strong>
+                Válido de: <strong style="color: var(--text-1);">{{ optional($cert->valido_de)->format('d/m/Y') }}</strong> até <strong style="color: var(--text-1);">{{ optional($cert->valido_ate)->format('d/m/Y H:i') }}</strong>
             </div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-3); margin-bottom: 12px;">
+            Data lida do próprio certificado (campo "válido até"); os dias restantes são recalculados a cada acesso.
+            Última leitura do certificado: {{ $cert->verificado_em ? $cert->verificado_em->format('d/m/Y H:i') : $cert->updated_at->format('d/m/Y H:i') }}.
         </div>
 
         @if(!empty($cert->detalhes_json))
@@ -309,8 +318,10 @@
                         <span style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
                             ⚠️ Alto Risco (Sensível)
                         </span>
-                    @else
+                    @elseif($p->isAcceptedPort())
                         <span style="color: var(--text-3); font-size: 11px;">Normal / Esperado</span>
+                    @else
+                        <span style="color: #f59e0b; font-size: 11px; font-weight: 600;">Não esperada (gera finding)</span>
                     @endif
                 </td>
                 <td style="font-size: 12px; color: var(--text-3);">
@@ -320,7 +331,7 @@
             @empty
             <tr>
                 <td colspan="5" style="text-align: center; color: var(--text-3); padding: 25px;">
-                    Nenhuma porta aberta detectada nas últimas varreduras.
+                    Nenhuma porta aberta detectada na última varredura.
                 </td>
             </tr>
             @endforelse

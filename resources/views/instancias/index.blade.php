@@ -297,6 +297,9 @@
                             <div style="font-size: 10px; color: var(--text-3); margin-top: 2px;" title="{{ $i->latestSslCert->emissor }}">
                                 {{ \Illuminate\Support\Str::limit($i->latestSslCert->emissor, 18) }}
                             </div>
+                            @if($i->latestSslCert->valido_ate)
+                                <div style="font-size: 10px; color: var(--text-3);">até {{ $i->latestSslCert->valido_ate->format('d/m/Y H:i') }}</div>
+                            @endif
                         @else
                             <span style="color: var(--text-3); font-size: 11px;">Não verificado</span>
                         @endif
@@ -306,7 +309,7 @@
                     <td style="max-width: 180px;">
                         @if($i->portasAbertas->isNotEmpty())
                             @foreach($i->portasAbertas as $porta)
-                                <span class="port-pill {{ $porta->isRiskyPort() ? 'port-risky' : 'port-normal' }}" title="{{ $porta->servico }}">
+                                <span class="port-pill {{ $porta->isAcceptedPort() ? 'port-normal' : 'port-risky' }}" title="{{ $porta->servico }}{{ $porta->isAcceptedPort() ? ' (esperada)' : ' (gera finding)' }}">
                                     {{ $porta->porta }}/{{ $porta->servico }}
                                 </span>
                             @endforeach
@@ -342,6 +345,9 @@
                             <span style="font-size: 11px; color: var(--text-2);">
                                 {{ $i->ultimo_scan_em ? $i->ultimo_scan_em->format('d/m/Y H:i') : 'Nunca' }}
                             </span>
+                            @if($i->scan_erro)
+                                <div style="font-size: 10px; color: #f59e0b; margin-top: 2px; cursor: help;" title="{{ $i->scan_erro }}">⚠️ verificação incompleta</div>
+                            @endif
                         @endif
                     </td>
 

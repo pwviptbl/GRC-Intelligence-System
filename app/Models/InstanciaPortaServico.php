@@ -6,6 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class InstanciaPortaServico extends Model
 {
+    /** Portas esperadas em servidores web: aparecem na lista, mas não geram finding nem penalidade. */
+    public const ACCEPTED_PORTS = [22, 80, 443];
+
+    /** Portas administrativas ou de banco de dados: risco alto quando expostas. */
+    public const RISKY_PORTS = [21, 23, 445, 1433, 1521, 2222, 3306, 3389, 5432, 6379, 9200, 27017];
+
+    /** Subconjunto das de risco cujo finding é crítico (bancos, RDP, SMB, Telnet). */
+    public const CRITICAL_PORTS = [23, 445, 1433, 1521, 3306, 3389, 5432, 6379, 9200, 27017];
+
     protected $table = 'instancia_portas_servicos';
 
     protected $fillable = [
@@ -30,9 +39,11 @@ class InstanciaPortaServico extends Model
 
     public function isRiskyPort(): bool
     {
-        // Portas críticas comumente associadas a risco quando públicas
-        $riskyPorts = [21, 22, 23, 445, 1433, 1521, 3306, 3389, 5432, 6379, 9200, 27017];
+        return in_array($this->porta, self::RISKY_PORTS, true);
+    }
 
-        return in_array($this->porta, $riskyPorts, true);
+    public function isAcceptedPort(): bool
+    {
+        return in_array($this->porta, self::ACCEPTED_PORTS, true);
     }
 }
