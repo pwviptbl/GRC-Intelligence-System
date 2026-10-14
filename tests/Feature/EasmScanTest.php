@@ -99,15 +99,15 @@ class EasmScanTest extends TestCase
 
         $findings = $this->portFindings();
         $this->assertCount(3, $findings);
-        $this->assertSame('critico', $findings['Porta Sensível Exposta na Internet: 3306 (mysql)']->severidade);
-        $this->assertSame('alto', $findings['Porta Sensível Exposta na Internet: 2222 (ssh-alt)']->severidade);
-        $this->assertSame('medio', $findings['Porta Sensível Exposta na Internet: 8080 (http-alt)']->severidade);
+        $this->assertSame('critico', $findings['Porta Sensível Exposta na Internet: 3306 (mysql) em portal.teste.gov.br']->severidade);
+        $this->assertSame('alto', $findings['Porta Sensível Exposta na Internet: 2222 (ssh-alt) em portal.teste.gov.br']->severidade);
+        $this->assertSame('medio', $findings['Porta Sensível Exposta na Internet: 8080 (http-alt) em portal.teste.gov.br']->severidade);
     }
 
     public function test_porta_que_fecha_sai_da_lista_e_fecha_o_finding_e_reabre_se_voltar(): void
     {
         $service = $this->fakeNetwork([22, 80, 443, 3306], [80, 443], [80, 443, 3306]);
-        $titulo = 'Porta Sensível Exposta na Internet: 3306 (mysql)';
+        $titulo = 'Porta Sensível Exposta na Internet: 3306 (mysql) em portal.teste.gov.br';
 
         $service->checkPorts($this->instancia, 'portal.teste.gov.br');
         $this->assertSame('aberto', Finding::where('titulo', $titulo)->value('status'));
@@ -186,6 +186,24 @@ class EasmScanTest extends TestCase
         $this->assertSame('aberto', Finding::where('titulo', $titulo)->value('status'));
 
         $service->checkSsl($this->instancia);
+        $this->assertSame('fechado', Finding::where('titulo', $titulo)->value('status'));
+    }
+
+    public function test_ambiente_renomeado_continua_fechando_o_finding_antigo(): void
+    {
+        $service = $this->fakeNetwork([80, 443], [80, 443]);
+        $service->shouldReceive('fetchPeerCertificate')->andReturn(
+            ['validTo_time_t' => now()->addDay()->timestamp, 'issuer' => ['O' => 'CA']],
+            ['validTo_time_t' => now()->addDays(90)->timestamp, 'issuer' => ['O' => 'CA']],
+        );
+        $titulo = 'Certificado SSL expirando para portal.teste.gov.br';
+
+        $service->checkSsl($this->instancia);
+        // O nome do ambiente entra no título do teste EASM: renomear cria um teste novo
+        $this->instancia->update(['nome_ambiente' => 'Portal Renomeado']);
+        $service->checkSsl($this->instancia->fresh());
+
+        $this->assertSame(1, Finding::where('titulo', $titulo)->count());
         $this->assertSame('fechado', Finding::where('titulo', $titulo)->value('status'));
     }
 

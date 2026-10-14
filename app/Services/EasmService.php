@@ -285,7 +285,7 @@ class EasmService
             ->get();
 
         foreach ($fechadas as $porta) {
-            $this->closeEasmFindings($instancia, [$this->portFindingTitle($porta)], "Porta {$porta->porta} não está mais acessível.");
+            $this->closeEasmFindings($instancia, [$this->portFindingTitle($instancia, $porta)], "Porta {$porta->porta} não está mais acessível.");
             $porta->delete();
         }
 
@@ -393,9 +393,39 @@ class EasmService
         return "Certificado SSL {$status} para {$dominio}";
     }
 
-    protected function portFindingTitle(InstanciaPortaServico $porta): string
+    protected function portFindingTitle(InstanciaCliente $instancia, InstanciaPortaServico $porta): string
     {
-        return "Porta Sensível Exposta na Internet: {$porta->porta} ({$porta->servico})";
+        return "Porta Sensível Exposta na Internet: {$porta->porta} ({$porta->servico}) em {$instancia->hostname}";
+    }
+
+    /**
+     * Testes do engajamento EASM do software. Um ambiente renomeado ganha um teste
+     * novo (o título leva o nome do ambiente), então os findings podem estar em
+     * qualquer um deles; por isso os títulos dos findings incluem o host.
+     *
+     * @return list<int>
+     */
+    protected function easmTestIds(InstanciaCliente $instancia): array
+    {
+        return EngagementTest::whereHas('engagement', fn ($q) => $q
+            ->where('software_id', $instancia->software_id)
+            ->where('tipo', 'infra')
+            ->where('nome', 'Monitoramento Contínuo de Superfície Externa (EASM)'))
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * Procura o finding em todos os testes EASM do software; se não existir, cria no teste atual.
+     */
+    protected function firstOrCreateEasmFinding(InstanciaCliente $instancia, string $titulo, array $dados): Finding
+    {
+        $existente = Finding::whereIn('test_id', $this->easmTestIds($instancia))
+            ->where('titulo', $titulo)
+            ->orderByDesc('id')
+            ->first();
+
+        return $existente ?? Finding::create(['test_id' => $this->getOrCreateEasmTest($instancia)->id, 'titulo' => $titulo] + $dados);
     }
 
     /**
@@ -403,14 +433,11 @@ class EasmService
      */
     protected function createSslFinding(InstanciaCliente $instancia, InstanciaSslCert $cert): Finding
     {
-        $test = $this->getOrCreateEasmTest($instancia);
         $severidade = $cert->status_certificado === 'expirado' ? 'critico' : 'medio';
 
-        $finding = Finding::firstOrCreate(
-            [
-                'test_id' => $test->id,
-                'titulo' => $this->sslFindingTitle($cert->status_certificado, $cert->dominio),
-            ],
+        $finding = $this->firstOrCreateEasmFinding(
+            $instancia,
+            $this->sslFindingTitle($cert->status_certificado, $cert->dominio),
             [
                 'descricao' => "O certificado digital SSL/TLS do ambiente {$instancia->nome_ambiente} ({$cert->dominio}) está com status '{$cert->status_certificado}'. Válido até: ".$cert->valido_ate?->format('d/m/Y H:i').". Emissor: {$cert->emissor}.",
                 'severidade' => $severidade,
@@ -427,18 +454,15 @@ class EasmService
      */
     protected function createPortFinding(InstanciaCliente $instancia, InstanciaPortaServico $porta): Finding
     {
-        $test = $this->getOrCreateEasmTest($instancia);
         $severidade = match (true) {
             in_array($porta->porta, InstanciaPortaServico::CRITICAL_PORTS, true) => 'critico',
             $porta->isRiskyPort() => 'alto',
             default => 'medio',
         };
 
-        $finding = Finding::firstOrCreate(
-            [
-                'test_id' => $test->id,
-                'titulo' => $this->portFindingTitle($porta),
-            ],
+        $finding = $this->firstOrCreateEasmFinding(
+            $instancia,
+            $this->portFindingTitle($instancia, $porta),
             [
                 'descricao' => "Foi detectada a porta {$porta->porta}/{$porta->protocolo} ({$porta->servico}) com estado ABERTO (OPEN) para o ambiente '{$instancia->nome_ambiente}' ({$instancia->hostname}). A varredura parte da rede do GRC: se o firewall libera esta porta só para IPs específicos e o IP de saída do GRC está entre eles, ela pode não estar aberta para o resto da internet.",
                 'severidade' => $severidade,
@@ -470,22 +494,12 @@ class EasmService
      */
     protected function closeEasmFindings(InstanciaCliente $instancia, array $titulos, string $motivo): void
     {
-        $engagementId = Engagement::where('software_id', $instancia->software_id)
-            ->where('tipo', 'infra')
-            ->where('nome', 'Monitoramento Contínuo de Superfície Externa (EASM)')
-            ->value('id');
-        if (! $engagementId) {
+        $testIds = $this->easmTestIds($instancia);
+        if ($testIds === []) {
             return;
         }
 
-        $testId = EngagementTest::where('engagement_id', $engagementId)
-            ->where('titulo', $this->easmTestTitle($instancia))
-            ->value('id');
-        if (! $testId) {
-            return;
-        }
-
-        Finding::where('test_id', $testId)
+        Finding::whereIn('test_id', $testIds)
             ->whereIn('titulo', $titulos)
             ->whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])
             ->get()
