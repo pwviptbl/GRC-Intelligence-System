@@ -9,6 +9,7 @@ use App\Models\InstanciaPortaServico;
 use App\Models\InstanciaSslCert;
 use App\Models\Software;
 use App\Models\User;
+use App\Services\AlertService;
 use App\Services\EasmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -183,7 +184,7 @@ class EasmScanTest extends TestCase
             ['validTo_time_t' => now()->addDay()->timestamp, 'issuer' => ['O' => 'CA']],
             ['validTo_time_t' => now()->addDays(90)->timestamp, 'issuer' => ['O' => 'CA']],
         );
-        $titulo = 'Certificado SSL expirando para portal.teste.gov.br';
+        $titulo = 'Certificado SSL vencendo ou vencido: portal.teste.gov.br';
 
         $service->checkSsl($this->instancia);
         $this->assertSame('aberto', Finding::where('titulo', $titulo)->value('status'));
@@ -199,7 +200,7 @@ class EasmScanTest extends TestCase
             ['validTo_time_t' => now()->addDay()->timestamp, 'issuer' => ['O' => 'CA']],
             ['validTo_time_t' => now()->addDays(90)->timestamp, 'issuer' => ['O' => 'CA']],
         );
-        $titulo = 'Certificado SSL expirando para portal.teste.gov.br';
+        $titulo = 'Certificado SSL vencendo ou vencido: portal.teste.gov.br';
 
         $service->checkSsl($this->instancia);
         // O nome do ambiente entra no título do teste EASM: renomear cria um teste novo
@@ -291,5 +292,62 @@ class EasmScanTest extends TestCase
             ->assertOk()
             ->assertSee('150.171.110.43')
             ->assertSee('Atrás de CDN: Azure Front Door (Microsoft)');
+    }
+
+    public function test_mesmo_certificado_fora_da_janela_nao_e_dado_como_renovado(): void
+    {
+        $validade = now()->addDays(10)->timestamp;
+        $service = $this->fakeNetwork([80, 443], [80, 443]);
+        $service->shouldReceive('fetchPeerCertificate')->andReturn(['validTo_time_t' => $validade, 'serialNumber' => 'ABC', 'issuer' => ['O' => 'CA']]);
+        $this->instancia->software->update(['ssl_dias_alerta' => 15]);
+        $titulo = 'Certificado SSL vencendo ou vencido: portal.teste.gov.br';
+
+        $service->checkSsl($this->instancia->fresh());
+        $finding = Finding::where('titulo', $titulo)->first();
+        $this->assertSame('aberto', $finding->status);
+        // Prazo do finding = validade do certificado, não o SLA genérico de 180 dias
+        $this->assertSame(now()->addDays(10)->toDateString(), $finding->data_limite_correcao->toDateString());
+
+        // A antecedência foi reduzida: o mesmo certificado sai da janela, sem ser "renovado"
+        $this->instancia->software->update(['ssl_dias_alerta' => 2]);
+        $service->checkSsl($this->instancia->fresh());
+        $finding->refresh();
+        $this->assertSame('fechado', $finding->status);
+        $this->assertStringContainsString('não foi renovado', $finding->descricao);
+        $this->assertStringNotContainsString('Certificado renovado', $finding->descricao);
+    }
+
+    public function test_certificado_que_vence_atualiza_o_mesmo_finding_para_critico(): void
+    {
+        $service = $this->fakeNetwork([80, 443], [80, 443]);
+        $service->shouldReceive('fetchPeerCertificate')->andReturn(
+            ['validTo_time_t' => now()->addDay()->timestamp, 'serialNumber' => 'ABC', 'issuer' => ['O' => 'CA']],
+            ['validTo_time_t' => now()->addDay()->timestamp, 'serialNumber' => 'ABC', 'issuer' => ['O' => 'CA']],
+        );
+
+        $service->checkSsl($this->instancia);
+        $this->assertSame('medio', Finding::where('titulo', 'like', 'Certificado SSL%')->sole()->severidade);
+
+        $this->travel(2)->days();
+        $service->checkSsl($this->instancia);
+
+        $finding = Finding::where('titulo', 'like', 'Certificado SSL%')->sole();
+        $this->assertSame('critico', $finding->severidade);
+        $this->assertSame('aberto', $finding->status);
+        $this->assertStringContainsString('venceu em', $finding->descricao);
+    }
+
+    public function test_antecedencia_do_alerta_vem_do_software(): void
+    {
+        $cert = InstanciaSslCert::create([
+            'instancia_cliente_id' => $this->instancia->id,
+            'dominio' => 'portal.teste.gov.br',
+            'valido_ate' => now()->addDays(10),
+        ]);
+        $this->assertSame('ok', $cert->fresh()->status_certificado);
+
+        $this->instancia->software->update(['ssl_dias_alerta' => 15]);
+        $this->assertSame('expirando', $cert->fresh()->status_certificado);
+        $this->assertContains('ssl_expirando', array_column(app(AlertService::class)->getAlertSummary()['alerts'], 'id'));
     }
 }

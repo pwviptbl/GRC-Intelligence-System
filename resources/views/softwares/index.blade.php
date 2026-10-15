@@ -76,7 +76,7 @@
         criticidade_operacional_nivel: '',
         criticidade_operacional_detalhe: '',
         autenticacao_nivel: '',
-        autenticacao_detalhe: '', ciclo_testes_meses: 6, sla_critico_dias: 30, sla_alto_dias: 90, sla_medio_dias: 180, sla_baixo_dias: 365
+        autenticacao_detalhe: '', ciclo_testes_meses: 6, sla_critico_dias: 30, sla_alto_dias: 90, sla_medio_dias: 180, sla_baixo_dias: 365, ssl_dias_alerta: 2
     },
 
     classificationStyle(level) {
@@ -106,7 +106,7 @@
             criticidade_operacional_nivel: '',
             criticidade_operacional_detalhe: '',
             autenticacao_nivel: '',
-            autenticacao_detalhe: '', ciclo_testes_meses: 6, sla_critico_dias: 30, sla_alto_dias: 90, sla_medio_dias: 180, sla_baixo_dias: 365
+            autenticacao_detalhe: '', ciclo_testes_meses: 6, sla_critico_dias: 30, sla_alto_dias: 90, sla_medio_dias: 180, sla_baixo_dias: 365, ssl_dias_alerta: 2
         };
         this.formAction = '{{ route('softwares.store') }}';
         this.showModal = true;
@@ -431,6 +431,11 @@
                         <div>
                             <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">SLA Baixo (dias)</label>
                             <input type="number" name="sla_baixo_dias" x-model="form.sla_baixo_dias" class="form-input" min="1" placeholder="365" />
+                        </div>
+                        <div style="grid-column:1/-1">
+                            <label style="font-size:11px;color:var(--text-3);display:block;margin-bottom:4px">Alerta de certificado SSL (dias antes do vencimento)</label>
+                            <input type="number" name="ssl_dias_alerta" x-model="form.ssl_dias_alerta" class="form-input" min="0" max="90" placeholder="2" />
+                            <div style="font-size:10px;color:var(--text-3);margin-top:3px">O EASM abre o achado de certificado a partir desta antecedência. Vencido sempre gera achado crítico.</div>
                         </div>
                     </div>
                 </div>

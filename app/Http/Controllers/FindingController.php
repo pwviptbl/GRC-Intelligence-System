@@ -52,11 +52,11 @@ class FindingController extends Controller
         if ($request->filled('sla_status')) {
             $sla = $request->sla_status;
             if ($sla === 'atrasado') {
-                $query->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+                $query->whereNotIn('status', Finding::STATUS_ENCERRADOS)
                     ->whereNotNull('data_limite_correcao')
                     ->whereDate('data_limite_correcao', '<', now());
             } elseif ($sla === 'alerta') {
-                $query->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+                $query->whereNotIn('status', Finding::STATUS_ENCERRADOS)
                     ->whereNotNull('data_limite_correcao')
                     ->whereDate('data_limite_correcao', '>=', now())
                     ->whereDate('data_limite_correcao', '<=', now()->addDays(7));
@@ -92,14 +92,13 @@ class FindingController extends Controller
 
         $stats = [
             'total' => Finding::count(),
-            'abertos' => Finding::whereIn('status', ['aberto', 'confirmado', 'em_tratamento'])->count(),
-            'criticos' => Finding::where('severidade', 'critico')
-                ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado'])->count(),
+            'abertos' => Finding::abertos()->count(),
+            'criticos' => Finding::abertos()->where('severidade', 'critico')->count(),
             'regressoes' => Finding::where('is_regression', true)
                 ->whereNotIn('status', ['fechado', 'falso_positivo'])->count(),
             'duplicados' => Finding::where('status', 'duplicado')->count(),
             'aceitos' => Finding::where('status', 'risco_aceito')->count(),
-            'atrasados' => Finding::whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+            'atrasados' => Finding::abertos()
                 ->whereNotNull('data_limite_correcao')
                 ->whereDate('data_limite_correcao', '<', now())->count(),
         ];

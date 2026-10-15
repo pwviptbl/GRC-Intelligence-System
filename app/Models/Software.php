@@ -56,6 +56,7 @@ class Software extends Model
         'sla_alto_dias',
         'sla_medio_dias',
         'sla_baixo_dias',
+        'ssl_dias_alerta',
         'sla_informativo_dias',
     ];
 
@@ -70,6 +71,7 @@ class Software extends Model
         'sla_alto_dias' => 'integer',
         'sla_medio_dias' => 'integer',
         'sla_baixo_dias' => 'integer',
+        'ssl_dias_alerta' => 'integer',
         'sla_informativo_dias' => 'integer',
     ];
 
@@ -87,6 +89,11 @@ class Software extends Model
         'test_cycle_status',
         'security_score',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => InstanciaSslCert::esquecerDiasAlerta());
+    }
 
     public function instancias()
     {
@@ -249,7 +256,7 @@ class Software extends Model
 
         // Carrega achados não fechados deste software
         $openFindings = $this->allFindings()
-            ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado', 'risco_aceito'])
+            ->whereNotIn('status', Finding::STATUS_ENCERRADOS)
             ->get();
 
         $criticos = $openFindings->where('severidade', 'critico');

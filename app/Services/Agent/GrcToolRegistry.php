@@ -489,9 +489,9 @@ class GrcToolRegistry
                 'instancias' => InstanciaCliente::count(),
             ],
             'vulnerabilidades' => [
-                'criticos_abertos' => Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count(),
-                'altos_abertos' => Finding::where('severidade', 'alto')->where('status', '!=', 'fechado')->count(),
-                'total_abertos' => Finding::where('status', '!=', 'fechado')->count(),
+                'criticos_abertos' => Finding::abertos()->where('severidade', 'critico')->count(),
+                'altos_abertos' => Finding::abertos()->where('severidade', 'alto')->count(),
+                'total_abertos' => Finding::abertos()->count(),
                 'total' => Finding::count(),
             ],
             'incidentes' => [

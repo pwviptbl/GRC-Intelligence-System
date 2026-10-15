@@ -36,10 +36,10 @@ class DashboardController extends Controller
         ];
 
         $vulnerabilidades = [
-            'criticos' => Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count(),
-            'altos' => Finding::where('severidade', 'alto')->where('status', '!=', 'fechado')->count(),
-            'medios' => Finding::where('severidade', 'medio')->where('status', '!=', 'fechado')->count(),
-            'baixos' => Finding::where('severidade', 'baixo')->where('status', '!=', 'fechado')->count(),
+            'criticos' => Finding::abertos()->where('severidade', 'critico')->count(),
+            'altos' => Finding::abertos()->where('severidade', 'alto')->count(),
+            'medios' => Finding::abertos()->where('severidade', 'medio')->count(),
+            'baixos' => Finding::abertos()->where('severidade', 'baixo')->count(),
         ];
 
         $incidentes = [
@@ -222,8 +222,8 @@ class DashboardController extends Controller
                 'percentual' => $totalModulos > 0 ? round(($modulosCobertos / $totalModulos) * 100) : 0,
             ],
             'vulnerabilidades' => [
-                'criticos' => Finding::where('severidade', 'critico')->where('status', '!=', 'fechado')->count(),
-                'total_abertos' => Finding::where('status', '!=', 'fechado')->count(),
+                'criticos' => Finding::abertos()->where('severidade', 'critico')->count(),
+                'total_abertos' => Finding::abertos()->count(),
             ],
             'incidentes' => [
                 'abertos' => Incidente::where('status', '!=', 'fechado')->count(),

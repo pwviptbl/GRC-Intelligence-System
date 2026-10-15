@@ -97,7 +97,7 @@ class EasmManagementTest extends TestCase
         $this->assertNotNull($finding);
         $this->assertEquals('medio', $finding->severidade);
         $this->assertEquals('aberto', $finding->status);
-        $this->assertStringContainsString('Certificado SSL expirando', $finding->titulo);
+        $this->assertStringContainsString('Certificado SSL vencendo ou vencido', $finding->titulo);
     }
 
     public function test_easm_service_creates_finding_for_risky_open_port_on_public_instance(): void

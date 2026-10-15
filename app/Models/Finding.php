@@ -27,8 +27,17 @@ class Finding extends Model
     /** Status para o qual o achado volta quando o aceite de risco vence. */
     public const RISK_ACCEPTANCE_REOPEN_STATUS = 'confirmado';
 
+    /** Quando true, a troca de severidade não recalcula o prazo (prazo definido por quem salvou). */
+    public bool $manterPrazo = false;
+
     /** Motivo do fim do aceite, registrado na auditoria (revogado ou expirado). */
     public ?string $riskEndReason = null;
+
+    /**
+     * Status que tiram o achado da postura: não contam como abertos em nenhum
+     * KPI, alerta, relatório ou score. Os demais status são "abertos".
+     */
+    public const STATUS_ENCERRADOS = ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'];
 
     public const DEFAULT_SLA_DAYS = [
         'critico' => 30,
@@ -176,6 +185,25 @@ class Finding extends Model
         // O aceite de risco só vale enquanto o status for risco_aceito: ao sair
         // dele, por qualquer caminho (tela, edição, API ou expiração), os dados
         // do aceite são limpos. O histórico fica em audit_events.
+        // Severidade alterada: o prazo acompanha a política do software, a menos
+        // que o prazo tenha sido definido à mão (diferente do calculado)
+        static::updating(function (Finding $finding) {
+            if ($finding->manterPrazo || ! $finding->isDirty('severidade') || $finding->isDirty('data_limite_correcao') || $finding->isDirty('sla_dias')) {
+                return;
+            }
+
+            $detectado = $finding->detectado_em ?? $finding->created_at;
+            $prazoAnterior = $finding->getOriginal('data_limite_correcao');
+            $slaAnterior = (int) $finding->getOriginal('sla_dias');
+            $prazoAutomatico = ! $prazoAnterior
+                || ($detectado && $slaAnterior && $detectado->copy()->addDays($slaAnterior)->isSameDay($prazoAnterior));
+
+            if ($prazoAutomatico && $detectado) {
+                $finding->sla_dias = $finding->politicaSlaDias();
+                $finding->data_limite_correcao = $detectado->copy()->addDays($finding->sla_dias)->toDateString();
+            }
+        });
+
         static::saving(function (Finding $finding) {
             $finding->aceito_risco = $finding->status === 'risco_aceito';
 
@@ -343,9 +371,26 @@ class Finding extends Model
         return (int) now()->startOfDay()->diffInDays($this->data_limite_correcao->startOfDay(), false);
     }
 
+    public function scopeAbertos($query)
+    {
+        return $query->whereNotIn('status', self::STATUS_ENCERRADOS);
+    }
+
+    /** Dias de SLA para a severidade atual, pela política do software do achado. */
+    public function politicaSlaDias(): int
+    {
+        $software = $this->test_id
+            ? EngagementTest::with('engagement.software')->find($this->test_id)?->engagement?->software
+            : null;
+
+        return $software
+            ? $software->getSlaDays($this->severidade)
+            : (self::DEFAULT_SLA_DAYS[$this->severidade] ?? 90);
+    }
+
     public function getSlaStatusAttribute(): string
     {
-        if (in_array($this->status, ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])) {
+        if (in_array($this->status, self::STATUS_ENCERRADOS)) {
             return 'concluido';
         }
         if (! $this->data_limite_correcao) {

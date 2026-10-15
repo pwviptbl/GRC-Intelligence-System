@@ -29,7 +29,7 @@ class AlertService
         // 1. Regressões de Segurança (Crítico) - DefectDojo
         $regressoes = Finding::query()
             ->where('is_regression', true)
-            ->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+            ->whereNotIn('status', Finding::STATUS_ENCERRADOS)
             ->count();
 
         if ($regressoes > 0) {
@@ -49,7 +49,7 @@ class AlertService
         // 2. Achados Críticos de Segurança em Aberto (Crítico)
         $criticosAbertos = Finding::query()
             ->where('severidade', 'critico')
-            ->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+            ->whereNotIn('status', Finding::STATUS_ENCERRADOS)
             ->count();
 
         if ($criticosAbertos > 0) {
@@ -68,7 +68,7 @@ class AlertService
 
         // 3. Vulnerabilidades / Achados de Segurança com SLA Vencido (Crítico)
         $findingsVencidos = Finding::query()
-            ->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+            ->whereNotIn('status', Finding::STATUS_ENCERRADOS)
             ->whereNotNull('data_limite_correcao')
             ->where('data_limite_correcao', '<', $today)
             ->count();
@@ -91,7 +91,7 @@ class AlertService
 
         // 4. Achados com SLA Vencendo nos Próximos 7 Dias (Atenção)
         $findingsAlerta = Finding::query()
-            ->whereNotIn('status', ['fechado', 'falso_positivo', 'risco_aceito', 'duplicado'])
+            ->whereNotIn('status', Finding::STATUS_ENCERRADOS)
             ->whereNotNull('data_limite_correcao')
             ->whereBetween('data_limite_correcao', [$today, $in7Days])
             ->count();
@@ -264,12 +264,16 @@ class AlertService
             ];
         }
 
-        // 11. Certificados SSL Expirando ou Expirados (EASM - Limite <= 2 dias)
+        // 11. Certificados SSL Expirando ou Expirados (EASM - antecedência configurada no software)
+        // Pela validade, não pelo dias_restantes gravado na última varredura, e
+        // com a antecedência configurada no software de cada ambiente
+        $maiorAntecedencia = max((int) Software::max('ssl_dias_alerta'), InstanciaSslCert::DIAS_ALERTA);
         $sslCriticos = InstanciaSslCert::query()
-            // Pela validade, não pelo dias_restantes gravado na última varredura
             ->whereNotNull('valido_ate')
-            ->where('valido_ate', '<', now()->startOfSecond()->addDays(InstanciaSslCert::DIAS_ALERTA + 1))
-            ->get();
+            ->where('valido_ate', '<', now()->startOfSecond()->addDays($maiorAntecedencia + 1))
+            ->get()
+            ->filter(fn (InstanciaSslCert $c) => in_array($c->status_certificado, ['expirando', 'expirado'], true))
+            ->values();
 
         $countSsl = $sslCriticos->count();
         if ($countSsl > 0) {

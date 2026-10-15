@@ -219,8 +219,17 @@ class EasmService
         $validFrom = isset($cert['validFrom_time_t']) ? Carbon::createFromTimestamp($cert['validFrom_time_t'])->setTimezone($tz) : null;
         $validTo = isset($cert['validTo_time_t']) ? Carbon::createFromTimestamp($cert['validTo_time_t'])->setTimezone($tz) : null;
 
+        $diasAlerta = $instancia->software?->ssl_dias_alerta ?? InstanciaSslCert::DIAS_ALERTA;
         $diasRestantes = $validTo ? InstanciaSslCert::diasAte($validTo) : null;
-        $statusCertificado = $validTo ? InstanciaSslCert::statusPara($validTo) : 'ok';
+        $statusCertificado = $validTo ? InstanciaSslCert::statusPara($validTo, $diasAlerta) : 'ok';
+
+        // Certificado lido na varredura anterior, para saber se houve renovação de fato
+        $anterior = InstanciaSslCert::where('instancia_cliente_id', $instancia->id)->where('dominio', $host)->first();
+        $serial = $cert['serialNumber'] ?? null;
+        $renovado = $anterior && $validTo && (
+            ($serial && ($anterior->detalhes_json['serialNumber'] ?? null) && $serial !== $anterior->detalhes_json['serialNumber'])
+            || ($anterior->valido_ate && $validTo->greaterThan($anterior->valido_ate->copy()->addDay()))
+        );
 
         $issuer = is_array($cert['issuer'] ?? null)
             ? ($cert['issuer']['O'] ?? $cert['issuer']['CN'] ?? json_encode($cert['issuer']))
@@ -246,14 +255,15 @@ class EasmService
             ]
         );
 
-        // Expirando ou expirado gera finding; certificado renovado fecha os findings abertos
+        // Dentro da antecedência configurada ou vencido gera finding. Fora dela, o
+        // finding aberto é fechado, dizendo se o certificado foi renovado ou não
         if (in_array($statusCertificado, ['expirado', 'expirando'], true)) {
             $this->createSslFinding($instancia, $certRecord);
         } else {
-            $this->closeEasmFindings($instancia, [
-                $this->sslFindingTitle('expirando', $host),
-                $this->sslFindingTitle('expirado', $host),
-            ], 'Certificado renovado: válido até '.$validTo?->format('d/m/Y').'.');
+            $motivo = $renovado
+                ? 'Certificado renovado: válido até '.$validTo?->format('d/m/Y').'.'
+                : "Certificado fora da janela de alerta ({$diasAlerta} dia(s) antes do vencimento); não foi renovado e vence em ".$validTo?->format('d/m/Y').'.';
+            $this->closeEasmFindings($instancia, $this->sslFindingTitles($host), $motivo);
         }
 
         return $certRecord;
@@ -448,9 +458,24 @@ class EasmService
         return 'Varredura Perimetral de Ambientes ('.($instancia->nome_ambiente ?: 'Ambiente #'.$instancia->id).')';
     }
 
-    protected function sslFindingTitle(string $status, string $dominio): string
+    /** Um único finding por domínio, que passa de médio a crítico quando o certificado vence. */
+    protected function sslFindingTitle(string $dominio): string
     {
-        return "Certificado SSL {$status} para {$dominio}";
+        return "Certificado SSL vencendo ou vencido: {$dominio}";
+    }
+
+    /**
+     * Título atual e os antigos (um por status), para localizar findings já existentes.
+     *
+     * @return list<string>
+     */
+    protected function sslFindingTitles(string $dominio): array
+    {
+        return [
+            $this->sslFindingTitle($dominio),
+            "Certificado SSL expirando para {$dominio}",
+            "Certificado SSL expirado para {$dominio}",
+        ];
     }
 
     protected function portFindingTitle(InstanciaCliente $instancia, InstanciaPortaServico $porta): string
@@ -478,10 +503,12 @@ class EasmService
     /**
      * Procura o finding em todos os testes EASM do software; se não existir, cria no teste atual.
      */
-    protected function firstOrCreateEasmFinding(InstanciaCliente $instancia, string $titulo, array $dados): Finding
+    protected function firstOrCreateEasmFinding(InstanciaCliente $instancia, string $titulo, array $dados, array $titulosAntigos = []): Finding
     {
         $existente = Finding::whereIn('test_id', $this->easmTestIds($instancia))
-            ->where('titulo', $titulo)
+            ->whereIn('titulo', array_values(array_unique([$titulo, ...$titulosAntigos])))
+            ->orderByRaw('status = ? asc', ['fechado'])
+            ->orderByRaw('titulo = ? desc', [$titulo])
             ->orderByDesc('id')
             ->first();
 
@@ -493,20 +520,45 @@ class EasmService
      */
     protected function createSslFinding(InstanciaCliente $instancia, InstanciaSslCert $cert): Finding
     {
-        $severidade = $cert->status_certificado === 'expirado' ? 'critico' : 'medio';
+        $vencido = $cert->status_certificado === 'expirado';
+        $severidade = $vencido ? 'critico' : 'medio';
+        $titulo = $this->sslFindingTitle($cert->dominio);
+        // O prazo de correção é a própria validade do certificado, não o SLA genérico
+        $prazo = $cert->valido_ate?->toDateString();
+        $sla = $cert->valido_ate ? max(1, (int) now()->startOfDay()->diffInDays($cert->valido_ate->copy()->startOfDay(), false)) : null;
+        $situacao = $vencido ? 'venceu em' : 'vence em';
+        $resumo = "O certificado digital SSL/TLS do ambiente {$instancia->nome_ambiente} ({$cert->dominio}) {$situacao} ".$cert->valido_ate?->format('d/m/Y H:i').". Emissor: {$cert->emissor}.";
 
-        $finding = $this->firstOrCreateEasmFinding(
-            $instancia,
-            $this->sslFindingTitle($cert->status_certificado, $cert->dominio),
-            [
-                'descricao' => "O certificado digital SSL/TLS do ambiente {$instancia->nome_ambiente} ({$cert->dominio}) está com status '{$cert->status_certificado}'. Válido até: ".$cert->valido_ate?->format('d/m/Y H:i').". Emissor: {$cert->emissor}.",
-                'severidade' => $severidade,
-                'status' => 'aberto',
-                'remediacao_sugerida' => 'Efetuar a renovação do certificado digital imediatamente antes da expiração.',
-            ]
-        );
+        $finding = $this->firstOrCreateEasmFinding($instancia, $titulo, [
+            'descricao' => $resumo,
+            'severidade' => $severidade,
+            'status' => 'aberto',
+            'sla_dias' => $sla,
+            'data_limite_correcao' => $prazo,
+            'remediacao_sugerida' => 'Efetuar a renovação do certificado digital antes da expiração.',
+        ], $this->sslFindingTitles($cert->dominio));
 
-        return $this->reopenIfClosed($finding);
+        if ($finding->wasRecentlyCreated) {
+            return $finding;
+        }
+
+        $finding->manterPrazo = true;
+        $finding->titulo = $titulo;
+        $finding->data_limite_correcao = $prazo;
+        if ($finding->status === 'fechado') {
+            $finding->status = 'aberto';
+            $finding->corrigido_em = null;
+            $finding->sla_dias = $sla;
+            $finding->descricao = rtrim((string) $finding->descricao)."\n\nReaberto pelo EASM em ".now()->format('d/m/Y H:i').": {$resumo}";
+        }
+        // Só sobe a severidade (vencido); não rebaixa uma classificação manual
+        if ($vencido && $finding->severidade !== 'critico') {
+            $finding->severidade = 'critico';
+            $finding->descricao = rtrim((string) $finding->descricao)."\n\nAtualizado pelo EASM em ".now()->format('d/m/Y H:i').": {$resumo}";
+        }
+        $finding->save();
+
+        return $finding;
     }
 
     /**

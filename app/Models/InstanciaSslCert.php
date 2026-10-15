@@ -29,8 +29,37 @@ class InstanciaSslCert extends Model
         'verificado_em' => 'datetime',
     ];
 
-    /** Até quantos dias antes do vencimento o certificado é considerado "expirando". */
+    /**
+     * Padrão de dias antes do vencimento para o certificado ser considerado
+     * "expirando". Cada software pode definir o seu (software.ssl_dias_alerta).
+     */
     public const DIAS_ALERTA = 2;
+
+    /** @var array<int, int>|null instancia_cliente_id => dias de alerta do software */
+    protected static ?array $diasAlertaPorInstancia = null;
+
+    public static function diasAlertaDaInstancia(?int $instanciaId): int
+    {
+        if ($instanciaId === null) {
+            return self::DIAS_ALERTA;
+        }
+
+        if (self::$diasAlertaPorInstancia === null || ! array_key_exists($instanciaId, self::$diasAlertaPorInstancia)) {
+            self::$diasAlertaPorInstancia = InstanciaCliente::query()
+                ->join('software', 'software.id', '=', 'instancia_clientes.software_id')
+                ->pluck('software.ssl_dias_alerta', 'instancia_clientes.id')
+                ->map(fn ($dias) => $dias ?? self::DIAS_ALERTA)
+                ->all();
+        }
+
+        return self::$diasAlertaPorInstancia[$instanciaId] ?? self::DIAS_ALERTA;
+    }
+
+    /** Chamado quando o software ou o ambiente muda. */
+    public static function esquecerDiasAlerta(): void
+    {
+        self::$diasAlertaPorInstancia = null;
+    }
 
     /**
      * Dias inteiros até o vencimento, arredondados para baixo: vence em 10 h = 0,
@@ -41,13 +70,13 @@ class InstanciaSslCert extends Model
         return (int) floor(now()->diffInSeconds($validoAte, false) / 86400);
     }
 
-    public static function statusPara(CarbonInterface $validoAte): string
+    public static function statusPara(CarbonInterface $validoAte, ?int $diasAlerta = null): string
     {
         $dias = self::diasAte($validoAte);
 
         return match (true) {
             $dias < 0 => 'expirado',
-            $dias <= self::DIAS_ALERTA => 'expirando',
+            $dias <= ($diasAlerta ?? self::DIAS_ALERTA) => 'expirando',
             default => 'ok',
         };
     }
@@ -63,7 +92,9 @@ class InstanciaSslCert extends Model
 
     public function getStatusCertificadoAttribute($value): ?string
     {
-        return $this->valido_ate ? self::statusPara($this->valido_ate) : $value;
+        return $this->valido_ate
+            ? self::statusPara($this->valido_ate, self::diasAlertaDaInstancia($this->instancia_cliente_id))
+            : $value;
     }
 
     public function instancia()

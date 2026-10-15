@@ -31,6 +31,15 @@ class InstanciaCliente extends Model
         'ultimo_scan_em' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function (InstanciaCliente $instancia) {
+            if ($instancia->wasChanged('software_id') || $instancia->wasRecentlyCreated) {
+                InstanciaSslCert::esquecerDiasAlerta();
+            }
+        });
+    }
+
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
@@ -239,7 +248,7 @@ class InstanciaCliente extends Model
 
         // 1. Achados de Segurança da Branch/Testes aplicáveis
         $openFindings = $this->applicableFindings()
-            ->whereNotIn('status', ['fechado', 'falso_positivo', 'duplicado', 'risco_aceito'])
+            ->whereNotIn('status', Finding::STATUS_ENCERRADOS)
             ->get();
 
         $criticos = $openFindings->where('severidade', 'critico');

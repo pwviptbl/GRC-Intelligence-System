@@ -71,6 +71,7 @@ class SoftwareController extends Controller
             'sla_medio_dias' => 'nullable|integer|min:1',
             'sla_baixo_dias' => 'nullable|integer|min:1',
             'sla_informativo_dias' => 'nullable|integer|min:1',
+            'ssl_dias_alerta' => 'nullable|integer|min:0|max:90',
         ]);
     }
 

@@ -36,12 +36,7 @@ class OperationalAuditMiddleware
             [$targetType, $targetId] = $this->target($request);
             $actorStillExists = $actorId !== null && User::query()->whereKey($actorId)->exists();
 
-            $inputs = $request->except(['_token', '_method', 'password', 'password_confirmation', 'secret', 'token']);
-            foreach ($inputs as $k => $v) {
-                if ($v instanceof UploadedFile) {
-                    $inputs[$k] = '[Arquivo enviado: '.$v->getClientOriginalName().']';
-                }
-            }
+            $inputs = self::redact($request->except(['_token', '_method']));
 
             $afterState = null;
             if ($targetModel && method_exists($targetModel, 'refresh')) {
@@ -56,8 +51,8 @@ class OperationalAuditMiddleware
             $context = array_filter([
                 'method' => $request->method(),
                 'arguments' => $inputs !== [] ? $inputs : null,
-                'before' => $beforeState,
-                'after' => $afterState,
+                'before' => is_array($beforeState) ? self::redact($beforeState) : $beforeState,
+                'after' => is_array($afterState) ? self::redact($afterState) : $afterState,
                 'deleted_actor_id' => $actorStillExists ? null : $actorId,
             ], static fn ($value) => $value !== null && $value !== []);
 
@@ -94,5 +89,24 @@ class OperationalAuditMiddleware
         }
 
         return [null, null];
+    }
+
+    /**
+     * Remove dos dados auditados qualquer campo de senha, token ou segredo
+     * (password, current_password, api_token, client_secret...), em qualquer nível.
+     */
+    public static function redact(array $dados): array
+    {
+        foreach ($dados as $chave => $valor) {
+            if (is_string($chave) && preg_match('/password|senha|token|secret/i', $chave)) {
+                $dados[$chave] = '[removido]';
+            } elseif ($valor instanceof UploadedFile) {
+                $dados[$chave] = '[Arquivo enviado: '.$valor->getClientOriginalName().']';
+            } elseif (is_array($valor)) {
+                $dados[$chave] = self::redact($valor);
+            }
+        }
+
+        return $dados;
     }
 }
