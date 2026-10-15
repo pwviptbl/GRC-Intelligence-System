@@ -1109,12 +1109,13 @@ class GrcToolRegistry
             throw new ToolValidationException(['activity_ids' => ['Atividades nao encontradas: '.implode(', ', $missing).'.']]);
         }
         $policy = TierPolitica::query()->findOrFail($data['tier_policy_id']);
-        $changes = $activities->filter(fn (Atividade $activity) => $activity->tier_politica_id !== $policy->id || $activity->tier_minimo !== $policy->tier);
+        $tierMinimo = $policy->tierMinimoParaAtividade();
+        $changes = $activities->filter(fn (Atividade $activity) => $activity->tier_politica_id !== $policy->id || $activity->tier_minimo !== $tierMinimo);
 
         if (! $dryRun) {
             DB::transaction(fn () => $changes->each(fn (Atividade $activity) => $activity->update([
                 'tier_politica_id' => $policy->id,
-                'tier_minimo' => $policy->tier,
+                'tier_minimo' => $tierMinimo,
             ])));
         }
 
@@ -1174,7 +1175,7 @@ class GrcToolRegistry
     protected function normalizeActivityTierPolicy(array $data): array
     {
         if (! empty($data['tier_politica_id'])) {
-            $data['tier_minimo'] = TierPolitica::query()->findOrFail($data['tier_politica_id'])->tier;
+            $data['tier_minimo'] = TierPolitica::query()->findOrFail($data['tier_politica_id'])->tierMinimoParaAtividade();
         }
 
         return $data;

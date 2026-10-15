@@ -160,8 +160,8 @@ class AtividadeController extends Controller
             'ativo' => 'required|boolean',
         ]);
 
-        if (! empty($data['tier_politica_id'])) {
-            $data['tier_minimo'] = TierPolitica::query()->find($data['tier_politica_id'])?->tier;
+        if (! empty($data['tier_politica_id']) && $politica = TierPolitica::query()->find($data['tier_politica_id'])) {
+            $data['tier_minimo'] = $politica->tierMinimoParaAtividade();
         }
 
         return $data;

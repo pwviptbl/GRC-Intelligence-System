@@ -123,6 +123,21 @@ class PlanoControlesCapacidadeTest extends TestCase
         $this->assertSame(0, ControleEvento::whereNull('atividade_id')->count());
     }
 
+    public function test_vincular_atividade_a_controle_de_varios_tiers_nao_restringe_o_tier(): void
+    {
+        $pentestT1 = $this->politica(1, 'Pentest', '6 meses');
+        $this->politica(3, 'Pentest', '1 ano');
+        $soT1 = $this->politica(1, 'Teste de restauracao', 'Mensal');
+        $dados = ['atividade' => 'Pentest de APIs', 'esforco' => 'M', 'recorrencia_meses' => 6, 'ativo' => 1];
+
+        $this->post(route('atividades.store'), $dados + ['tier_politica_id' => $pentestT1->id])->assertRedirect();
+        $this->post(route('atividades.store'), ['atividade' => 'Restaurar backup'] + $dados + ['tier_politica_id' => $soT1->id])->assertRedirect();
+
+        // Pentest existe em vários tiers: vale para todos. Restauração só existe no T1: fica restrita a ele.
+        $this->assertNull(Atividade::where('atividade', 'Pentest de APIs')->value('tier_minimo'));
+        $this->assertSame(1, Atividade::where('atividade', 'Restaurar backup')->value('tier_minimo'));
+    }
+
     public function test_dispensa_no_ciclo_volta_no_proximo_vencimento(): void
     {
         $this->software('Portal', 3);
