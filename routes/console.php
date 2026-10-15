@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackupController;
 use App\Models\Finding;
+use App\Services\CalendarioControleService;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -57,6 +58,15 @@ Artisan::command('findings:expire-risk-acceptances', function () {
 
 Schedule::command('backups:run')
     ->weeklyOn(1, '02:00')
+    ->withoutOverlapping();
+
+Artisan::command('controles:marcar-atrasados', function (CalendarioControleService $service) {
+    $this->info('Controles marcados como atrasados: '.$service->updateOverdueStatuses());
+})->purpose('Marca como atrasados os controles planejados com data prevista vencida');
+
+// Sem depender de alguém abrir o Kanban: dashboard, PDF e MCP leem o status gravado
+Schedule::command('controles:marcar-atrasados')
+    ->dailyAt('00:05')
     ->withoutOverlapping();
 
 // Aceites de risco vencidos voltam a ser achados em aberto

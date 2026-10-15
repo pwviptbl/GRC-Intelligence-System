@@ -425,7 +425,9 @@ class CalendarioControleController extends Controller
 
     public function discardSuggestions(Request $request)
     {
-        $discarded = $this->service->discardSuggestions($this->validateSuggestionSelection($request));
+        $ids = $this->validateSuggestionSelection($request);
+        $motivo = $request->validate(['motivo_dispensa' => 'nullable|string|max:500'])['motivo_dispensa'] ?? null;
+        $discarded = $this->service->discardSuggestions($ids, $motivo);
 
         return redirect()->back()->with('success', "{$discarded} sugestao(oes) dispensada(s) na revisao.");
     }

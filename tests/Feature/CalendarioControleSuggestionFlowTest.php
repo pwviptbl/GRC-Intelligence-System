@@ -405,7 +405,7 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         ]);
     }
 
-    public function test_generation_reuses_dispensed_record_as_new_suggestion(): void
+    public function test_generation_respects_dispensed_record_in_same_period(): void
     {
         $this->actingAs($this->adminUser());
 
@@ -443,14 +443,75 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         $this->post(route('calendario_controles.generate'))
             ->assertRedirect(route('calendario_controles.index'));
 
+        // A dispensa vale para o período: gerar de novo não a desfaz nem apaga o motivo
+        $this->assertSame(1, ControleEvento::query()->where('software_id', $software->id)->count());
         $evento = ControleEvento::query()->where('software_id', $software->id)->firstOrFail();
+        $this->assertSame('dispensado', $evento->status);
+        $this->assertSame('Dispensado anteriormente.', $evento->observacoes_execucao);
+    }
 
-        $this->assertSame('sugestao', $evento->status);
-        $this->assertNull($evento->modulo);
-        $this->assertNull($evento->categoria);
-        $this->assertNull($evento->rotina);
-        $this->assertNull($evento->tipo_demanda);
-        $this->assertNull($evento->triagem_observacoes);
+    public function test_discard_records_who_and_why_in_history(): void
+    {
+        $admin = $this->adminUser();
+        $this->actingAs($admin);
+
+        $software = $this->createSoftware();
+        $tierPolicy = $this->createTierPolicy();
+        $suggestion = ControleEvento::create([
+            'software_id' => $software->id,
+            'tier_politica_id' => $tierPolicy->id,
+            'tier' => 1,
+            'acao_controle_snapshot' => 'Executar analise autenticada',
+            'frequencia_snapshot' => 'Mensal',
+            'sla_correcao_snapshot' => '7 dias',
+            'bloqueio_automatico_snapshot' => false,
+            'responsavel_planejado' => 'Time GRC',
+            'origem' => 'tier',
+            'periodo_referencia' => 'mensal:2026-07',
+            'data_prevista' => now()->addDays(3)->toDateString(),
+            'prioridade' => 'Alta',
+            'status' => 'sugestao',
+        ]);
+
+        $this->post(route('calendario_controles.discard_suggestions'), [
+            'suggestion_ids' => [$suggestion->id],
+            'motivo_dispensa' => 'Modulo desativado neste cliente',
+        ])->assertRedirect();
+
+        $suggestion->refresh();
+        $this->assertSame('dispensado', $suggestion->status);
+        $this->assertStringContainsString('Modulo desativado neste cliente', $suggestion->observacoes_execucao);
+        $this->assertDatabaseHas('controle_evento_historicos', [
+            'controle_evento_id' => $suggestion->id,
+            'user_id' => $admin->id,
+            'acao' => 'atualizado',
+        ]);
+    }
+
+    public function test_overdue_command_marks_planned_controls_with_history(): void
+    {
+        $software = $this->createSoftware();
+        $tierPolicy = $this->createTierPolicy();
+        $planned = ControleEvento::create([
+            'software_id' => $software->id,
+            'tier_politica_id' => $tierPolicy->id,
+            'tier' => 1,
+            'acao_controle_snapshot' => 'Revisar acessos',
+            'frequencia_snapshot' => 'Mensal',
+            'sla_correcao_snapshot' => '7 dias',
+            'bloqueio_automatico_snapshot' => false,
+            'responsavel_planejado' => 'Time GRC',
+            'origem' => 'tier',
+            'periodo_referencia' => 'mensal:2026-07',
+            'data_prevista' => now()->subDays(2)->toDateString(),
+            'prioridade' => 'Alta',
+            'status' => 'planejado',
+        ]);
+
+        $this->artisan('controles:marcar-atrasados')->expectsOutputToContain('1')->assertSuccessful();
+
+        $this->assertSame('atrasado', $planned->fresh()->status);
+        $this->assertDatabaseHas('controle_evento_historicos', ['controle_evento_id' => $planned->id, 'origem' => 'sistema']);
     }
 
     public function test_selected_suggestions_move_to_triage_before_operational_queue(): void

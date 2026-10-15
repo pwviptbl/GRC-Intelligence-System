@@ -259,42 +259,8 @@ class CalendarioControleService
                 $existing = $this->resolveExistingEvent($software, $policy, $activity, $modulo, $schedule['periodo_referencia']);
 
                 if ($existing) {
-                    if (in_array($existing->status, ['dispensado', 'cancelado'], true)) {
-                        $existing->update([
-                            'atividade_id' => $activity?->id,
-                            'tier' => $tier,
-                            'acao_controle_snapshot' => $activity?->atividade ?: $policy->acao_controle,
-                            'frequencia_snapshot' => $frequencySource,
-                            'sla_correcao_snapshot' => $policy->sla_correcao,
-                            'descricao' => $activity?->descricao ?: $policy->observacoes,
-                            'criterios_aceite' => $activity?->criterios_aceite ?: null,
-                            'bloqueio_automatico_snapshot' => $policy->bloqueio_automatico,
-                            'responsavel_planejado' => $policy->responsavel,
-                            'modulo' => $modulo,
-                            'categoria' => $categoria,
-                            'rotina' => $rotina,
-                            'esforco' => $activity?->esforco ?: $this->defaultEffortForFrequency($frequencySource),
-                            'tipo_demanda' => $activity?->tipo_demanda,
-                            'score_impacto' => null,
-                            'score_exposicao' => null,
-                            'score_confianca' => null,
-                            'triagem_observacoes' => null,
-                            'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity, $modulo),
-                            'origem' => $activity ? 'atividade+tier' : ($risk ? 'tier+risk' : 'tier'),
-                            'data_prevista' => $schedule['data_prevista'],
-                            'data_limite' => null,
-                            'prioridade' => $this->resolvePriority($tier, $risk),
-                            'status' => 'sugestao',
-                            'iniciado_em' => null,
-                            'concluido_em' => null,
-                            'observacoes_execucao' => null,
-                        ]);
-
-                        $created++;
-
-                        continue;
-                    }
-
+                    // Já existe card neste período, inclusive dispensado ou cancelado:
+                    // a decisão de quem revisou é respeitada até o próximo período
                     $skipped++;
 
                     continue;
@@ -348,12 +314,17 @@ class CalendarioControleService
         return $this->generateSuggestions($filters);
     }
 
+    // As alterações em lote passam pelo model (um a um) para o ControleEventoObserver
+    // registrar no histórico quem fez e o que mudou.
+
     public function approveSuggestions(array $ids): int
     {
         return ControleEvento::query()
             ->whereIn('id', $ids)
             ->where('status', 'sugestao')
-            ->update(['status' => 'triagem']);
+            ->get()
+            ->each(fn (ControleEvento $evento) => $evento->update(['status' => 'triagem']))
+            ->count();
     }
 
     public function planTriaged(array $ids): array
@@ -408,31 +379,35 @@ class CalendarioControleService
         ];
     }
 
-    public function discardSuggestions(array $ids): int
+    public function discardSuggestions(array $ids, ?string $motivo = null): int
     {
+        $motivo = trim((string) $motivo);
+        $nota = 'Sugestao dispensada na revisao'
+            .(auth()->user() ? ' por '.auth()->user()->name : '')
+            .' em '.now()->format('d/m/Y')
+            .($motivo !== '' ? ": {$motivo}" : '.');
+
         return ControleEvento::query()
             ->whereIn('id', $ids)
             ->whereIn('status', ['sugestao', 'triagem'])
-            ->update([
+            ->get()
+            ->each(fn (ControleEvento $evento) => $evento->update([
                 'status' => 'dispensado',
-                'observacoes_execucao' => DB::raw(
-                    "CASE
-                        WHEN observacoes_execucao IS NULL OR observacoes_execucao = ''
-                            THEN 'Sugestao dispensada na revisao.'
-                        ELSE observacoes_execucao || '\nSugestao dispensada na revisao.'
-                    END"
-                ),
-            ]);
+                'observacoes_execucao' => trim(($evento->observacoes_execucao ?? '')."\n".$nota),
+            ]))
+            ->count();
     }
 
-    public function updateOverdueStatuses(): void
+    public function updateOverdueStatuses(): int
     {
-        ControleEvento::query()
+        return ControleEvento::query()
             // Apenas eventos que ainda não foram iniciados
             ->whereIn('status', ['planejado', 'pendente'])
             ->whereNull('iniciado_em')
             ->whereDate('data_prevista', '<', now()->toDateString())
-            ->update(['status' => 'atrasado']);
+            ->get()
+            ->each(fn (ControleEvento $evento) => $evento->update(['status' => 'atrasado']))
+            ->count();
     }
 
     public function resolveTier(Software $software): ?int

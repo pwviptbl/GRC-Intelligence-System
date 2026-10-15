@@ -867,6 +867,7 @@
 
             <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="submit" form="suggestions-review-form" class="btn-add">Enviar para Triagem</button>
+                <input type="text" name="motivo_dispensa" form="suggestions-review-form" maxlength="500" placeholder="Motivo da dispensa (opcional)" class="form-input" style="flex:1; min-width:220px; font-size:12px;" />
                 <button type="submit" form="suggestions-review-form" formaction="{{ route('calendario_controles.discard_suggestions') }}" class="btn-secondary" style="border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:10px 16px;">Dispensar Selecionadas</button>
             </div>
         @else
@@ -950,6 +951,7 @@
 
             <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="submit" form="triage-review-form" class="btn-add">Enviar para Planejamento</button>
+                <input type="text" name="motivo_dispensa" form="triage-review-form" maxlength="500" placeholder="Motivo da dispensa (opcional)" class="form-input" style="flex:1; min-width:220px; font-size:12px;" />
                 <button type="submit" form="triage-review-form" formaction="{{ route('calendario_controles.discard_suggestions') }}" class="btn-secondary" style="border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:10px 16px;">Dispensar na Triagem</button>
             </div>
         @else
