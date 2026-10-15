@@ -26,7 +26,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 
 - [-] **A.** Restaurar os 219 controles dispensados — substituído pela limpeza da fila depois do novo planejador
 - [ ] **A2.** Limpar a fila antiga (229 sugestões e 51 "atrasados" criados automaticamente) e gerar o plano com as regras novas
-- [ ] **A3.** Vincular as atividades às políticas (pentests, testes manuais, SCA, diretórios) para herdarem a frequência por tier
+- [x] **A3.** Atividades vinculadas às políticas (7 pentests, teste manual, SCA, diretórios): herdam a frequência do tier — 2026-10-15 (dados, `e71314d`)
 - [ ] **B.** Mascarar `current_password` em 4 eventos antigos de `audit_events` e trocar as senhas expostas
 - [ ] **C.** Corrigir o texto do finding #24 ("renovado" → "não foi renovado e vence em 22/10/2026")
 
@@ -74,6 +74,16 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 - [-] Notificações (Etapa 3) — adiada
 - [-] Wazuh — adiado
 - [-] Dossiê por edital — despriorizado (só Niterói exige segurança no edital)
+
+## 6b. Calibrar o catálogo de controles
+
+Demanda média ~229 pts/mês contra ~66 pts/mês de capacidade (15,2 pts/semana).
+
+- [ ] Análise de Vulnerabilidades Autenticada: mensal em 18 softwares = 72 pts/mês (maior item)
+- [ ] Validação de diretórios: 27 pts/mês
+- [ ] Estudo/PoC de WAF: hoje é por software (18×); provavelmente deveria ser um card só
+- [ ] Classificar os 4 softwares de Niterói sem tier (Processo, e-Storage, Portal GRM, eSocial)
+- [ ] Revisar a capacidade semanal dos usuários (Administrador conta 1 pt)
 
 ## 7. Limpeza de dados
 
