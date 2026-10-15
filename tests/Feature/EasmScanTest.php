@@ -11,7 +11,9 @@ use App\Models\Software;
 use App\Models\User;
 use App\Services\EasmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class EasmScanTest extends TestCase
@@ -50,6 +52,7 @@ class EasmScanTest extends TestCase
         return $this->partialMock(EasmService::class, function ($mock) use ($portasPorVarredura) {
             $mock->shouldReceive('resolveIp')->andReturn('203.0.113.10');
             $mock->shouldReceive('probePorts')->andReturnValues($portasPorVarredura);
+            $mock->shouldReceive('detectCdn')->andReturn(null)->byDefault();
         });
     }
 
@@ -229,5 +232,64 @@ class EasmScanTest extends TestCase
         $this->actingAs($admin)->get(route('instancias.index'))
             ->assertOk()
             ->assertSee('verificação incompleta');
+    }
+
+    public function test_grava_o_ip_testado_em_cada_varredura_sem_alterar_o_ip_cadastrado(): void
+    {
+        $service = $this->partialMock(EasmService::class, function ($mock) {
+            // DNS com rodízio: cada consulta devolve um IP do pool
+            $mock->shouldReceive('resolveIp')->andReturn('150.171.110.39', '150.171.110.43');
+            $mock->shouldReceive('probePorts')->andReturn([80, 443]);
+            $mock->shouldReceive('fetchPeerCertificate')->andReturn(['validTo_time_t' => now()->addDays(90)->timestamp]);
+            $mock->shouldReceive('detectCdn')->andReturn('Azure Front Door (Microsoft)');
+        });
+
+        $service->scanInstance($this->instancia);
+        $this->assertSame('150.171.110.39', $this->instancia->fresh()->ip_varredura);
+
+        $service->scanInstance($this->instancia->fresh());
+        $instancia = $this->instancia->fresh();
+        $this->assertSame('150.171.110.43', $instancia->ip_varredura);
+        $this->assertSame('203.0.113.10', $instancia->endereco_ip);
+        $this->assertSame('Azure Front Door (Microsoft)', $instancia->cdn_provedor);
+    }
+
+    public function test_detecta_cdn_pelos_cabecalhos_http(): void
+    {
+        Http::fake([
+            'https://portais.exemplo.gov.br/*' => Http::response('', 200, ['x-azure-ref' => '20261014T195602Z-abc']),
+            'https://site.cloudflare.gov.br/*' => Http::response('', 403, ['Server' => 'cloudflare', 'CF-RAY' => '8abc-GRU']),
+            'https://apache.exemplo.gov.br/*' => Http::response('', 200, ['Server' => 'Apache/2.4.52']),
+            'https://so-http.exemplo.gov.br/*' => fn () => throw new ConnectionException('timeout'),
+            'http://so-http.exemplo.gov.br/*' => Http::response('', 301, ['x-amz-cf-id' => 'xyz']),
+        ]);
+
+        $service = app(EasmService::class);
+        $this->assertSame('Azure Front Door (Microsoft)', $service->detectCdn('portais.exemplo.gov.br'));
+        $this->assertSame('Cloudflare', $service->detectCdn('site.cloudflare.gov.br'));
+        $this->assertNull($service->detectCdn('apache.exemplo.gov.br'));
+        $this->assertSame('Amazon CloudFront', $service->detectCdn('so-http.exemplo.gov.br'));
+        $this->assertNull($service->detectCdn('203.0.113.10'));
+    }
+
+    public function test_tela_mostra_ip_testado_e_aviso_de_cdn(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->instancia->update([
+            'ip_varredura' => '150.171.110.43',
+            'cdn_provedor' => 'Azure Front Door (Microsoft)',
+            'ultimo_scan_em' => now(),
+        ]);
+
+        $this->actingAs($admin)->get(route('instancias.show', $this->instancia))
+            ->assertOk()
+            ->assertSee('150.171.110.43')
+            ->assertSee('IP cadastrado')
+            ->assertSee('atrás de CDN/proxy (Azure Front Door (Microsoft))', false);
+
+        $this->actingAs($admin)->get(route('instancias.index'))
+            ->assertOk()
+            ->assertSee('150.171.110.43')
+            ->assertSee('Atrás de CDN: Azure Front Door (Microsoft)');
     }
 }

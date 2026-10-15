@@ -9,6 +9,7 @@ use App\Models\InstanciaCliente;
 use App\Models\InstanciaPortaServico;
 use App\Models\InstanciaSslCert;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class EasmService
@@ -41,6 +42,28 @@ class EasmService
     /** Tempo máximo, em segundos, para cada porta responder (as portas são testadas em paralelo). */
     public const PORT_TIMEOUT = 2.0;
 
+    /**
+     * Cabeçalhos HTTP que identificam CDN/proxy de terceiros. Atrás deles, a
+     * varredura enxerga as portas da borda do provedor, não as do servidor de origem.
+     */
+    public const CDN_HEADERS = [
+        'x-azure-ref' => 'Azure Front Door (Microsoft)',
+        'cf-ray' => 'Cloudflare',
+        'x-amz-cf-id' => 'Amazon CloudFront',
+        'x-fastly-request-id' => 'Fastly',
+        'x-akamai-transformed' => 'Akamai',
+        'x-sucuri-id' => 'Sucuri',
+        'x-iinfo' => 'Imperva',
+    ];
+
+    /** Valores do cabeçalho Server que identificam CDN/proxy de terceiros. */
+    public const CDN_SERVERS = [
+        'cloudflare' => 'Cloudflare',
+        'akamaighost' => 'Akamai',
+        'cloudfront' => 'Amazon CloudFront',
+        'sucuri' => 'Sucuri',
+    ];
+
     /** Erros da varredura atual, gravados em instancia_clientes.scan_erro. */
     protected array $erros = [];
 
@@ -59,8 +82,11 @@ class EasmService
         ];
 
         try {
-            // 1. Resolver Host e auto-preencher IP se vazio
+            // 1. Resolver o host e identificar CDN/proxy na frente dele
             $targetHost = $this->resolveTargetHost($instancia);
+            if ($targetHost) {
+                $instancia->update(['cdn_provedor' => $this->detectCdn($targetHost)]);
+            }
 
             // 2. Verificar Certificado SSL
             if ($targetHost) {
@@ -104,14 +130,6 @@ class EasmService
             $host = $instancia->endereco_ip;
         }
 
-        // Se encontrou o host mas a instância não tem o IP cadastrado, tenta resolver e salvar
-        if ($host && empty($instancia->endereco_ip)) {
-            $ip = $this->resolveIp($host);
-            if ($ip && $ip !== $host) {
-                $instancia->update(['endereco_ip' => $ip]);
-            }
-        }
-
         return $host;
     }
 
@@ -127,6 +145,45 @@ class EasmService
         $ip = @gethostbyname($host);
 
         return ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP)) ? $ip : null;
+    }
+
+    /**
+     * Identifica CDN/proxy de terceiros pelos cabeçalhos da resposta HTTP(S).
+     * Devolve o nome do provedor ou null (sem CDN conhecida ou sem resposta).
+     */
+    public function detectCdn(string $host): ?string
+    {
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return null;
+        }
+
+        foreach (['https', 'http'] as $scheme) {
+            try {
+                $response = Http::withOptions(['verify' => false, 'allow_redirects' => false])
+                    ->timeout(5)
+                    ->head("{$scheme}://{$host}/");
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $headers = array_change_key_case($response->headers(), CASE_LOWER);
+            foreach (self::CDN_HEADERS as $header => $provedor) {
+                if (isset($headers[$header])) {
+                    return $provedor;
+                }
+            }
+
+            $server = strtolower($response->header('Server'));
+            foreach (self::CDN_SERVERS as $assinatura => $provedor) {
+                if ($server !== '' && str_contains($server, $assinatura)) {
+                    return $provedor;
+                }
+            }
+
+            return null;
+        }
+
+        return null;
     }
 
     /**
@@ -241,7 +298,10 @@ class EasmService
      */
     public function checkPorts(InstanciaCliente $instancia, string $host): array
     {
+        // O IP efetivamente testado fica registrado: o DNS pode devolver um IP
+        // diferente a cada consulta (balanceamento/CDN)
         $ip = $this->resolveIp($host);
+        $instancia->update(['ip_varredura' => $ip]);
         if (! $ip) {
             $this->erros[] = "Portas: não foi possível resolver o DNS de {$host}";
 

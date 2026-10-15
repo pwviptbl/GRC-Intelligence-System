@@ -36,6 +36,7 @@ class InstanciaClienteController extends Controller
                 $q->where('nome_ambiente', 'like', "%{$search}%")
                     ->orWhere('url_principal', 'like', "%{$search}%")
                     ->orWhere('endereco_ip', 'like', "%{$search}%")
+                    ->orWhere('ip_varredura', 'like', "%{$search}%")
                     ->orWhere('branch', 'like', "%{$search}%")
                     ->orWhere('infra_provedor', 'like', "%{$search}%")
                     ->orWhere('git_custom_url', 'like', "%{$search}%");
@@ -47,21 +48,6 @@ class InstanciaClienteController extends Controller
         $softwares = Software::orderBy('nome')->get();
 
         return view('instancias.index', compact('instancias', 'clientes', 'softwares'));
-    }
-
-    protected function autoResolveIp(array $data): array
-    {
-        if (empty($data['endereco_ip']) && ! empty($data['url_principal'])) {
-            $host = parse_url($data['url_principal'], PHP_URL_HOST);
-            if ($host) {
-                $ip = @gethostbyname($host);
-                if ($ip && $ip !== $host) {
-                    $data['endereco_ip'] = $ip;
-                }
-            }
-        }
-
-        return $data;
     }
 
     public function store(Request $request)
@@ -78,7 +64,6 @@ class InstanciaClienteController extends Controller
             'status_exposicao' => 'required|in:publico,vpn_only,interno',
         ]);
 
-        $validated = $this->autoResolveIp($validated);
         $instancia = InstanciaCliente::create($validated);
 
         return redirect()->back()->with('success', 'Ambiente cadastrado com sucesso!');
@@ -98,7 +83,6 @@ class InstanciaClienteController extends Controller
             'status_exposicao' => 'required|in:publico,vpn_only,interno',
         ]);
 
-        $validated = $this->autoResolveIp($validated);
         $instancia->update($validated);
 
         return redirect()->back()->with('success', 'Ambiente atualizado com sucesso!');
@@ -147,6 +131,8 @@ class InstanciaClienteController extends Controller
             'dias_restantes' => $instancia->latestSslCert ? $instancia->latestSslCert->dias_restantes : null,
             'portas_count' => $instancia->portasAbertas()->count(),
             'endereco_ip' => $instancia->endereco_ip,
+            'ip_varredura' => $instancia->ip_varredura,
+            'cdn_provedor' => $instancia->cdn_provedor,
         ]);
     }
 
@@ -166,6 +152,7 @@ class InstanciaClienteController extends Controller
                 $q->where('nome_ambiente', 'like', "%{$search}%")
                     ->orWhere('url_principal', 'like', "%{$search}%")
                     ->orWhere('endereco_ip', 'like', "%{$search}%")
+                    ->orWhere('ip_varredura', 'like', "%{$search}%")
                     ->orWhere('branch', 'like', "%{$search}%");
             });
         }

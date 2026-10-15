@@ -266,9 +266,14 @@
                                 </a>
                             </div>
                         @endif
-                        @if($i->endereco_ip)
-                            <div style="font-size: 11px; font-family: var(--mono); color: var(--text-3); margin-top: 2px;">
-                                📍 {{ $i->endereco_ip }}
+                        @if($i->ip_varredura ?: $i->endereco_ip)
+                            <div style="font-size: 11px; font-family: var(--mono); color: var(--text-3); margin-top: 2px;" title="{{ $i->ip_varredura ? 'IP testado na última varredura' : 'IP cadastrado' }}">
+                                📍 {{ $i->ip_varredura ?: $i->endereco_ip }}
+                            </div>
+                        @endif
+                        @if($i->cdn_provedor)
+                            <div style="font-size: 10px; color: #f59e0b; margin-top: 2px;" title="Portas vistas são as da borda da CDN, não as do servidor de origem">
+                                🛡️ Atrás de CDN: {{ $i->cdn_provedor }}
                             </div>
                         @endif
                         @if(!$i->url_principal && !$i->endereco_ip)
@@ -462,7 +467,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Endereço IP (Host)</label>
+                        <label>Endereço IP cadastrado (opcional)</label>
                         <input type="text" name="endereco_ip" x-model="form.endereco_ip" class="form-input" placeholder="Ex: 200.189.x.x" />
                     </div>
                 </div>

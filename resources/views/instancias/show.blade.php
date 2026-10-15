@@ -216,9 +216,28 @@
         </div>
 
         <div class="easm-info-item">
-            <div class="easm-info-label">Endereço IP (Host)</div>
+            <div class="easm-info-label">IP Testado na Última Varredura</div>
             <div class="easm-info-val" style="font-family: var(--mono);">
-                {{ $instancia->endereco_ip ?: 'Não resolvido' }}
+                {{ $instancia->ip_varredura ?: 'Ainda não varrido' }}
+            </div>
+            @if($instancia->endereco_ip && $instancia->endereco_ip !== $instancia->ip_varredura)
+                <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">IP cadastrado: <span style="font-family: var(--mono);">{{ $instancia->endereco_ip }}</span></div>
+            @endif
+            @if($instancia->ip_varredura && $instancia->url_principal)
+                <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">Obtido do DNS no momento da varredura; pode mudar entre varreduras.</div>
+            @endif
+        </div>
+
+        <div class="easm-info-item">
+            <div class="easm-info-label">CDN / Proxy na Frente</div>
+            <div class="easm-info-val">
+                @if($instancia->cdn_provedor)
+                    <span style="color: #f59e0b; font-weight: 600;">🛡️ {{ $instancia->cdn_provedor }}</span>
+                @elseif($instancia->ultimo_scan_em)
+                    <span style="color: var(--text-3);">Nenhum identificado</span>
+                @else
+                    <span style="color: var(--text-3);">—</span>
+                @endif
             </div>
         </div>
 
@@ -291,6 +310,11 @@
 <!-- Card Portas e Serviços -->
 <div class="easm-card">
     <h4>🚪 Portas de Perímetro e Serviços Detectados</h4>
+    @if($instancia->cdn_provedor)
+        <div style="margin-top: 10px; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 12px; line-height: 1.5;">
+            ⚠️ Este host está atrás de CDN/proxy ({{ $instancia->cdn_provedor }}). As portas abaixo são as da borda do provedor; as do servidor de origem não são visíveis por esta varredura.
+        </div>
+    @endif
     <table class="data-table" style="margin-top: 10px;">
         <thead>
             <tr>

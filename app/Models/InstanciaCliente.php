@@ -23,6 +23,8 @@ class InstanciaCliente extends Model
         'scan_status',
         'ultimo_scan_em',
         'scan_erro',
+        'ip_varredura',
+        'cdn_provedor',
     ];
 
     protected $casts = [
