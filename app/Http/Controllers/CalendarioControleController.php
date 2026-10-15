@@ -31,15 +31,22 @@ class CalendarioControleController extends Controller
         $eventos = collect();
         $sugestoes = collect();
         $triagens = collect();
+        $projecao = null;
 
         if ($tableAvailable) {
             $this->service->updateOverdueStatuses();
             $eventos = $this->filteredOperationalQuery($request)->get();
             $sugestoes = $this->filteredSuggestionsQuery($request)->get();
             $triagens = $this->filteredTriageQuery($request)->get();
+            $projecao = $this->service->planejar([
+                'somente_atividades' => true,
+                'semanas' => CalendarioControleService::HORIZONTE_PADRAO_SEMANAS,
+            ]);
         }
 
         return view('calendario_controles.index', [
+            'projecao' => $projecao,
+            'dispensaTipos' => ControleEvento::DISPENSA_TIPOS,
             'eventos' => $eventos,
             'sugestoes' => $sugestoes,
             'triagens' => $triagens,
@@ -368,6 +375,7 @@ class CalendarioControleController extends Controller
         $filters = $request->validate([
             'software_id' => 'nullable|integer|exists:software,id',
             'somente_atividades' => 'nullable|boolean',
+            'semanas' => 'nullable|integer|min:1|max:12',
         ]);
 
         $catalogOnly = $request->boolean('somente_atividades');
@@ -380,9 +388,33 @@ class CalendarioControleController extends Controller
             'somente_atividades' => $catalogOnly ? '1' : null,
         ], fn ($value) => $value !== null);
 
-        return redirect()
+        $message = "Plano gerado para as proximas {$result['semanas']} semana(s): {$result['created']} sugestao(oes) criada(s)"
+            ." ({$result['planejadas_pontos']} pts de {$this->formatPoints($result['capacidade_semanal'] * $result['semanas'])} pts de capacidade).";
+
+        if ($result['fila'] > 0) {
+            $message .= " {$result['fila']} item(ns) vencido(s) ficaram na fila ({$result['fila_pontos']} pts) por falta de capacidade.";
+        }
+
+        if ($result['automatic'] > 0) {
+            $message .= " {$result['automatic']} controle(s) automatico(s) fora do plano.";
+        }
+
+        $redirect = redirect()
             ->route('calendario_controles.index', $indexFilters)
-            ->with('success', "Geracao concluida: {$result['created']} sugestao(oes) criada(s), {$result['skipped']} ignorada(s), {$result['automatic']} automatica(s) fora do fluxo operacional, {$result['prioritized']} priorizada(s) por risco.".($catalogOnly ? ' Apenas atividades cadastradas foram consideradas.' : ' Regras de Tier sem atividade tambem foram consideradas.'));
+            ->with('success', $message);
+
+        if ($result['capacidade_semanal'] <= 0) {
+            $redirect->with('warning', 'Nenhum usuario ativo e disponivel para tarefas tem capacidade semanal configurada (tela Usuarios). Nada foi planejado.');
+        } elseif ($result['created'] === 0 && $result['carga_aberta'] > 0 && $result['vencidas'] > 0) {
+            $redirect->with('warning', "A fila atual ja ocupa a capacidade ({$result['carga_aberta']} pts em aberto). Revise, dispense ou conclua os cards abertos para liberar espaco.");
+        }
+
+        return $redirect;
+    }
+
+    protected function formatPoints(float $points): string
+    {
+        return rtrim(rtrim(number_format($points, 1, ',', ''), '0'), ',');
     }
 
     public function approveSuggestions(Request $request)
@@ -426,10 +458,16 @@ class CalendarioControleController extends Controller
     public function discardSuggestions(Request $request)
     {
         $ids = $this->validateSuggestionSelection($request);
-        $motivo = $request->validate(['motivo_dispensa' => 'nullable|string|max:500'])['motivo_dispensa'] ?? null;
-        $discarded = $this->service->discardSuggestions($ids, $motivo);
+        $data = $request->validate([
+            'motivo_dispensa' => 'nullable|string|max:500',
+            'dispensa_tipo' => 'nullable|in:'.implode(',', array_keys(ControleEvento::DISPENSA_TIPOS)),
+        ]);
+        $tipo = $data['dispensa_tipo'] ?? 'ciclo';
+        $discarded = $this->service->discardSuggestions($ids, $data['motivo_dispensa'] ?? null, $tipo);
 
-        return redirect()->back()->with('success', "{$discarded} sugestao(oes) dispensada(s) na revisao.");
+        return redirect()->back()->with('success', $tipo === 'nao_aplica'
+            ? "{$discarded} item(ns) marcado(s) como nao aplicavel(is): nao serao mais sugeridos."
+            : "{$discarded} sugestao(oes) dispensada(s) neste ciclo: voltam no proximo vencimento.");
     }
 
     public function update(Request $request, ControleEvento $calendario_controle)

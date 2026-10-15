@@ -791,7 +791,12 @@
                     <input type="checkbox" name="somente_atividades" value="1" checked>
                     Somente atividades cadastradas
                 </label>
-                <button type="submit" class="btn-add">Gerar Sugestoes</button>
+                <select name="semanas" class="form-input" style="height:42px; font-size:12px;" title="Horizonte do plano">
+                    @foreach([2, 4, 8, 12] as $opcaoSemanas)
+                        <option value="{{ $opcaoSemanas }}" @selected($opcaoSemanas === 4)>Próximas {{ $opcaoSemanas }} semanas</option>
+                    @endforeach
+                </select>
+                <button type="submit" class="btn-add">Gerar Plano</button>
             </form>
             <a href="{{ route('calendario_controles.export.zip', request()->query()) }}" class="btn-secondary" style="background:#059669; color:white; border:none; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
                 📦 Baixar ZIP (Separados)
@@ -799,8 +804,53 @@
             <a href="{{ route('calendario_controles.export.all', request()->query()) }}" target="_blank" class="btn-secondary" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:11px; font-weight:500; display:flex; align-items:center; gap:8px; text-decoration:none">
                 <span>Exportar PDF</span>
             </a>
-            <div style="font-size:12px; color:var(--text-3)">Nada entra na execucao sem passar por triagem. Use a captacao para juntar demandas e a triagem para decidir o que vira plano.</div>
+            <div style="font-size:12px; color:var(--text-3)">O plano só sugere o que cabe na capacidade da equipe. Nada entra na execução sem passar por triagem.</div>
         </div>
+
+        @if($projecao ?? null)
+            @php
+                $capacidadeMensal = $projecao['capacidade_semanal'] * 52 / 12;
+                $fmt = fn ($valor) => rtrim(rtrim(number_format((float) $valor, 1, ',', '.'), '0'), ',');
+                $sobrecarga = $capacidadeMensal > 0 ? $projecao['demanda_mensal'] / $capacidadeMensal : null;
+            @endphp
+            <div class="plano-capacidade" style="margin-top:14px; display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px;">
+                <div style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
+                    <div style="font-size:11px; color:var(--text-3)">Capacidade da equipe</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-1)">{{ $fmt($projecao['capacidade_semanal']) }} pts/semana</div>
+                    <div style="font-size:11px; color:var(--text-3)">80% da soma em Usuários · ~{{ $fmt($capacidadeMensal) }} pts/mês</div>
+                </div>
+                <div style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
+                    <div style="font-size:11px; color:var(--text-3)">Demanda média do catálogo</div>
+                    <div style="font-size:18px; font-weight:700; color:{{ $sobrecarga !== null && $sobrecarga > 1 ? '#f59e0b' : 'var(--text-1)' }}">{{ $fmt($projecao['demanda_mensal']) }} pts/mês</div>
+                    <div style="font-size:11px; color:var(--text-3)">
+                        @if($sobrecarga === null)
+                            Sem capacidade configurada
+                        @elseif($sobrecarga > 1)
+                            {{ $fmt($sobrecarga) }}× a capacidade: reduza frequências ou escopo
+                        @else
+                            Cabe na capacidade ({{ round($sobrecarga * 100) }}%)
+                        @endif
+                    </div>
+                </div>
+                <div style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
+                    <div style="font-size:11px; color:var(--text-3)">Em aberto na fila</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-1)">{{ $fmt($projecao['carga_aberta']) }} pts</div>
+                    <div style="font-size:11px; color:var(--text-3)">Cards de sugestão até execução</div>
+                </div>
+                <div style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
+                    <div style="font-size:11px; color:var(--text-3)">Vencido ou vencendo em {{ $projecao['semanas'] }} semanas</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-1)">{{ $projecao['vencidas'] }} itens · {{ $fmt($projecao['vencidas_pontos']) }} pts</div>
+                    <div style="font-size:11px; color:var(--text-3)">{{ $projecao['created'] }} cabem agora · {{ $projecao['fila'] }} ficam na fila</div>
+                </div>
+                <div style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06)">
+                    <div style="font-size:11px; color:var(--text-3)">Para zerar tudo</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-1)">
+                        {{ $projecao['semanas_para_zerar'] !== null ? $projecao['semanas_para_zerar'].' semana(s)' : '—' }}
+                    </div>
+                    <div style="font-size:11px; color:var(--text-3)">Fila aberta + vencidos, no ritmo atual</div>
+                </div>
+            </div>
+        @endif
         @endif
     </div>
 
@@ -854,9 +904,6 @@
                                     <td>{{ optional($sugestao->data_prevista)->format('d/m/Y') }}</td>
                                     <td>{{ $sugestao->esforco ?: 'M' }}</td>
                                     <td><span class="badge" :style="priorityStyle('{{ $sugestao->prioridade }}')">{{ $sugestao->prioridade }}</span></td>
-                                    <td>
-
-                                    </td>
                                     <td style="min-width:260px; white-space:pre-line; color:var(--text-2); font-size:12px;">{{ $sugestao->observacoes_geracao ?: 'Sugestao criada a partir da regra de tier.' }}</td>
                                 </tr>
                             @endforeach
@@ -867,6 +914,11 @@
 
             <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="submit" form="suggestions-review-form" class="btn-add">Enviar para Triagem</button>
+                <select name="dispensa_tipo" form="suggestions-review-form" class="form-input" style="font-size:12px;" title="Tipo de dispensa">
+                    @foreach(($dispensaTipos ?? \App\Models\ControleEvento::DISPENSA_TIPOS) as $valorDispensa => $rotuloDispensa)
+                        <option value="{{ $valorDispensa }}">{{ $rotuloDispensa }}</option>
+                    @endforeach
+                </select>
                 <input type="text" name="motivo_dispensa" form="suggestions-review-form" maxlength="500" placeholder="Motivo da dispensa (opcional)" class="form-input" style="flex:1; min-width:220px; font-size:12px;" />
                 <button type="submit" form="suggestions-review-form" formaction="{{ route('calendario_controles.discard_suggestions') }}" class="btn-secondary" style="border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:10px 16px;">Dispensar Selecionadas</button>
             </div>
@@ -951,6 +1003,11 @@
 
             <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="submit" form="triage-review-form" class="btn-add">Enviar para Planejamento</button>
+                <select name="dispensa_tipo" form="triage-review-form" class="form-input" style="font-size:12px;" title="Tipo de dispensa">
+                    @foreach(($dispensaTipos ?? \App\Models\ControleEvento::DISPENSA_TIPOS) as $valorDispensa => $rotuloDispensa)
+                        <option value="{{ $valorDispensa }}">{{ $rotuloDispensa }}</option>
+                    @endforeach
+                </select>
                 <input type="text" name="motivo_dispensa" form="triage-review-form" maxlength="500" placeholder="Motivo da dispensa (opcional)" class="form-input" style="flex:1; min-width:220px; font-size:12px;" />
                 <button type="submit" form="triage-review-form" formaction="{{ route('calendario_controles.discard_suggestions') }}" class="btn-secondary" style="border-radius:8px; background:rgba(255,255,255,0.05); color:var(--text-2); border:1px solid rgba(255,255,255,0.1); cursor:pointer; font-size:12px; font-weight:600; padding:10px 16px;">Dispensar na Triagem</button>
             </div>

@@ -8,310 +8,457 @@ use App\Models\Finding;
 use App\Models\Software;
 use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class CalendarioControleService
 {
+    public const HORIZONTE_PADRAO_SEMANAS = 4;
+
+    // Mesma folga do Planejamento Semanal: só 80% da capacidade entra no plano
+    public const MARGEM_CAPACIDADE = 0.8;
+
+    /**
+     * Gera as sugestões do plano: só entra o que cabe na capacidade da equipe dentro do horizonte.
+     * O restante continua vencido e aparece como fila na projeção.
+     */
     public function generateSuggestions(array $filters = []): array
     {
-        $catalogOnly = (bool) ($filters['somente_atividades'] ?? false);
-        $softwareQuery = Software::query()
-            ->where('ativo', true)
-            ->orderBy('nome');
-
-        if (! empty($filters['software_id'])) {
-            $softwareQuery->whereKey($filters['software_id']);
-        }
-
-        $softwares = $softwareQuery->get();
-
-        $created = 0;
-        $skipped = 0;
-        $prioritized = 0;
-        $automatic = 0;
-        $messages = [];
-
-        DB::transaction(function () use ($softwares, $catalogOnly, &$created, &$skipped, &$prioritized, &$automatic, &$messages) {
-            $candidates = [];
-
-            foreach ($softwares as $software) {
-                $tier = $this->resolveTier($software);
-
-                if ($tier === null) {
-                    $messages[] = "Software {$software->nome} ignorado: classificacao insuficiente para definir tier.";
-                    $skipped++;
-
-                    continue;
-                }
-
-                $risk = $this->resolveRelevantRisk($software);
-                $policies = TierPolitica::query()
-                    ->where('tier', $tier)
-                    ->where('ativo', true)
-                    ->orderBy('id')
-                    ->get();
-
-                if ($policies->isEmpty()) {
-                    $messages[] = "Software {$software->nome} ignorado: nao ha politicas ativas para o Tier {$tier}.";
-                    $skipped++;
-
-                    continue;
-                }
-
-                $baselinePolicy = $policies->first();
-                $coveredPolicyIds = [];
-
-                // 1. Módulos mapeados no inventário que possuem atividades de cobertura
-                $modules = SoftwareModulo::query()
-                    ->where('software_id', $software->id)
-                    ->where('ativo', true)
-                    ->with(['atividades' => function ($query) use ($tier) {
-                        $query->where('ativo', true)
-                            ->where(function ($q) use ($tier) {
-                                $q->whereNull('tier_minimo')
-                                    ->orWhere('tier_minimo', '>=', $tier);
-                            })
-                            ->with('tierPolitica');
-                    }])
-                    ->get();
-
-                foreach ($modules as $module) {
-                    foreach ($module->atividades as $activity) {
-                        if (! $this->activityIsDueForModule($software, $activity, $module->nome)) {
-                            $skipped++;
-
-                            continue;
-                        }
-
-                        $neverTested = ! ControleEvento::query()
-                            ->where('software_id', $software->id)
-                            ->where('modulo', $module->nome)
-                            ->where('atividade_id', $activity->id)
-                            ->where('status', 'concluido')
-                            ->exists();
-
-                        $activityPolicy = $activity->tierPolitica?->ativo
-                            ? $activity->tierPolitica
-                            : $baselinePolicy;
-
-                        if ($activity->tierPolitica?->ativo && $activityPolicy) {
-                            $coveredPolicyIds[$activityPolicy->id] = true;
-                        }
-
-                        $candidates[] = [
-                            'software' => $software,
-                            'policy' => $activityPolicy,
-                            'activity' => $activity,
-                            'modulo' => $module->nome,
-                            'categoria' => $activity->categoria,
-                            'rotina' => $activity->rotina,
-                            'risk' => null,
-                            'tier' => $tier,
-                            'never_tested' => $neverTested,
-                            'weight' => $this->priorityWeight($tier, null, $neverTested),
-                        ];
-                    }
-                }
-
-                // 2. Atividades Standalone / Globais (que não estão vinculadas aos módulos deste software)
-                $standaloneActivities = Atividade::query()
-                    ->with('tierPolitica')
-                    ->where('ativo', true)
-                    ->where(function ($q) use ($tier) {
-                        $q->whereNull('tier_minimo')
-                            ->orWhere('tier_minimo', '>=', $tier);
-                    })
-                    ->where(function ($query) use ($software) {
-                        $query->where('software_id', $software->id)
-                            ->orWhereNull('software_id');
-                    })
-                    ->whereDoesntHave('softwareModulos', fn ($mq) => $mq->where('software_id', $software->id))
-                    ->get();
-
-                foreach ($standaloneActivities as $activity) {
-                    if (! $this->activityIsDueForModule($software, $activity, null)) {
-                        $skipped++;
-
-                        continue;
-                    }
-
-                    $neverTested = ! ControleEvento::query()
-                        ->where('software_id', $software->id)
-                        ->whereNull('modulo')
-                        ->where('atividade_id', $activity->id)
-                        ->where('status', 'concluido')
-                        ->exists();
-
-                    $activityPolicy = $activity->tierPolitica?->ativo
-                        ? $activity->tierPolitica
-                        : $baselinePolicy;
-
-                    if ($activity->tierPolitica?->ativo && $activityPolicy) {
-                        $coveredPolicyIds[$activityPolicy->id] = true;
-                    }
-
-                    $candidates[] = [
-                        'software' => $software,
-                        'policy' => $activityPolicy,
-                        'activity' => $activity,
-                        'modulo' => null,
-                        'categoria' => $activity->categoria,
-                        'rotina' => $activity->rotina,
-                        'risk' => null,
-                        'tier' => $tier,
-                        'never_tested' => $neverTested,
-                        'weight' => $this->priorityWeight($tier, null, $neverTested),
-                    ];
-                }
-
-                // 3. Políticas de Tier não cobertas
-                foreach ($policies as $policy) {
-                    if (isset($coveredPolicyIds[$policy->id])) {
-                        continue;
-                    }
-
-                    if ($catalogOnly) {
-                        continue;
-                    }
-
-                    if ($policy->bloqueio_automatico) {
-                        $automatic++;
-
-                        continue;
-                    }
-
-                    $neverTested = ! ControleEvento::query()
-                        ->where('software_id', $software->id)
-                        ->whereNull('modulo')
-                        ->where('tier_politica_id', $policy->id)
-                        ->where('status', 'concluido')
-                        ->exists();
-
-                    $candidates[] = [
-                        'software' => $software,
-                        'policy' => $policy,
-                        'activity' => null,
-                        'modulo' => null,
-                        'categoria' => null,
-                        'rotina' => null,
-                        'risk' => $risk,
-                        'tier' => $tier,
-                        'never_tested' => $neverTested,
-                        'weight' => $this->priorityWeight($tier, $risk, $neverTested),
-                    ];
-                }
-            }
-
-            // Sorting com hierarquia correta — Tier domina, nunca testado primeiro, peso calculado
-            $candidates = collect($candidates)
-                ->sort(function (array $left, array $right) {
-                    // 1º: Tier (1=crítico antes de 2=médio antes de 3=baixo)
-                    $tierCmp = $left['tier'] <=> $right['tier'];
-                    if ($tierCmp !== 0) {
-                        return $tierCmp;
-                    }
-
-                    // 2º: Nunca testado primeiro (dentro do mesmo tier)
-                    $virginCmp = (int) $right['never_tested'] <=> (int) $left['never_tested'];
-                    if ($virginCmp !== 0) {
-                        return $virginCmp;
-                    }
-
-                    // 3º: Peso calculado (risco desempata dentro do mesmo tier)
-                    $weightCmp = $right['weight'] <=> $left['weight'];
-                    if ($weightCmp !== 0) {
-                        return $weightCmp;
-                    }
-
-                    // 4º: Nome do software, módulo e policy como desempate estável
-                    return strcmp($left['software']->nome, $right['software']->nome)
-                        ?: strcmp((string) ($left['modulo'] ?? ''), (string) ($right['modulo'] ?? ''))
-                        ?: ($left['policy']->id <=> $right['policy']->id);
-                })
-                ->values();
-
-            $frequencyCounters = [];
-
-            foreach ($candidates as $candidate) {
-                /** @var Software $software */
-                $software = $candidate['software'];
-                /** @var TierPolitica $policy */
-                $policy = $candidate['policy'];
-                /** @var Atividade|null $activity */
-                $activity = $candidate['activity'];
-                /** @var Finding|null $risk */
-                $risk = $candidate['risk'];
-                $tier = $candidate['tier'];
-                $neverTested = $candidate['never_tested'];
-                $modulo = $candidate['modulo'] ?? null;
-                $categoria = $candidate['categoria'] ?? null;
-                $rotina = $candidate['rotina'] ?? null;
-
-                $frequencySource = $this->resolveFrequencySource($activity, $policy);
-                $frequencyKey = $this->frequencyKey($frequencySource);
-                $counterKey = "t{$tier}:{$frequencyKey}";
-                $sequence = $frequencyCounters[$counterKey] ?? 0;
-                $frequencyCounters[$counterKey] = $sequence + 1;
-
-                $schedule = $this->buildScheduleWindow($frequencySource, $sequence);
-
-                $existing = $this->resolveExistingEvent($software, $policy, $activity, $modulo, $schedule['periodo_referencia']);
-
-                if ($existing) {
-                    // Já existe card neste período, inclusive dispensado ou cancelado:
-                    // a decisão de quem revisou é respeitada até o próximo período
-                    $skipped++;
-
-                    continue;
-                }
-
-                ControleEvento::create([
-                    'software_id' => $software->id,
-                    'tier_politica_id' => $policy->id,
-                    'atividade_id' => $activity?->id,
-                    'tier' => $tier,
-                    'acao_controle_snapshot' => $activity?->atividade ?: $policy->acao_controle,
-                    'frequencia_snapshot' => $frequencySource,
-                    'sla_correcao_snapshot' => $policy->sla_correcao,
-                    'descricao' => $activity?->descricao ?: $policy->observacoes,
-                    'criterios_aceite' => $activity?->criterios_aceite ?: null,
-                    'bloqueio_automatico_snapshot' => $policy->bloqueio_automatico,
-                    'responsavel_planejado' => $policy->responsavel,
-                    'modulo' => $modulo,
-                    'categoria' => $categoria,
-                    'rotina' => $rotina,
-                    'esforco' => $activity?->esforco ?: $this->defaultEffortForFrequency($frequencySource),
-                    'tipo_demanda' => $activity?->tipo_demanda,
-                    'observacoes_geracao' => $this->buildGenerationNotes($software, $risk, $neverTested, $activity, $modulo),
-                    'origem' => $activity ? 'atividade+tier' : ($risk ? 'tier+risk' : 'tier'),
-                    'periodo_referencia' => $schedule['periodo_referencia'],
-                    'data_prevista' => $schedule['data_prevista'],
-                    'data_limite' => null,
-                    'prioridade' => $this->resolvePriority($tier, $risk),
-                    'status' => 'sugestao',
-                ]);
-
-                $created++;
-
-                if ($risk) {
-                    $prioritized++;
-                }
-            }
-        });
-
-        return [
-            'created' => $created,
-            'skipped' => $skipped,
-            'prioritized' => $prioritized,
-            'automatic' => $automatic,
-            'messages' => $messages,
-        ];
+        return $this->planejar($filters, true);
     }
 
     public function generate(array $filters = []): array
     {
         return $this->generateSuggestions($filters);
+    }
+
+    /**
+     * Monta o plano de controles.
+     *
+     * 1. Lista as obrigações (software × atividade/módulo, ou política de tier sem atividade que a cubra).
+     * 2. A recorrência vem da política do tier do software; sem política, da própria atividade.
+     * 3. Uma obrigação vence na última conclusão ou dispensa + recorrência (nunca feita = vence hoje).
+     *    Card em aberto segura o escopo; dispensa "não se aplica" tira o escopo do plano.
+     * 4. As vencidas são ordenadas por prioridade e distribuídas nas semanas conforme a capacidade,
+     *    depois da carga que já está na fila. Só as que começam dentro do horizonte viram card.
+     */
+    public function planejar(array $filters = [], bool $persistir = false): array
+    {
+        $catalogOnly = (bool) ($filters['somente_atividades'] ?? false);
+        $semanas = max(1, min(12, (int) ($filters['semanas'] ?? self::HORIZONTE_PADRAO_SEMANAS)));
+        $inicioSemana0 = now()->startOfWeek(Carbon::MONDAY);
+        $fimHorizonte = $inicioSemana0->copy()->addWeeks($semanas)->subDay()->endOfDay();
+        $capacidade = $this->capacidadeSemanal();
+
+        $resultado = [
+            'created' => 0,
+            'skipped' => 0,
+            'prioritized' => 0,
+            'automatic' => 0,
+            'nao_aplica' => 0,
+            'messages' => [],
+            'semanas' => $semanas,
+            'capacidade_semanal' => $capacidade,
+            'carga_aberta' => 0,
+            'vencidas' => 0,
+            'vencidas_pontos' => 0,
+            'planejadas_pontos' => 0,
+            'fila' => 0,
+            'fila_pontos' => 0,
+            'demanda_mensal' => 0.0,
+            'semanas_para_zerar' => null,
+        ];
+
+        $softwares = Software::query()
+            ->where('ativo', true)
+            ->when(! empty($filters['software_id']), fn ($q) => $q->whereKey($filters['software_id']))
+            ->orderBy('nome')
+            ->get();
+        $politicas = TierPolitica::query()->where('ativo', true)->orderBy('id')->get();
+        $eventos = ControleEvento::query()
+            ->whereNotNull('software_id')
+            ->get(['id', 'software_id', 'modulo', 'atividade_id', 'tier_politica_id', 'acao_controle_snapshot', 'status', 'concluido_em', 'dispensado_em', 'dispensa_tipo', 'updated_at'])
+            ->groupBy('software_id');
+
+        // Carga que já está na fila (de todos os softwares: a capacidade é da equipe)
+        $restante = [];
+        $ultimaSemana = -1;
+        ControleEvento::query()
+            ->whereIn('status', array_diff(ControleEvento::OPEN_STATUSES, ['bloqueado']))
+            ->get(['id', 'esforco', 'semana_planejada', 'data_prevista'])
+            ->map(fn (ControleEvento $e) => [
+                'semana' => $this->indiceSemana($inicioSemana0, $e->semana_planejada ?? $e->data_prevista ?? now()),
+                'pontos' => ControleEvento::pontosPlanejamento($e->esforco),
+            ])
+            ->sortBy('semana')
+            ->each(function (array $carga) use (&$restante, &$ultimaSemana, &$resultado, $capacidade) {
+                $resultado['carga_aberta'] += $carga['pontos'];
+                $ultimaSemana = max($ultimaSemana, $this->alocar($restante, $capacidade, $carga['semana'], $carga['pontos']));
+            });
+
+        $candidatos = [];
+
+        foreach ($softwares as $software) {
+            $tier = $this->resolveTier($software);
+
+            if ($tier === null) {
+                $resultado['messages'][] = "Software {$software->nome} ignorado: classificacao insuficiente para definir tier.";
+                $resultado['skipped']++;
+
+                continue;
+            }
+
+            $politicasDoTier = $politicas->where('tier', $tier);
+
+            if ($politicasDoTier->isEmpty()) {
+                $resultado['messages'][] = "Software {$software->nome} ignorado: nao ha politicas ativas para o Tier {$tier}.";
+                $resultado['skipped']++;
+
+                continue;
+            }
+
+            $risk = $this->resolveRelevantRisk($software);
+            $eventosDoSoftware = $eventos->get($software->id, collect());
+            $gruposCobertos = [];
+            $escopos = [];
+
+            // Atividades vinculadas a módulos do inventário: um card por módulo
+            $modules = SoftwareModulo::query()
+                ->where('software_id', $software->id)
+                ->where('ativo', true)
+                ->with(['atividades' => fn ($query) => $this->filtroAtividadesDoTier($query, $tier)->with('tierPolitica')])
+                ->get();
+
+            foreach ($modules as $module) {
+                foreach ($module->atividades as $activity) {
+                    $escopos[] = [$activity, $module->nome];
+                }
+            }
+
+            // Atividades do catálogo (globais ou do software) sem vínculo com módulo: um card por software
+            $standalone = $this->filtroAtividadesDoTier(Atividade::query()->with('tierPolitica'), $tier)
+                ->where(fn ($query) => $query->where('software_id', $software->id)->orWhereNull('software_id'))
+                ->whereDoesntHave('softwareModulos', fn ($mq) => $mq->where('software_id', $software->id))
+                ->get();
+
+            foreach ($standalone as $activity) {
+                $escopos[] = [$activity, null];
+            }
+
+            foreach ($escopos as [$activity, $modulo]) {
+                $policy = $this->politicaDaAtividade($activity, $tier, $politicas);
+
+                if ($policy) {
+                    $gruposCobertos[$policy->grupo] = true;
+                }
+
+                if ($policy?->bloqueio_automatico) {
+                    $resultado['automatic']++;
+
+                    continue;
+                }
+
+                $meses = $policy?->recorrencia_meses ?? max(1, (int) ($activity->recorrencia_meses ?: 6));
+                $esforco = $activity->esforco ?: 'M';
+
+                $candidatos[] = $this->avaliarObrigacao($resultado, $eventosDoSoftware, $fimHorizonte, [
+                    'software' => $software,
+                    'policy' => $policy,
+                    'activity' => $activity,
+                    'modulo' => $modulo,
+                    'categoria' => $activity->categoria,
+                    'rotina' => $activity->rotina,
+                    'risk' => null,
+                    'tier' => $tier,
+                    'meses' => $meses,
+                    'frequencia' => $policy?->frequencia ?: ($activity->frequencia_sugerida ?: $this->rotuloRecorrencia($meses)),
+                    'esforco' => $esforco,
+                ]);
+            }
+
+            if ($catalogOnly) {
+                continue;
+            }
+
+            // Políticas do tier sem atividade que as cubra viram um card genérico por software
+            foreach ($politicasDoTier as $policy) {
+                if (isset($gruposCobertos[$policy->grupo])) {
+                    continue;
+                }
+
+                $meses = $policy->recorrencia_meses;
+
+                if ($policy->bloqueio_automatico || $meses === null) {
+                    $resultado['automatic']++;
+
+                    continue;
+                }
+
+                $candidatos[] = $this->avaliarObrigacao($resultado, $eventosDoSoftware, $fimHorizonte, [
+                    'software' => $software,
+                    'policy' => $policy,
+                    'activity' => null,
+                    'modulo' => null,
+                    'categoria' => null,
+                    'rotina' => null,
+                    'risk' => $risk,
+                    'tier' => $tier,
+                    'meses' => $meses,
+                    'frequencia' => $policy->frequencia,
+                    'esforco' => $meses <= 1 ? 'M' : 'G',
+                ]);
+            }
+        }
+
+        $vencidas = collect($candidatos)
+            ->filter()
+            ->sort(function (array $left, array $right) {
+                // Tier domina; dentro do tier: nunca feito, mais atrasado, maior risco
+                return ($left['tier'] <=> $right['tier'])
+                    ?: ((int) $right['never_tested'] <=> (int) $left['never_tested'])
+                    ?: ($right['atraso_dias'] <=> $left['atraso_dias'])
+                    ?: ($right['weight'] <=> $left['weight'])
+                    ?: strcmp($left['software']->nome, $right['software']->nome)
+                    ?: strcmp((string) ($left['modulo'] ?? ''), (string) ($right['modulo'] ?? ''))
+                    ?: strcmp($left['acao'], $right['acao']);
+            })
+            ->values();
+
+        $criar = function () use ($vencidas, $capacidade, $semanas, $inicioSemana0, $persistir, &$restante, &$ultimaSemana, &$resultado) {
+            foreach ($vencidas as $item) {
+                $pontos = ControleEvento::pontosPlanejamento($item['esforco']);
+                $resultado['vencidas']++;
+                $resultado['vencidas_pontos'] += $pontos;
+
+                $semana = $this->alocar($restante, $capacidade, $item['semana_vencimento'], $pontos);
+                $ultimaSemana = max($ultimaSemana, $semana);
+
+                if ($semana >= $semanas) {
+                    $resultado['fila']++;
+                    $resultado['fila_pontos'] += $pontos;
+
+                    continue;
+                }
+
+                $resultado['planejadas_pontos'] += $pontos;
+                $resultado['created']++;
+
+                if ($item['risk']) {
+                    $resultado['prioritized']++;
+                }
+
+                if ($persistir) {
+                    $this->criarSugestao($item, $inicioSemana0->copy()->addWeeks($semana));
+                }
+            }
+        };
+
+        if ($capacidade <= 0) {
+            $resultado['messages'][] = 'Nenhum usuario ativo e disponivel para tarefas tem capacidade semanal configurada: nada foi planejado.';
+            $resultado['vencidas'] = $vencidas->count();
+            $resultado['vencidas_pontos'] = $vencidas->sum(fn ($item) => ControleEvento::pontosPlanejamento($item['esforco']));
+            $resultado['fila'] = $resultado['vencidas'];
+            $resultado['fila_pontos'] = $resultado['vencidas_pontos'];
+
+            return $resultado;
+        }
+
+        $persistir ? DB::transaction($criar) : $criar();
+
+        $resultado['semanas_para_zerar'] = $ultimaSemana + 1;
+
+        return $resultado;
+    }
+
+    /**
+     * Capacidade planejável da equipe por semana, em pontos de esforço.
+     */
+    public function capacidadeSemanal(): float
+    {
+        return round(User::query()
+            ->where('active', true)
+            ->where('disponivel_para_tarefas', true)
+            ->sum('capacidade_semanal_pontos') * self::MARGEM_CAPACIDADE, 1);
+    }
+
+    protected function filtroAtividadesDoTier($query, int $tier)
+    {
+        return $query->where('ativo', true)
+            ->where(fn ($q) => $q->whereNull('tier_minimo')->orWhere('tier_minimo', '>=', $tier));
+    }
+
+    /**
+     * A atividade herda a política equivalente do tier do software (mesma ação de controle).
+     * Sem equivalente ativo, usa a política vinculada se estiver ativa; senão, fica sem política.
+     */
+    protected function politicaDaAtividade(Atividade $activity, int $tier, $politicas): ?TierPolitica
+    {
+        $vinculada = $activity->tierPolitica;
+
+        if (! $vinculada) {
+            return null;
+        }
+
+        return $politicas->first(fn (TierPolitica $p) => $p->tier === $tier && $p->grupo === $vinculada->grupo)
+            ?? ($vinculada->ativo ? $vinculada : null);
+    }
+
+    /**
+     * Calcula o vencimento de uma obrigação a partir do histórico do escopo.
+     * Retorna null quando ela não entra no plano (card em aberto, "não se aplica" ou fora do horizonte).
+     */
+    protected function avaliarObrigacao(array &$resultado, $eventosDoSoftware, Carbon $fimHorizonte, array $item): ?array
+    {
+        $activity = $item['activity'];
+        $modulo = $item['modulo'] ?: null;
+        $acao = $activity?->atividade ?: $item['policy']->acao_controle;
+
+        $doEscopo = $eventosDoSoftware->filter(function (ControleEvento $e) use ($activity, $modulo, $item) {
+            if (($e->modulo ?: null) !== $modulo) {
+                return false;
+            }
+
+            return $activity
+                ? $e->atividade_id === $activity->id || ($e->atividade_id === null && $e->acao_controle_snapshot === $activity->atividade)
+                : $e->atividade_id === null && $e->tier_politica_id === $item['policy']->id;
+        });
+
+        $pontos = ControleEvento::pontosPlanejamento($item['esforco']);
+
+        if ($doEscopo->contains(fn (ControleEvento $e) => $e->status === 'dispensado' && $e->dispensa_tipo === 'nao_aplica')) {
+            $resultado['nao_aplica']++;
+            $resultado['skipped']++;
+
+            return null;
+        }
+
+        $resultado['demanda_mensal'] += $pontos / $item['meses'];
+
+        if ($doEscopo->contains(fn (ControleEvento $e) => in_array($e->status, ControleEvento::OPEN_STATUSES, true))) {
+            $resultado['skipped']++;
+
+            return null;
+        }
+
+        $ultima = $doEscopo
+            ->map(fn (ControleEvento $e) => match ($e->status) {
+                'concluido' => $e->concluido_em ?? $e->updated_at,
+                'dispensado', 'cancelado' => $e->dispensado_em ?? $e->updated_at,
+                default => null,
+            })
+            ->filter()
+            ->max();
+        $neverTested = ! $doEscopo->contains(fn (ControleEvento $e) => $e->status === 'concluido');
+        $venceEm = $ultima
+            ? Carbon::parse($ultima)->addMonthsNoOverflow($item['meses'])->startOfDay()
+            : now()->startOfDay();
+
+        if ($venceEm->gt($fimHorizonte)) {
+            $resultado['skipped']++;
+
+            return null;
+        }
+
+        return $item + [
+            'acao' => $acao,
+            'never_tested' => $neverTested,
+            'vence_em' => $venceEm,
+            'atraso_dias' => max(0, (int) $venceEm->diffInDays(now()->startOfDay(), false)),
+            'semana_vencimento' => $this->indiceSemana(now()->startOfWeek(Carbon::MONDAY), $venceEm),
+            'weight' => $this->priorityWeight($item['tier'], $item['risk'], $neverTested),
+        ];
+    }
+
+    protected function criarSugestao(array $item, Carbon $inicioSemana): ControleEvento
+    {
+        /** @var Software $software */
+        $software = $item['software'];
+        /** @var TierPolitica|null $policy */
+        $policy = $item['policy'];
+        /** @var Atividade|null $activity */
+        $activity = $item['activity'];
+        $risk = $item['risk'];
+        $dataPrevista = $inicioSemana->copy()->addDays(4)->max(now()->startOfDay());
+
+        $notas = $this->buildGenerationNotes($software, $risk, $item['never_tested'], $activity, $item['modulo']);
+        $notas .= "\nRecorrencia: a cada {$item['meses']} mes(es); "
+            .($item['atraso_dias'] > 0 ? "vencida desde {$item['vence_em']->format('d/m/Y')}" : "vence em {$item['vence_em']->format('d/m/Y')}")
+            .".\nPlanejada para a semana de {$inicioSemana->format('d/m/Y')} conforme a capacidade da equipe.";
+
+        return ControleEvento::create([
+            'software_id' => $software->id,
+            'tier_politica_id' => $policy?->id,
+            'atividade_id' => $activity?->id,
+            'tier' => $item['tier'],
+            'acao_controle_snapshot' => $item['acao'],
+            'frequencia_snapshot' => $item['frequencia'],
+            'sla_correcao_snapshot' => $policy ? $policy->sla_correcao : $activity?->sla_sugerido,
+            'descricao' => $activity?->descricao ?: $policy?->observacoes,
+            'criterios_aceite' => $activity?->criterios_aceite ?: null,
+            'bloqueio_automatico_snapshot' => (bool) $policy?->bloqueio_automatico,
+            'responsavel_planejado' => $policy ? $policy->responsavel : $activity?->responsavel_padrao,
+            'modulo' => $item['modulo'],
+            'categoria' => $item['categoria'],
+            'rotina' => $item['rotina'],
+            'esforco' => $item['esforco'],
+            'tipo_demanda' => $activity?->tipo_demanda,
+            'observacoes_geracao' => $notas,
+            'origem' => $activity ? 'atividade+tier' : ($risk ? 'tier+risk' : 'tier'),
+            'periodo_referencia' => 'semana:'.$inicioSemana->format('o-\WW'),
+            'data_prevista' => $dataPrevista,
+            'data_limite' => null,
+            'prioridade' => $this->resolvePriority($item['tier'], $risk),
+            'status' => 'sugestao',
+        ]);
+    }
+
+    /**
+     * Distribui pontos nas semanas a partir de $inicio, usando o que sobra de cada uma.
+     * Um card maior que a sobra continua na semana seguinte. Retorna a semana em que ele começa.
+     */
+    protected function alocar(array &$restante, float $capacidade, int $inicio, float $pontos): int
+    {
+        if ($capacidade <= 0) {
+            return PHP_INT_MAX;
+        }
+
+        $semana = max(0, $inicio);
+
+        while (($restante[$semana] ?? $capacidade) <= 0.0001) {
+            $semana++;
+        }
+
+        $primeira = $semana;
+
+        while ($pontos > 0.0001) {
+            $livre = $restante[$semana] ?? $capacidade;
+            $uso = min($livre, $pontos);
+            $restante[$semana] = $livre - $uso;
+            $pontos -= $uso;
+
+            if ($pontos > 0.0001) {
+                $semana++;
+            }
+        }
+
+        return $primeira;
+    }
+
+    protected function indiceSemana(Carbon $inicioSemana0, $data): int
+    {
+        $inicio = Carbon::parse($data)->startOfWeek(Carbon::MONDAY);
+
+        return max(0, (int) floor($inicioSemana0->diffInDays($inicio, false) / 7));
+    }
+
+    protected function rotuloRecorrencia(int $meses): string
+    {
+        return match ($meses) {
+            1 => 'Mensal',
+            12 => 'Anual',
+            default => "{$meses} meses",
+        };
     }
 
     // As alterações em lote passam pelo model (um a um) para o ControleEventoObserver
@@ -354,7 +501,7 @@ class CalendarioControleService
                     return;
                 }
 
-                $nextStatus = $evento->data_prevista && $evento->data_prevista->isPast()
+                $nextStatus = $evento->data_prevista && $evento->data_prevista->lt(now()->startOfDay())
                     ? 'atrasado'
                     : 'planejado';
 
@@ -379,10 +526,11 @@ class CalendarioControleService
         ];
     }
 
-    public function discardSuggestions(array $ids, ?string $motivo = null): int
+    public function discardSuggestions(array $ids, ?string $motivo = null, string $tipo = 'ciclo'): int
     {
+        $tipo = array_key_exists($tipo, ControleEvento::DISPENSA_TIPOS) ? $tipo : 'ciclo';
         $motivo = trim((string) $motivo);
-        $nota = 'Sugestao dispensada na revisao'
+        $nota = ($tipo === 'nao_aplica' ? 'Marcada como nao aplicavel a este escopo' : 'Sugestao dispensada neste ciclo')
             .(auth()->user() ? ' por '.auth()->user()->name : '')
             .' em '.now()->format('d/m/Y')
             .($motivo !== '' ? ": {$motivo}" : '.');
@@ -393,6 +541,8 @@ class CalendarioControleService
             ->get()
             ->each(fn (ControleEvento $evento) => $evento->update([
                 'status' => 'dispensado',
+                'dispensado_em' => now(),
+                'dispensa_tipo' => $tipo,
                 'observacoes_execucao' => trim(($evento->observacoes_execucao ?? '')."\n".$nota),
             ]))
             ->count();
@@ -522,103 +672,6 @@ class CalendarioControleService
         return implode("\n", $notes);
     }
 
-    protected function resolveExistingEvent(Software $software, TierPolitica $policy, ?Atividade $activity, ?string $modulo, string $periodoReferencia): ?ControleEvento
-    {
-        $query = ControleEvento::query()
-            ->where('software_id', $software->id)
-            ->where('periodo_referencia', $periodoReferencia);
-
-        if ($modulo) {
-            $query->where('modulo', $modulo);
-        } else {
-            $query->whereNull('modulo');
-        }
-
-        if ($activity) {
-            $query->where('atividade_id', $activity->id);
-        } else {
-            $query->where('tier_politica_id', $policy->id)->whereNull('atividade_id');
-        }
-
-        return $query->first();
-    }
-
-    protected function activityIsDueForModule(Software $software, Atividade $activity, ?string $modulo): bool
-    {
-        $sameScope = ControleEvento::query()
-            ->where('software_id', $software->id)
-            ->when(
-                $modulo !== null && $modulo !== '',
-                fn ($q) => $q->where('modulo', $modulo),
-                fn ($q) => $q->whereNull('modulo')
-            )
-            ->where(function ($query) use ($activity) {
-                $query->where('atividade_id', $activity->id)
-                    ->orWhere('acao_controle_snapshot', $activity->atividade);
-            });
-
-        if ((clone $sameScope)->whereNotIn('status', ['concluido', 'cancelado', 'dispensado'])->exists()) {
-            return false;
-        }
-
-        $lastCompletion = (clone $sameScope)
-            ->where('status', 'concluido')
-            ->whereNotNull('concluido_em')
-            ->max('concluido_em');
-
-        if (! $lastCompletion) {
-            return true;
-        }
-
-        $recorrenciaMeses = max(1, (int) $activity->recorrencia_meses);
-
-        return Carbon::parse($lastCompletion)
-            ->addMonthsNoOverflow($recorrenciaMeses)
-            ->isPast();
-    }
-
-    protected function activityIsDue(Software $software, Atividade $activity): bool
-    {
-        return $this->activityIsDueForModule($software, $activity, $activity->modulo);
-    }
-
-    protected function nullableScopeCondition(string $column, ?string $value): \Closure
-    {
-        return static function ($query) use ($column, $value) {
-            if ($value === null || $value === '') {
-                $query->whereNull($column)->orWhere($column, '');
-
-                return;
-            }
-
-            $query->where($column, $value);
-        };
-    }
-
-    protected function defaultEffortForFrequency(string $frequency): string
-    {
-        return match ($this->frequencyKey($frequency)) {
-            'semanal' => 'P',
-            'quinzenal', 'mensal' => 'M',
-            'trimestral' => 'G',
-            'semestral', 'anual' => 'GG',
-            default => 'M',
-        };
-    }
-
-    protected function resolveFrequencySource(?Atividade $activity, TierPolitica $policy): string
-    {
-        if (! $activity) {
-            return $policy->frequencia;
-        }
-
-        if ($activity->tierPolitica?->ativo) {
-            return $policy->frequencia;
-        }
-
-        return $activity->frequencia_sugerida ?: $policy->frequencia;
-    }
-
     protected function isTriageReady(ControleEvento $evento): bool
     {
         return $this->missingTriageFields($evento) === [];
@@ -673,169 +726,5 @@ class CalendarioControleService
         }
 
         return $plannedDate->copy()->addDays($amount);
-    }
-
-    protected function buildScheduleWindow(string $frequency, int $sequence = 0): array
-    {
-        $baseDate = now()->startOfDay()->addDay();
-        $frequencyKey = $this->frequencyKey($frequency);
-        $plannedDate = $this->addBusinessDays($baseDate, $sequence % $this->planningWindowDays($frequencyKey));
-
-        if ($frequencyKey === 'semanal') {
-            $start = $plannedDate->copy()->startOfWeek();
-
-            return [
-                'periodo_referencia' => 'semanal:'.$start->format('o-\WW'),
-                'data_prevista' => $plannedDate,
-            ];
-        }
-
-        if ($frequencyKey === 'quinzenal') {
-            $half = $plannedDate->day <= 15 ? 'Q1' : 'Q2';
-
-            return [
-                'periodo_referencia' => 'quinzenal:'.$plannedDate->format('Y-m-').$half,
-                'data_prevista' => $plannedDate,
-            ];
-        }
-
-        if ($frequencyKey === 'trimestral') {
-            return [
-                'periodo_referencia' => 'trimestral:'.$plannedDate->format('Y').'-T'.$plannedDate->quarter,
-                'data_prevista' => $plannedDate,
-            ];
-        }
-
-        if ($frequencyKey === 'semestral') {
-            $semester = $plannedDate->month <= 6 ? 'S1' : 'S2';
-
-            return [
-                'periodo_referencia' => 'semestral:'.$plannedDate->format('Y-').$semester,
-                'data_prevista' => $plannedDate,
-            ];
-        }
-
-        if ($frequencyKey === 'anual') {
-            return [
-                'periodo_referencia' => 'anual:'.$plannedDate->format('Y'),
-                'data_prevista' => $plannedDate,
-            ];
-        }
-
-        return [
-            'periodo_referencia' => 'mensal:'.$plannedDate->format('Y-m'),
-            'data_prevista' => $plannedDate,
-        ];
-    }
-
-    protected function rescheduleOpenBacklog(array $filters = []): int
-    {
-        $query = ControleEvento::query()
-            ->whereIn('status', ['pendente', 'atrasado'])
-            ->whereNull('iniciado_em')
-            ->whereNull('concluido_em')
-            ->whereDate('data_prevista', '<', now()->toDateString())
-            ->orderByRaw("CASE prioridade
-                WHEN 'Crítica' THEN 4
-                WHEN 'Alta' THEN 3
-                WHEN 'Média' THEN 2
-                WHEN 'Baixa' THEN 1
-                ELSE 0
-            END DESC")
-            ->orderBy('data_prevista')
-            ->orderBy('software_id');
-
-        if (! empty($filters['software_id'])) {
-            $query->where('software_id', $filters['software_id']);
-        }
-
-        $events = $query->get();
-        $frequencyCounters = [];
-
-        foreach ($events as $event) {
-            $frequencyKey = $this->frequencyKey($event->frequencia_snapshot);
-            $sequence = $frequencyCounters[$frequencyKey] ?? 0;
-            $frequencyCounters[$frequencyKey] = $sequence + 1;
-
-            $schedule = $this->buildScheduleWindow($event->frequencia_snapshot, $sequence);
-
-            $conflict = ControleEvento::query()
-                ->where('id', '!=', $event->id)
-                ->where('software_id', $event->software_id)
-                ->where('tier_politica_id', $event->tier_politica_id)
-                ->where('periodo_referencia', $schedule['periodo_referencia'])
-                ->exists();
-
-            if ($conflict) {
-                continue;
-            }
-
-            $event->update([
-                'periodo_referencia' => $schedule['periodo_referencia'],
-                'data_prevista' => $schedule['data_prevista'],
-                'data_limite' => $this->resolveDeadline($event->sla_correcao_snapshot, $schedule['data_prevista']),
-                'status' => 'pendente',
-            ]);
-        }
-
-        return $events->count();
-    }
-
-    protected function frequencyKey(string $frequency): string
-    {
-        $normalized = mb_strtolower(trim($frequency));
-
-        if (str_contains($normalized, 'seman')) {
-            return 'semanal';
-        }
-
-        if (str_contains($normalized, 'quinzen')) {
-            return 'quinzenal';
-        }
-
-        if (str_contains($normalized, 'trimes')) {
-            return 'trimestral';
-        }
-
-        if (str_contains($normalized, 'semes')) {
-            return 'semestral';
-        }
-
-        if (str_contains($normalized, 'anual') || str_contains($normalized, 'ano')) {
-            return 'anual';
-        }
-
-        return 'mensal';
-    }
-
-    protected function planningWindowDays(string $frequencyKey): int
-    {
-        return match ($frequencyKey) {
-            'semanal' => 5,
-            'quinzenal' => 10,
-            'trimestral' => 45,
-            'semestral' => 60,
-            'anual' => 90,
-            default => 20,
-        };
-    }
-
-    protected function addBusinessDays(Carbon $date, int $days): Carbon
-    {
-        $plannedDate = $date->copy();
-
-        while ($plannedDate->isWeekend()) {
-            $plannedDate->addDay();
-        }
-
-        for ($i = 0; $i < $days; $i++) {
-            $plannedDate->addDay();
-
-            while ($plannedDate->isWeekend()) {
-                $plannedDate->addDay();
-            }
-        }
-
-        return $plannedDate;
     }
 }

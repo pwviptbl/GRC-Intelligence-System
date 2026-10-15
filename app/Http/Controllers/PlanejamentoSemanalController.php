@@ -51,8 +51,6 @@ class PlanejamentoSemanalController extends Controller
             ];
         });
 
-        app(WeeklyPlanningBacklogService::class)->syncDueModuleControls();
-
         $backlog = app(WeeklyPlanningBacklogService::class)
             ->getBacklogQuery()
             ->limit(200)

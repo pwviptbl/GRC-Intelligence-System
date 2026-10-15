@@ -135,9 +135,12 @@ class CalendarioControleSuggestionFlowTest extends TestCase
         $this->post(route('calendario_controles.generate'))
             ->assertRedirect(route('calendario_controles.index'));
 
+        // Atividade sem política vinculada não herda mais a primeira política do tier
         $this->assertDatabaseHas('controle_eventos', [
             'software_id' => $software->id,
-            'tier_politica_id' => $tierPolicy->id,
+            'tier_politica_id' => null,
+            'responsavel_planejado' => 'Time GRC',
+            'sla_correcao_snapshot' => '5 dias',
             'atividade_id' => $atividade->id,
             'acao_controle_snapshot' => 'Analise autenticada',
             'modulo' => 'Arrecadacao',

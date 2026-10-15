@@ -60,6 +60,24 @@ class ControleEvento extends Model
         'atrasado',
     ];
 
+    // Ainda na fila de trabalho (inclui sugestões): o gerador não cria outro card para o mesmo escopo
+    public const OPEN_STATUSES = [
+        'sugestao',
+        'triagem',
+        'planejado',
+        'pendente',
+        'em_execucao',
+        'em_revisao',
+        'bloqueado',
+        'atrasado',
+    ];
+
+    // ciclo: volta no próximo vencimento; nao_aplica: o escopo não gera mais cards
+    public const DISPENSA_TIPOS = [
+        'ciclo' => 'Dispensar neste ciclo',
+        'nao_aplica' => 'Não se aplica a este software',
+    ];
+
     protected $table = 'controle_eventos';
 
     protected $fillable = [
@@ -101,6 +119,8 @@ class ControleEvento extends Model
         'bloqueado_em',
         'motivo_bloqueio',
         'concluido_em',
+        'dispensado_em',
+        'dispensa_tipo',
         'observacoes_execucao',
     ];
 
@@ -116,6 +136,7 @@ class ControleEvento extends Model
         'iniciado_em' => 'datetime',
         'bloqueado_em' => 'datetime',
         'concluido_em' => 'datetime',
+        'dispensado_em' => 'datetime',
         'esforco_estimado_horas' => 'decimal:1',
         'esforco_real_horas' => 'decimal:1',
     ];
@@ -127,6 +148,37 @@ class ControleEvento extends Model
         'decision_score',
         'progress_label',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (ControleEvento $evento) {
+            if (! $evento->isDirty('status')) {
+                return;
+            }
+
+            if (in_array($evento->status, ['dispensado', 'cancelado'], true)) {
+                $evento->dispensado_em ??= now();
+            } else {
+                $evento->dispensado_em = null;
+                $evento->dispensa_tipo = null;
+            }
+        });
+    }
+
+    /**
+     * Pontos usados no plano de capacidade. Diferente de effort_points, GG e esforço vazio
+     * também contam (GG ainda precisa ser dividido antes de entrar numa semana).
+     */
+    public static function pontosPlanejamento(?string $esforco): int
+    {
+        return match ($esforco) {
+            'PP' => 1,
+            'P' => 2,
+            'G' => 8,
+            'GG' => 16,
+            default => 4,
+        };
+    }
 
     public function software()
     {

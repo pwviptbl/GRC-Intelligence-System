@@ -18,11 +18,15 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 - [x] Certificado SSL: antecedência do alerta configurável por software (`ssl_dias_alerta`, padrão 2 dias) — 2026-10-15, `f0ac245`
 - [x] Auditoria: senha e token mascarados nos eventos novos — 2026-10-15, `f0ac245`
 - [x] Controles: gerador não ressuscita cards dispensados; dispensa com motivo e histórico; `controles:marcar-atrasados` diário — 2026-10-15, `172894b`
+- [x] Catálogo de controles: Nmap automático (EASM diário), SAST no CI, DAST só no E-cidade Niterói PHP 7.4 por módulo — 2026-10-15 (dados)
+- [x] Calendário de controles planeja por capacidade: recorrência pela política do tier do software, sem card duplicado de política coberta por atividade, fila e projeção na tela, dispensa "neste ciclo" ou "não se aplica", um gerador só (o Planejamento Semanal não cria mais cards) — 2026-10-15
 - [x] MCP: token fixo religado (só LAN) com token novo; Antigravity configurado via `Authorization: Bearer` — 2026-10-15 (configuração, sem commit)
 
 ## 2. Correções de dados em produção (aguardando aval)
 
-- [ ] **A.** Restaurar os 219 controles dispensados que o bug antigo voltou para "sugestão" (sugestões passam de 229 para 10), usando o histórico em `controle_evento_historicos`
+- [-] **A.** Restaurar os 219 controles dispensados — substituído pela limpeza da fila depois do novo planejador
+- [ ] **A2.** Limpar a fila antiga (229 sugestões e 51 "atrasados" criados automaticamente) e gerar o plano com as regras novas
+- [ ] **A3.** Vincular as atividades às políticas (pentests, testes manuais, SCA, diretórios) para herdarem a frequência por tier
 - [ ] **B.** Mascarar `current_password` em 4 eventos antigos de `audit_events` e trocar as senhas expostas
 - [ ] **C.** Corrigir o texto do finding #24 ("renovado" → "não foi renovado e vence em 22/10/2026")
 

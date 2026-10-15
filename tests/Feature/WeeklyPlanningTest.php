@@ -225,151 +225,51 @@ class WeeklyPlanningTest extends TestCase
         ]);
     }
 
-    public function test_weekly_backlog_automatically_pulls_due_controls_from_module_coverage(): void
+    public function test_opening_weekly_screen_does_not_create_cards(): void
     {
         $admin = $this->admin();
-
         $software = Software::create([
             'nome' => 'Portal da Transparência',
             'criticidade_operacional_nivel' => 3,
             'ativo' => true,
         ]);
-
         $modulo = SoftwareModulo::create([
             'software_id' => $software->id,
             'area' => 'Cidadão',
             'nome' => 'Envio foto de perfil',
-            'descricao' => 'Módulo de upload de avatar',
             'ativo' => true,
         ]);
-
         $atividade = Atividade::create([
             'atividade' => 'Pentest Upload de Arquivos',
-            'categoria' => 'OWASP Top 10',
             'esforco' => 'M',
             'recorrencia_meses' => 6,
             'ativo' => true,
         ]);
-
         $modulo->atividades()->attach($atividade->id);
 
+        // Os cards vêm só do plano (Calendário de Controles), não desta tela
         $this->actingAs($admin)->get(route('planejamento_semanal.index'))
             ->assertOk()
-            ->assertSee('Pentest Upload de Arquivos')
-            ->assertSee('Portal da Transparência')
-            ->assertSee('Envio foto de perfil');
+            ->assertDontSee('Pentest Upload de Arquivos');
 
-        $this->assertDatabaseHas('controle_eventos', [
-            'software_id' => $software->id,
-            'modulo' => 'Envio foto de perfil',
-            'atividade_id' => $atividade->id,
-            'acao_controle_snapshot' => 'Pentest Upload de Arquivos',
-            'origem' => 'cobertura_modulo',
-            'status' => 'planejado',
-            'semana_planejada' => null,
-        ]);
+        $this->assertSame(0, ControleEvento::query()->count());
     }
 
-    public function test_weekly_backlog_ignores_module_controls_that_are_within_recurrence_period(): void
+    public function test_backlog_shows_planned_activity_cards_without_module(): void
     {
         $admin = $this->admin();
-
-        $software = Software::create([
-            'nome' => 'e-Storage',
-            'criticidade_operacional_nivel' => 2,
-            'ativo' => true,
-        ]);
-
-        $modulo = SoftwareModulo::create([
-            'software_id' => $software->id,
-            'area' => 'Arquivos',
-            'nome' => 'Armazenamento Seguro',
-            'ativo' => true,
-        ]);
-
-        $atividade = Atividade::create([
-            'atividade' => 'Varredura Antivírus Storage',
-            'categoria' => 'Infraestrutura',
-            'esforco' => 'P',
-            'recorrencia_meses' => 6,
-            'ativo' => true,
-        ]);
-
-        $modulo->atividades()->attach($atividade->id);
-
-        // Execução recente concluída há 2 meses (prazo de 6 meses ainda vigente)
         ControleEvento::create([
-            'software_id' => $software->id,
-            'modulo' => 'Armazenamento Seguro',
-            'atividade_id' => $atividade->id,
-            'acao_controle_snapshot' => 'Varredura Antivírus Storage',
-            'origem' => 'cobertura_modulo',
-            'status' => 'concluido',
-            'concluido_em' => now()->subMonths(2),
-        ]);
-
-        $this->actingAs($admin)->get(route('planejamento_semanal.index'))
-            ->assertOk()
-            ->assertDontSee('Varredura Antivírus Storage');
-
-        $this->assertSame(0, ControleEvento::query()
-            ->where('software_id', $software->id)
-            ->where('modulo', 'Armazenamento Seguro')
-            ->where('status', 'planejado')
-            ->count()
-        );
-    }
-
-    public function test_weekly_backlog_pulls_module_controls_whose_recurrence_expired_after_6_months(): void
-    {
-        $admin = $this->admin();
-
-        $software = Software::create([
-            'nome' => 'Folha de Pagamento',
-            'criticidade_operacional_nivel' => 3,
-            'ativo' => true,
-        ]);
-
-        $modulo = SoftwareModulo::create([
-            'software_id' => $software->id,
-            'area' => 'RH',
-            'nome' => 'Cálculo de Salários',
-            'ativo' => true,
-        ]);
-
-        $atividade = Atividade::create([
-            'atividade' => 'Revisão Periódica de Acessos RH',
-            'categoria' => 'Governança',
+            'acao_controle_snapshot' => 'Analise de vulnerabilidades do software',
+            'atividade_id' => Atividade::create(['atividade' => 'Analise', 'esforco' => 'M', 'ativo' => true])->id,
             'esforco' => 'M',
-            'recorrencia_meses' => 6,
-            'ativo' => true,
-        ]);
-
-        $modulo->atividades()->attach($atividade->id);
-
-        // Execução concluída há 7 meses (expirou o ciclo de 6 meses)
-        ControleEvento::create([
-            'software_id' => $software->id,
-            'modulo' => 'Cálculo de Salários',
-            'atividade_id' => $atividade->id,
-            'acao_controle_snapshot' => 'Revisão Periódica de Acessos RH',
-            'origem' => 'cobertura_modulo',
-            'status' => 'concluido',
-            'concluido_em' => now()->subMonths(7),
+            'status' => 'planejado',
+            'prioridade' => 'Alta',
+            'origem' => 'atividade+tier',
         ]);
 
         $this->actingAs($admin)->get(route('planejamento_semanal.index'))
             ->assertOk()
-            ->assertSee('Revisão Periódica de Acessos RH');
-
-        $this->assertDatabaseHas('controle_eventos', [
-            'software_id' => $software->id,
-            'modulo' => 'Cálculo de Salários',
-            'atividade_id' => $atividade->id,
-            'status' => 'planejado',
-            'origem' => 'cobertura_modulo',
-            'semana_planejada' => null,
-        ]);
+            ->assertSee('Analise de vulnerabilidades do software');
     }
 
     public function test_weekly_backlog_ignores_standalone_activities_not_mapped_to_modules(): void
