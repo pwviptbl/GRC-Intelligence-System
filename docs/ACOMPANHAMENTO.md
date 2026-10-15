@@ -1,0 +1,78 @@
+# Acompanhamento de Melhorias — Bastion Cyber
+
+Lista de trabalho a partir de 2026-10-15. O plano original por etapas está em `docs/PLANO_MELHORIAS.md`.
+
+**Como usar:** marque `[x]` ao concluir e anote a data e o commit. Itens que alteram dados de produção só são executados com o aval do responsável.
+
+Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` descartado ou adiado
+
+---
+
+## 1. Concluído recentemente
+
+- [x] EASM: varredura de portas real (22/80/443 aparecem sem gerar finding; as demais geram finding; porta fechada sai da lista) — 2026-10-15
+- [x] EASM: grava o IP efetivamente testado (`ip_varredura`) e detecta CDN; `endereco_ip` deixou de ser autopreenchido — 2026-10-15, `d53662a`
+- [x] Findings: SLA recalculado nos 22 achados sem prazo (`findings:recalcular-sla`); prazo recalculado ao mudar a severidade — 2026-10-15, `f0ac245`
+- [x] Findings: definição única de "aberto" (`Finding::STATUS_ENCERRADOS` / `scopeAbertos`) — 2026-10-15, `f0ac245`
+- [x] Certificado SSL: um finding por domínio, prazo = validade, sobe para crítico ao vencer e só fecha quando realmente renovado — 2026-10-15, `f0ac245`
+- [x] Certificado SSL: antecedência do alerta configurável por software (`ssl_dias_alerta`, padrão 2 dias) — 2026-10-15, `f0ac245`
+- [x] Auditoria: senha e token mascarados nos eventos novos — 2026-10-15, `f0ac245`
+- [x] Controles: gerador não ressuscita cards dispensados; dispensa com motivo e histórico; `controles:marcar-atrasados` diário — 2026-10-15, `172894b`
+- [x] MCP: token fixo religado (só LAN) com token novo; Antigravity configurado via `Authorization: Bearer` — 2026-10-15 (configuração, sem commit)
+
+## 2. Correções de dados em produção (aguardando aval)
+
+- [ ] **A.** Restaurar os 219 controles dispensados que o bug antigo voltou para "sugestão" (sugestões passam de 229 para 10), usando o histórico em `controle_evento_historicos`
+- [ ] **B.** Mascarar `current_password` em 4 eventos antigos de `audit_events` e trocar as senhas expostas
+- [ ] **C.** Corrigir o texto do finding #24 ("renovado" → "não foi renovado e vence em 22/10/2026")
+
+## 3. Operação
+
+- [ ] Backup diário, com retenção separada para os backups de deploy (hoje é semanal e os de deploy ocupam a retenção de 8)
+- [ ] Falhas do scheduler registradas em log (hoje vão para `/dev/null`)
+- [ ] `easm:scan` retornar falha quando houver erro (hoje sempre SUCCESS)
+- [ ] `/up` verificar o banco de dados
+- [ ] CI: smoke test de todas as rotas, Larastan, `composer audit` e Dependabot
+- [ ] Índices nas chaves estrangeiras
+
+## 4. EASM
+
+- [ ] Cabeçalhos de segurança HTTP (HSTS, CSP, X-Frame-Options, X-Content-Type-Options, versão no `Server`)
+- [ ] Descoberta de subdomínios via crt.sh (ex.: Itaqui tem 47 nomes e 5 cadastrados)
+- [ ] Histórico de varreduras (`easm_scan_runs` / eventos)
+- [ ] Certificado não confiável aparece como "Válido"
+- [ ] Status "inacessível" para host que não responde (ex.: instância 39)
+- [ ] Recusar IPs privados como alvo
+
+## 5. Segurança
+
+- [ ] API `/api/v1`: POST/PATCH retornam 419 (CSRF); token não verifica usuário ativo nem perfil; token aceito na query string
+- [ ] API: armazenar o token com hash (decisão pendente — hoje fica visível no Perfil)
+- [ ] Permissões: perfil operacional marca falso positivo sem aprovação e exclui achados/engajamentos; criar Policies; auditor vê o menu Segurança e recebe 403
+- [ ] Exclusões em cascata sem lixeira (SoftDeletes)
+- [ ] Restauração de backup: validar o arquivo, fazer backup antes, usar transação, rodar migrate e não usar superusuário
+- [ ] Regras de senha únicas (`Password::defaults()`; hoje o admin consegue definir a senha "1")
+- [ ] Impedir que o último admin se rebaixe
+- [ ] Recuperação de senha permite descobrir e-mails cadastrados (mailer está em `log`)
+- [-] MFA, HTTPS/CSP, Cloudflare Tunnel — adiados enquanto o sistema estiver só na LAN (pré-requisitos para reexpor)
+- [-] Desligar o token fixo do MCP — fazer antes de reexpor à internet
+
+## 6. Funcionalidades
+
+- [ ] Filtro e vínculo de achados por prefeitura (`engagement_instancias` está vazio)
+- [ ] Boletim mensal por prefeitura (`kpi_snapshots`)
+- [ ] Versões e aprovação de políticas (13 de 14 em rascunho)
+- [ ] LGPD por prefeitura
+- [ ] Incidentes com prazo da ANPD (o #7 está crítico desde 18/09)
+- [ ] Busca sem diferenciar maiúsculas/minúsculas (`ilike`)
+- [ ] Responsáveis como usuários (Etapa 4, item 1)
+- [ ] Deduplicação: regressões duplicadas no `FindingDeduplicationService`; severidades do `NmapParser`
+- [-] Notificações (Etapa 3) — adiada
+- [-] Wazuh — adiado
+- [-] Dossiê por edital — despriorizado (só Niterói exige segurança no edital)
+
+## 7. Limpeza de dados
+
+- [ ] Remover dados de teste: "Tinker Test" (id 27), "Backend Cadastro Demo" (id 22)
+- [ ] Revisar o cliente "Votla Redonda" (id 9)
+- [ ] Unificar hosts duplicados (Itaqui 24/48/49, Bagé 4/51)

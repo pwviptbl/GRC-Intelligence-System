@@ -30,6 +30,8 @@ Este arquivo será copiado para `docs/PLANO_MELHORIAS.md` no repositório após 
 
 ## Estado em 2026-10-13
 
+> A partir de 2026-10-15, o acompanhamento item a item está em [`docs/ACOMPANHAMENTO.md`](ACOMPANHAMENTO.md).
+
 - **Etapa 0: concluída** (commit `062e882`). Também foi corrigido um bug que já existia: o scheduler rodava como root e criava arquivos em `storage/` que a aplicação web não conseguia gravar, o que gerava 500 em qualquer requisição que tentasse registrar log.
 - **ngrok removido.** O sistema agora só é acessível pela LAN (`APP_URL=http://192.168.1.19:8088`). O MFA passou a ser pré-requisito para voltar a expor o sistema na internet (ver "Reexposição à internet").
 - **Codex não é mais usado.** O acesso por agente é feito pelo Gemini (Antigravity CLI `agy`), que trabalha direto nos arquivos.
