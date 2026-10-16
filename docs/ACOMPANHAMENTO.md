@@ -29,7 +29,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 ## 2. Correções de dados em produção (aguardando aval)
 
 - [-] **A.** Restaurar os 219 controles dispensados — substituído pela limpeza da fila depois do novo planejador
-- [ ] **A2.** Limpar a fila antiga e gerar o plano com as regras novas. Ensaiado em 16/10 numa cópia da produção: 282 cards (229 sugestões, 51 atrasados e 2 planejados, todos automáticos e sem executor, triagem, nota, anexo ou etapa) e 557 linhas de histórico; o plano de 4 semanas cria 11 cards (52 pts) e 170 itens (768 pts) ficam na fila
+- [x] **A2.** Fila antiga limpa e plano gerado com as regras novas — 2026-10-16: 282 cards automáticos sem trabalho e 557 linhas de histórico apagados (cópia em `storage/app/a2-cards-apagados-20261016-090907.json`); o plano de 4 semanas criou 10 cards (52 pts) e 170 itens (764 pts) ficaram na fila
 - [x] **A3.** Atividades vinculadas às políticas (7 pentests, teste manual, SCA, diretórios): herdam a frequência do tier — 2026-10-15 (dados, `e71314d`)
 - [ ] **B.** Mascarar `current_password` em 4 eventos antigos de `audit_events` e trocar as senhas expostas
 - [ ] **C.** Corrigir o texto do finding #24 ("renovado" → "não foi renovado e vence em 22/10/2026")
@@ -88,6 +88,7 @@ Demanda média ~229 pts/mês contra ~66 pts/mês de capacidade (15,2 pts/semana)
 - [ ] Estudo/PoC de WAF: hoje é por software (18×); provavelmente deveria ser um card só
 - [ ] Classificar os 4 softwares de Niterói sem tier (Processo, e-Storage, Portal GRM, eSocial)
 - [ ] Revisar a capacidade semanal dos usuários (Administrador conta 1 pt)
+- [ ] DAST do E-cidade: o responsável cadastra os cards manualmente (área › módulo › categoria); decidir se a atividade #93 (DAST, mensal nos 3 módulos do E-cidade Niterói PHP 7.4) continua gerando cards
 
 ## 7. Limpeza de dados
 
