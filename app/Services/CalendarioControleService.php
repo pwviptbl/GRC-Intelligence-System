@@ -123,7 +123,7 @@ class CalendarioControleService
             }
 
             $risk = $this->resolveRelevantRisk($software);
-            // Dentro do tier, entra antes o software com achado aberto mais grave e maior pontuação
+            // Em cada rodada entra antes o software com achado aberto mais grave e maior pontuação
             $pesoSoftware = $this->riskWeight($risk?->severidade) * 100 + (int) $software->classificacao_pontuacao;
             $eventosDoSoftware = $eventos->get($software->id, collect());
             $gruposCobertos = [];
@@ -271,8 +271,9 @@ class CalendarioControleService
     }
 
     /**
-     * Ordem de entrada no plano. O tier domina; dentro dele os softwares se alternam, um item de cada
-     * por rodada, começando pelo de maior peso (achado aberto mais grave, depois a pontuação da classificação).
+     * Ordem de entrada no plano. Os softwares se alternam, um item de cada por rodada, começando pelo de
+     * maior peso (achado aberto mais grave, depois a pontuação da classificação). O tier só define quais
+     * atividades e qual recorrência valem para o software, não segura os de tier menor.
      * Os cards que o software já tem em aberto contam como rodadas já feitas.
      * Dentro do software: nunca feito, vencimento mais antigo e a ordem do catálogo de atividades.
      */
@@ -288,8 +289,7 @@ class CalendarioControleService
                     ?: strcmp($left['acao'], $right['acao']))
                 ->values()
                 ->map(fn (array $item, int $ordem) => $item + ['rodada' => $abertosPorSoftware->get($softwareId, 0) + $ordem]))
-            ->sort(fn (array $left, array $right) => ($left['tier'] <=> $right['tier'])
-                ?: ($left['rodada'] <=> $right['rodada'])
+            ->sort(fn (array $left, array $right) => ($left['rodada'] <=> $right['rodada'])
                 ?: ($right['peso_software'] <=> $left['peso_software'])
                 ?: strcmp($left['software']->nome, $right['software']->nome))
             ->values();

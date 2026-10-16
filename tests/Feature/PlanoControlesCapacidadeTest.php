@@ -116,7 +116,7 @@ class PlanoControlesCapacidadeTest extends TestCase
         $this->assertSame(['semana:2026-W43'], ControleEvento::distinct()->pluck('periodo_referencia')->all());
     }
 
-    public function test_software_de_tier_mais_critico_entra_primeiro(): void
+    public function test_software_mais_critico_entra_primeiro_na_rodada(): void
     {
         $critico = $this->software('Sistema critico', 3);
         $baixo = $this->software('Sistema baixo', 1);
@@ -130,7 +130,23 @@ class PlanoControlesCapacidadeTest extends TestCase
         $this->assertSame(0, ControleEvento::where('software_id', $baixo->id)->count());
     }
 
-    public function test_softwares_do_mesmo_tier_se_alternam_e_o_de_achado_mais_grave_comeca(): void
+    public function test_tier_nao_segura_os_softwares_de_tier_menor(): void
+    {
+        $critico = $this->software('Sistema critico', 3);
+        $baixo = $this->software('Sistema baixo', 1);
+        $this->politica(1, 'Controle base', 'Anual');
+        $this->politica(3, 'Controle base', 'Anual');
+        $this->atividade('Atividade A', 'M', 1);
+        $this->atividade('Atividade B', 'M', 1);
+
+        // 8 pts na semana: dois cards M. O T3 recebe o primeiro antes do T1 receber o segundo.
+        $this->post(route('calendario_controles.generate'), ['somente_atividades' => 1, 'semanas' => 1]);
+
+        $this->assertSame(['Atividade A'], ControleEvento::where('software_id', $critico->id)->pluck('acao_controle_snapshot')->all());
+        $this->assertSame(['Atividade A'], ControleEvento::where('software_id', $baixo->id)->pluck('acao_controle_snapshot')->all());
+    }
+
+    public function test_softwares_se_alternam_e_o_de_achado_mais_grave_comeca(): void
     {
         $alfa = $this->software('Alfa', 3);
         $beta = $this->software('Beta', 3, autenticacao: 1);

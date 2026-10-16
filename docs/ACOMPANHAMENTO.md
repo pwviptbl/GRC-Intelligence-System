@@ -22,8 +22,9 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 - [x] Calendário de controles planeja por capacidade: recorrência pela política do tier do software, sem card duplicado de política coberta por atividade, fila e projeção na tela, dispensa "neste ciclo" ou "não se aplica", um gerador só (o Planejamento Semanal não cria mais cards) — 2026-10-15, `4adb301`
 - [x] Plano intercala os softwares do mesmo tier (um item de cada por rodada, começando pelo achado aberto mais grave e pela maior pontuação); antes o desempate pelo nome dava as 4 semanas a um software só — 2026-10-16
 - [x] A semana atual só conta os dias úteis que restam; no fim de semana o plano começa na segunda — 2026-10-16
+- [x] O tier não dá mais prioridade absoluta no plano: só define as atividades e a recorrência do software; todos os softwares se alternam, um item de cada por rodada — 2026-10-16
 - [x] MCP: token fixo religado (só LAN) com token novo em `/root/grc-mcp-token.txt` no host — 2026-10-15 (configuração, sem commit)
-- [~] MCP: o Antigravity (192.168.1.208) envia um token, mas não o do arquivo — 401 até 16/10 02:57 UTC; falta corrigir o `mcp_config.json`
+- [x] MCP: Antigravity (192.168.1.208) autenticando com o token do arquivo depois da correção do `mcp_config.json` (`POST /mcp` 200 em 16/10 11:54 UTC) — 2026-10-16
 
 ## 2. Correções de dados em produção (aguardando aval)
 
