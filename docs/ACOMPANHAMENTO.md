@@ -23,6 +23,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 - [x] Plano intercala os softwares do mesmo tier (um item de cada por rodada, começando pelo achado aberto mais grave e pela maior pontuação); antes o desempate pelo nome dava as 4 semanas a um software só — 2026-10-16
 - [x] A semana atual só conta os dias úteis que restam; no fim de semana o plano começa na segunda — 2026-10-16
 - [x] O tier não dá mais prioridade absoluta no plano: só define as atividades e a recorrência do software; todos os softwares se alternam, um item de cada por rodada — 2026-10-16
+- [x] "Catálogo de Controles" e "Mapeamento de Controles" passam a se chamar Catálogo e Mapeamento de **Atividades** (menu, telas, dashboard, alerta e mensagens); o nome "controle" fica para o módulo de cobertura de controles — 2026-10-16
 - [x] MCP: token fixo religado (só LAN) com token novo em `/root/grc-mcp-token.txt` no host — 2026-10-15 (configuração, sem commit)
 - [x] MCP: Antigravity (192.168.1.208) autenticando com o token do arquivo depois da correção do `mcp_config.json` (`POST /mcp` 200 em 16/10 11:54 UTC) — 2026-10-16
 
@@ -67,6 +68,10 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 
 ## 6. Funcionalidades
 
+- [ ] **Controles (cobertura)**: catálogo de controles implantados (SAST, SCA, scan automático, WAF...) e matriz "quem tem / quem não tem" por software, repositório ou ambiente
+  - [ ] Etapa 1: catálogo, matriz e edição manual (status, ferramenta, data, evidência, não se aplica com motivo)
+  - [ ] Etapa 2: verificação automática (scan pelo EASM; SAST/SCA pela data do último envio na API)
+  - [ ] Etapa 3: lacuna exigida pelo tier vira card avulso; ferramenta MCP "quem não tem o controle X"
 - [ ] Filtro e vínculo de achados por prefeitura (`engagement_instancias` está vazio)
 - [ ] Boletim mensal por prefeitura (`kpi_snapshots`)
 - [ ] Versões e aprovação de políticas (13 de 14 em rascunho)

@@ -523,23 +523,23 @@
         </div>
     </div>
 
-    <!-- Seção de Cobertura de Controles e Módulos -->
+    <!-- Seção de Cobertura de Atividades e Módulos -->
     <div class="dashboard-operational-header" style="margin-top:25px">
         <div>
             <h4 style="display:flex;align-items:center;gap:8px">
-                <span>🛡️ Cobertura de Controles e Módulos</span>
+                <span>🛡️ Cobertura de Atividades e Módulos</span>
                 <span class="badge" style="background:rgba(6,182,212,0.12);color:var(--cyan);border-color:rgba(6,182,212,0.3)">
                     {{ $cobertura['percentual_sistemas'] }}% Sistemas Cobertos
                 </span>
             </h4>
-            <span style="color:var(--text-3);font-size:11px">Acompanhamento executivo do mapeamento de controles vinculados aos sistemas e módulos</span>
+            <span style="color:var(--text-3);font-size:11px">Acompanhamento executivo do mapeamento de atividades vinculadas aos sistemas e módulos</span>
         </div>
         <div style="display:flex;gap:8px">
             <a href="{{ route('atividades.module_coverage') }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;text-decoration:none">
-                <span>🗺️ Mapeamento de Controles</span>
+                <span>🗺️ Mapeamento de Atividades</span>
             </a>
             <a href="{{ route('atividades.index') }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;text-decoration:none">
-                <span>📋 Catálogo de Controles</span>
+                <span>📋 Catálogo de Atividades</span>
             </a>
         </div>
     </div>
@@ -550,7 +550,7 @@
             <div class="dashboard-action-value" style="color:{{ $cobertura['percentual_sistemas'] >= 80 ? 'var(--green)' : ($cobertura['percentual_sistemas'] >= 50 ? 'var(--yellow)' : 'var(--red)') }}">
                 {{ $cobertura['percentual_sistemas'] }}%
             </div>
-            <div class="dashboard-action-hint">{{ $cobertura['sistemas_cobertos'] }} de {{ $cobertura['total_sistemas'] }} sistemas com controles</div>
+            <div class="dashboard-action-hint">{{ $cobertura['sistemas_cobertos'] }} de {{ $cobertura['total_sistemas'] }} sistemas com atividades</div>
         </a>
 
         <a class="dashboard-coverage-card" href="{{ route('atividades.module_coverage') }}">
@@ -558,7 +558,7 @@
             <div class="dashboard-action-value" style="color:var(--cyan)">
                 {{ $cobertura['modulos_cobertos'] }} <span style="font-size:14px;color:var(--text-3);font-weight:400">/ {{ $cobertura['total_modulos'] }}</span>
             </div>
-            <div class="dashboard-action-hint">{{ $cobertura['percentual_modulos'] }}% dos módulos com controle ativo</div>
+            <div class="dashboard-action-hint">{{ $cobertura['percentual_modulos'] }}% dos módulos com atividade ativa</div>
         </a>
 
         <a class="dashboard-coverage-card" href="{{ route('atividades.module_coverage', ['uncovered' => 1]) }}" style="border-color:{{ $cobertura['modulos_sem_controle'] > 0 ? 'rgba(255,215,64,0.35)' : 'var(--border)' }}">
@@ -566,7 +566,7 @@
             <div class="dashboard-action-value" style="color:{{ $cobertura['modulos_sem_controle'] > 0 ? 'var(--yellow)' : 'var(--green)' }}">
                 {{ $cobertura['modulos_sem_controle'] }}
             </div>
-            <div class="dashboard-action-hint">{{ $cobertura['modulos_sem_controle'] > 0 ? 'Módulos sem nenhum controle vinculado ➔' : 'Todos os módulos mapeados' }}</div>
+            <div class="dashboard-action-hint">{{ $cobertura['modulos_sem_controle'] > 0 ? 'Módulos sem nenhuma atividade vinculada ➔' : 'Todos os módulos mapeados' }}</div>
         </a>
 
         <a class="dashboard-coverage-card" href="{{ route('calendario_controles.kanban', ['status' => 'atrasado']) }}" style="border-color:{{ $cobertura['controles_vencidos'] > 0 ? 'rgba(255,83,112,0.35)' : 'var(--border)' }}">
@@ -631,7 +631,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
             <div>
                 <div class="dashboard-panel-title" style="margin:0">Mapeamento de Cobertura por Sistema</div>
-                <div style="font-size:11px;color:var(--text-3);margin-top:2px">Distribuição de módulos e controles cadastrados por sistema</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">Distribuição de módulos e atividades cadastrados por sistema</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <input type="text" x-model="search" placeholder="Buscar por nome ou tecnologia..." style="font-size:12px;padding:6px 12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;color:var(--text-1);min-width:220px">
@@ -639,7 +639,7 @@
                     <option value="all">Todos os status</option>
                     <option value="total">100% Cobertos</option>
                     <option value="parcial">Cobertura Parcial</option>
-                    <option value="descoberto">Sem Controles</option>
+                    <option value="descoberto">Sem Atividades</option>
                 </select>
             </div>
         </div>
@@ -692,15 +692,15 @@
                                     <span class="badge" style="background:rgba(6,182,212,0.12);color:var(--cyan);border-color:rgba(6,182,212,0.3)">Parcial</span>
                                 </template>
                                 <template x-if="item.status === 'descoberto'">
-                                    <span class="badge" style="background:rgba(255,83,112,0.12);color:var(--red);border-color:rgba(255,83,112,0.3)">Sem Controles</span>
+                                    <span class="badge" style="background:rgba(255,83,112,0.12);color:var(--red);border-color:rgba(255,83,112,0.3)">Sem Atividades</span>
                                 </template>
                             </td>
                             <td style="padding:10px;text-align:right;white-space:nowrap">
-                                <a :href="'{{ route('atividades.module_coverage') }}?software_id=' + item.id" class="btn-secondary" style="font-size:11px;padding:4px 8px;text-decoration:none" title="Mapear Controles nos Módulos">
+                                <a :href="'{{ route('atividades.module_coverage') }}?software_id=' + item.id" class="btn-secondary" style="font-size:11px;padding:4px 8px;text-decoration:none" title="Mapear Atividades nos Módulos">
                                     🗺️ Mapear
                                 </a>
-                                <a :href="'{{ route('atividades.index') }}?software_id=' + item.id" class="btn-secondary" style="font-size:11px;padding:4px 8px;text-decoration:none;margin-left:4px" title="Ver Controles do Sistema">
-                                    📋 Controles
+                                <a :href="'{{ route('atividades.index') }}?software_id=' + item.id" class="btn-secondary" style="font-size:11px;padding:4px 8px;text-decoration:none;margin-left:4px" title="Ver Atividades do Sistema">
+                                    📋 Atividades
                                 </a>
                             </td>
                         </tr>

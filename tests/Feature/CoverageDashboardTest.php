@@ -18,7 +18,7 @@ class CoverageDashboardTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'admin']);
 
-        // Sistema 1: 2 módulos (1 com controle, 1 sem controle)
+        // Sistema 1: 2 módulos (1 com atividade, 1 sem atividade)
         $software1 = Software::create([
             'nome' => 'Sistema Alpha',
             'ativo' => true,
@@ -54,7 +54,7 @@ class CoverageDashboardTest extends TestCase
 
         $modulo1->atividades()->attach($atividade->id);
 
-        // Sistema 2: Sem módulos e sem controle
+        // Sistema 2: Sem módulos e sem atividade
         $software2 = Software::create([
             'nome' => 'Sistema Beta Descoberto',
             'ativo' => true,
@@ -79,7 +79,7 @@ class CoverageDashboardTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Cobertura de Controles e Módulos');
+        $response->assertSee('Cobertura de Atividades e Módulos');
         $response->assertSee('Mapeamento de Cobertura por Sistema');
         $response->assertSee('Sistema Alpha');
         $response->assertSee('Lacunas ("A Decidir")', false);

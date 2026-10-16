@@ -256,9 +256,9 @@ class AlertService
                 'severity' => 'warning',
                 'category' => 'Cobertura',
                 'icon' => '🧩',
-                'title' => 'Módulos sem Controles Mapeados',
+                'title' => 'Módulos sem Atividades Mapeadas',
                 'count' => $modulosSemControle,
-                'description' => "{$modulosSemControle} módulo(s) cadastrados no inventário sem nenhum controle atribuído.",
+                'description' => "{$modulosSemControle} módulo(s) cadastrados no inventário sem nenhuma atividade atribuída.",
                 'action_label' => 'Mapear Módulos',
                 'action_url' => route('atividades.module_coverage', ['uncovered' => 1]),
             ];

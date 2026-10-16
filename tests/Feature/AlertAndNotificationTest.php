@@ -63,7 +63,7 @@ class AlertAndNotificationTest extends TestCase
             'data_limite_correcao' => now()->subDays(2)->toDateString(),
         ]);
 
-        // 4. Módulo órfão sem controles
+        // 4. Módulo órfão sem atividades
         SoftwareModulo::create([
             'software_id' => $software->id,
             'nome' => 'Módulo de Pagamentos',

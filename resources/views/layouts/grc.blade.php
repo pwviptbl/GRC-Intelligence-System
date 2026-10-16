@@ -276,11 +276,11 @@
           </a>
           <a href="{{ route('atividades.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('atividades') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🧩</span> Catálogo de Controles
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🧩</span> Catálogo de Atividades
           </a>
           <a href="{{ route('atividades.module_coverage') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('module_coverage') }">
-            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🗺️</span> Mapeamento de Controles
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🗺️</span> Mapeamento de Atividades
           </a>
           <a href="{{ route('procedimentos.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('procedimentos') }">

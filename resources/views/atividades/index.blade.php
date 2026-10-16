@@ -1,8 +1,8 @@
 @extends('layouts.grc')
 
-@section('title', 'Catálogo de Controles e Atividades')
-@section('description', 'Biblioteca reutilizável de controles de segurança para aplicação nos módulos de sistemas')
-@section('badge', $atividades->count() . ' Controles')
+@section('title', 'Catálogo de Atividades')
+@section('description', 'Biblioteca reutilizável de atividades de segurança para aplicação nos módulos de sistemas')
+@section('badge', $atividades->count() . ' Atividades')
 
 @section('content')
 <style>
@@ -194,11 +194,11 @@
     <!-- Cards de Métricas do Catálogo -->
     <div class="stats-row">
         <div class="stat-card c1">
-            <div class="stat-label">Controles Catalogados</div>
+            <div class="stat-label">Atividades Catalogadas</div>
             <div class="stat-value">{{ $catalogCoverage['active_activities'] }}</div>
         </div>
         <div class="stat-card" style="background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.12);">
-            <div class="stat-label">Controles em Uso (Módulos)</div>
+            <div class="stat-label">Atividades em Uso (Módulos)</div>
             <div class="stat-value" style="color:var(--cyan)">{{ $catalogCoverage['linked_activities'] }}</div>
         </div>
         <div class="stat-card" style="background:rgba(0,255,159,.06); border:1px solid rgba(0,255,159,.12);">
@@ -215,12 +215,12 @@
     <section style="margin-bottom:20px; padding:14px 18px; border:1px solid rgba(0,229,255,.2); border-radius:10px; background:linear-gradient(135deg, rgba(0,229,255,.04), rgba(0,255,159,.02)); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
         <div style="font-size:12px; color:var(--text-2); line-height:1.6; max-width:820px;">
             <span style="color:var(--cyan); font-weight:700;">💡 Biblioteca Geral Reutilizável:</span>
-            Os controles de segurança são cadastrados uma única vez aqui no catálogo mestre. A vinculação com softwares e módulos (ex: associar <em>Pentest de Upload</em> ao <em>Transparência › Envio de Foto</em>) é feita diretamente na tela de cobertura.
+            As atividades de segurança são cadastradas uma única vez aqui no catálogo mestre. A vinculação com softwares e módulos (ex: associar <em>Pentest de Upload</em> ao <em>Transparência › Envio de Foto</em>) é feita diretamente na tela de cobertura.
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
             @if($catalogCoverage['uncovered_modules'] > 0)
                 <span class="badge" style="background:rgba(255,215,64,.12); color:var(--yellow); border-color:rgba(255,215,64,.3);">
-                    ⚠️ {{ $catalogCoverage['uncovered_modules'] }} módulo(s) sem controle
+                    ⚠️ {{ $catalogCoverage['uncovered_modules'] }} módulo(s) sem atividade
                 </span>
             @endif
             <a href="{{ route('atividades.module_coverage') }}" class="btn-primary" style="padding:7px 14px; font-size:12px; text-decoration:none; white-space:nowrap;">
@@ -234,12 +234,12 @@
         <form action="{{ route('atividades.index') }}" method="GET" class="activities-filter-grid">
             <div class="form-group" style="margin-bottom:0">
                 <label>Busca</label>
-                <input type="text" name="search" class="form-input" value="{{ request('search') }}" placeholder="Nome do controle, rotina, observações...">
+                <input type="text" name="search" class="form-input" value="{{ request('search') }}" placeholder="Nome da atividade, rotina, observações...">
             </div>
             <div class="form-group" style="margin-bottom:0">
                 <label>Aplicação em Sistemas</label>
                 <select name="software_id" class="form-select">
-                    <option value="">Todos os controles</option>
+                    <option value="">Todas as atividades</option>
                     <option value="linked" {{ request('software_id') === 'linked' ? 'selected' : '' }}>✓ Em uso em algum módulo</option>
                     <option value="unlinked" {{ request('software_id') === 'unlinked' ? 'selected' : '' }}>○ Disponíveis (sem módulo ainda)</option>
                     <optgroup label="Filtrar por Sistema Vinculado">
@@ -276,9 +276,9 @@
     </div>
 
     <div class="table-header">
-        <h3>Catálogo de Controles ({{ $atividades->count() }})</h3>
+        <h3>Catálogo de Atividades ({{ $atividades->count() }})</h3>
         @if($canManageActivities)
-            <button class="btn-add" @click="openCreate()">+ Novo Controle</button>
+            <button class="btn-add" @click="openCreate()">+ Nova Atividade</button>
         @endif
     </div>
 
@@ -287,7 +287,7 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Controle / Atividade</th>
+                    <th>Atividade</th>
                     <th style="white-space: nowrap;">Categoria</th>
                     <th>Esforço</th>
                     <th>Recorrência</th>
@@ -375,7 +375,7 @@
                         @if($canManageActivities)
                             <td>
                                 <div style="display:flex; gap:10px; align-items:center">
-                                    <form action="{{ route('atividades.duplicate', $atividade) }}" method="POST" onsubmit="return confirm('Deseja duplicar este controle?')">
+                                    <form action="{{ route('atividades.duplicate', $atividade) }}" method="POST" onsubmit="return confirm('Deseja duplicar esta atividade?')">
                                         @csrf
                                         <button type="submit" class="btn-del" title="Duplicar" style="color:var(--cyan); background:none; border:none; cursor:pointer;">⧉</button>
                                     </form>
@@ -385,7 +385,7 @@
                                         style="background:none; border:none; cursor:pointer; font-size:14px"
                                         title="Editar"
                                     >🖊️</button>
-                                    <form action="{{ route('atividades.destroy', $atividade) }}" method="POST" onsubmit="return confirm('Deseja remover este controle do catálogo?')">
+                                    <form action="{{ route('atividades.destroy', $atividade) }}" method="POST" onsubmit="return confirm('Deseja remover esta atividade do catálogo?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn-del" style="background:none; border:none; cursor:pointer; color:var(--red);" title="Excluir">🗑</button>
@@ -399,7 +399,7 @@
                         <td colspan="{{ $canManageActivities ? 8 : 7 }}">
                             <div class="empty-state">
                                 <div class="empty-icon">🧩</div>
-                                <p>Nenhum controle encontrado com os filtros aplicados.</p>
+                                <p>Nenhuma atividade encontrada com os filtros aplicados.</p>
                             </div>
                         </td>
                     </tr>
@@ -442,7 +442,7 @@
                 @endif
                 @if($canManageActivities)
                     <div class="activity-mobile-actions">
-                        <form action="{{ route('atividades.duplicate', $atividade) }}" method="POST" onsubmit="return confirm('Deseja duplicar este controle?')">
+                        <form action="{{ route('atividades.duplicate', $atividade) }}" method="POST" onsubmit="return confirm('Deseja duplicar esta atividade?')">
                             @csrf
                             <button type="submit" class="btn-del" title="Duplicar" aria-label="Duplicar" style="color:var(--cyan); background:none; border:none; cursor:pointer;">⧉ Duplicar</button>
                         </form>
@@ -455,7 +455,7 @@
                             aria-label="Editar"
                             style="color:var(--yellow); background:none; border:none; cursor:pointer;"
                         >✎ Editar</button>
-                        <form action="{{ route('atividades.destroy', $atividade) }}" method="POST" onsubmit="return confirm('Deseja remover este controle?')">
+                        <form action="{{ route('atividades.destroy', $atividade) }}" method="POST" onsubmit="return confirm('Deseja remover esta atividade?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn-del" title="Excluir" aria-label="Excluir" style="color:var(--red); background:none; border:none; cursor:pointer;">× Excluir</button>
@@ -465,16 +465,16 @@
             </article>
         @empty
             <div class="empty-state" style="padding:30px 12px;">
-                <p>Nenhum controle catalogado ainda.</p>
+                <p>Nenhuma atividade catalogada ainda.</p>
             </div>
         @endforelse
     </div>
 
-    <!-- Modal de Criação / Edição do Controle -->
+    <!-- Modal de Criação / Edição da Atividade -->
     <div class="modal-overlay activities-modal-overlay" x-show="showModal" style="display: none;" x-transition>
         <div class="modal activity-modal" @click.away="showModal = false">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h3 style="margin:0;">🧩 <span x-text="editMode ? 'Editar Controle' : 'Novo Controle de Segurança'"></span></h3>
+                <h3 style="margin:0;">🧩 <span x-text="editMode ? 'Editar Atividade' : 'Nova Atividade de Segurança'"></span></h3>
                 <span style="font-size:11px; color:var(--text-3);">Biblioteca Central Reutilizável</span>
             </div>
             
@@ -486,7 +486,7 @@
 
                 <div class="activity-form-grid primary">
                     <div class="form-group" style="grid-column: span 2;">
-                        <label>Nome do Controle <span style="color:var(--red);">*</span></label>
+                        <label>Nome da Atividade <span style="color:var(--red);">*</span></label>
                         <input type="text" name="atividade" x-model="form.atividade" class="form-input" placeholder="Ex: Pentest Upload de Arquivos, Revisão de MFA, Análise SAST..." required />
                     </div>
                     <div class="form-group">
@@ -536,7 +536,7 @@
 
                 <div class="activity-form-grid" style="grid-template-columns: 1fr;">
                     <div class="form-group">
-                        <label>Status do Controle no Catálogo</label>
+                        <label>Status da Atividade no Catálogo</label>
                         <select name="ativo" x-model="form.ativo" class="form-select" required>
                             <option value="1">Ativo (disponível para mapeamento nos módulos)</option>
                             <option value="0">Desabilitado</option>
@@ -545,7 +545,7 @@
                 </div>
 
                 <div style="background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.15); border-radius:6px; padding:10px 12px; margin-top:8px; font-size:11px; color:var(--text-2);">
-                    🔗 <strong style="color:var(--cyan);">Vinculação a Módulos e Sistemas:</strong> Este controle faz parte da biblioteca geral. Para aplicá-lo a módulos específicos de qualquer software, acesse o menu <strong>Mapeamento de Controles por Módulo</strong>.
+                    🔗 <strong style="color:var(--cyan);">Vinculação a Módulos e Sistemas:</strong> Esta atividade faz parte da biblioteca geral. Para aplicá-lo a módulos específicos de qualquer software, acesse o menu <strong>Mapeamento de Atividades por Módulo</strong>.
                 </div>
 
                 <div class="modal-actions" style="margin-top:16px;">

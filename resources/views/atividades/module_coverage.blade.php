@@ -1,7 +1,7 @@
 @extends('layouts.grc')
 
-@section('title', 'Mapeamento de Controles')
-@section('description', 'Módulos cadastrados no inventário e controles de segurança vinculados')
+@section('title', 'Mapeamento de Atividades')
+@section('description', 'Módulos cadastrados no inventário e atividades de segurança vinculadas')
 @section('badge', count($coverage) . ' Módulos')
 
 @section('content')
@@ -128,7 +128,7 @@
         </div>
         <div class="form-group" style="margin:0; display:flex; align-items:center; gap:8px; padding-bottom:8px">
             <label style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-2); text-transform:none">
-                <input type="checkbox" name="uncovered" value="1" @checked($onlyUncovered)> Apenas módulos sem controle ("A decidir")
+                <input type="checkbox" name="uncovered" value="1" @checked($onlyUncovered)> Apenas módulos sem atividade ("A decidir")
             </label>
         </div>
         <button class="btn-add">Ver cobertura</button>
@@ -143,11 +143,11 @@
             <div class="value">{{ count($coverage) }}</div>
         </a>
         <div class="module-coverage-card">
-            <div class="label">Cobertos por controle</div>
+            <div class="label">Cobertos por atividade</div>
             <div class="value" style="color:var(--green)">{{ $covered }}</div>
         </div>
         <a href="{{ route('atividades.module_coverage', array_filter(['software_id' => $selectedSoftwareId, 'uncovered' => 1])) }}" class="module-coverage-card" style="text-decoration:none; cursor:pointer; border-color:{{ $uncovered > 0 ? 'rgba(255,215,64,.35)' : 'var(--border)' }}">
-            <div class="label">A decidir (sem controle)</div>
+            <div class="label">A decidir (sem atividade)</div>
             <div class="value" style="color:var(--yellow)">{{ $uncovered }}</div>
         </a>
     </div>
@@ -267,7 +267,7 @@
                                                     </div>
                                                 @endforeach
                                             @else
-                                                <div style="color:var(--yellow); font-size:11px;">⚠️ Nenhum controle vinculado a este módulo.</div>
+                                                <div style="color:var(--yellow); font-size:11px;">⚠️ Nenhuma atividade vinculada a este módulo.</div>
                                             @endif
                                         </div>
                                         <div>
@@ -304,10 +304,10 @@
                 
                 <div class="form-group">
                     <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <span style="font-weight:600; color:var(--text-1);">Controles de Segurança Vinculados</span>
+                        <span style="font-weight:600; color:var(--text-1);">Atividades de Segurança Vinculadas</span>
                         <span style="font-size:11px; color:var(--cyan); font-weight:normal;" x-text="`${moduleForm.atividade_ids.length} selecionado(s)`"></span>
                     </label>
-                    <input type="text" x-model="activitySearch" placeholder="🔍 Filtrar controles por nome ou categoria..." class="form-input" style="padding:6px 10px; font-size:12px; margin-bottom:8px;">
+                    <input type="text" x-model="activitySearch" placeholder="🔍 Filtrar atividades por nome ou categoria..." class="form-input" style="padding:6px 10px; font-size:12px; margin-bottom:8px;">
                     <div style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:8px; background:rgba(0,0,0,0.18); display:grid; gap:6px;">
                         <template x-for="act in filteredActivities()" :key="act.id">
                             <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer; color:var(--text-2); padding:5px 8px; border-radius:5px; border:1px solid rgba(255,255,255,.05); background:rgba(255,255,255,.015);">
@@ -323,7 +323,7 @@
                             </label>
                         </template>
                         <div x-show="filteredActivities().length === 0" style="font-size:11px; color:var(--text-3); padding:8px; text-align:center;">
-                            Nenhum controle encontrado no catálogo.
+                            Nenhuma atividade encontrada no catálogo.
                         </div>
                     </div>
                 </div>

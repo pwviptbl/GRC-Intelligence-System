@@ -106,7 +106,7 @@ class AtividadeController extends Controller
 
         Atividade::create($this->validatedData($request));
 
-        return redirect()->back()->with('success', 'Controle cadastrado com sucesso no catálogo!');
+        return redirect()->back()->with('success', 'Atividade cadastrada com sucesso no catálogo!');
     }
 
     public function update(Request $request, Atividade $atividade)
@@ -117,7 +117,7 @@ class AtividadeController extends Controller
 
         $atividade->update($this->validatedData($request));
 
-        return redirect()->back()->with('success', 'Controle atualizado com sucesso!');
+        return redirect()->back()->with('success', 'Atividade atualizada com sucesso!');
     }
 
     public function duplicate(Atividade $atividade)
@@ -130,7 +130,7 @@ class AtividadeController extends Controller
         $copia->atividade = $this->nextDuplicateName($atividade->atividade);
         $copia->save();
 
-        return redirect()->back()->with('success', 'Controle duplicado com sucesso!');
+        return redirect()->back()->with('success', 'Atividade duplicada com sucesso!');
     }
 
     public function destroy(Atividade $atividade)
@@ -141,7 +141,7 @@ class AtividadeController extends Controller
 
         $atividade->delete();
 
-        return redirect()->back()->with('success', 'Controle removido do catálogo com sucesso!');
+        return redirect()->back()->with('success', 'Atividade removida do catálogo com sucesso!');
     }
 
     protected function validatedData(Request $request): array
