@@ -274,6 +274,10 @@
             :class="{ 'active': view.includes('politicas') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">📄</span> Políticas
           </a>
+          <a href="{{ route('controles.index') }}" class="nav-btn submenu"
+            :class="{ 'active': view.startsWith('controles.') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🛡️</span> Controles
+          </a>
           <a href="{{ route('atividades.index') }}" class="nav-btn submenu"
             :class="{ 'active': view.includes('atividades') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🧩</span> Catálogo de Atividades

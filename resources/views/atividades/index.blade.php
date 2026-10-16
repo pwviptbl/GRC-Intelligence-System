@@ -545,7 +545,7 @@
                 </div>
 
                 <div style="background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.15); border-radius:6px; padding:10px 12px; margin-top:8px; font-size:11px; color:var(--text-2);">
-                    🔗 <strong style="color:var(--cyan);">Vinculação a Módulos e Sistemas:</strong> Esta atividade faz parte da biblioteca geral. Para aplicá-lo a módulos específicos de qualquer software, acesse o menu <strong>Mapeamento de Atividades por Módulo</strong>.
+                    🔗 <strong style="color:var(--cyan);">Vinculação a Módulos e Sistemas:</strong> Esta atividade faz parte da biblioteca geral. Para aplicá-la a módulos específicos de qualquer software, acesse o menu <strong>Mapeamento de Atividades por Módulo</strong>.
                 </div>
 
                 <div class="modal-actions" style="margin-top:16px;">

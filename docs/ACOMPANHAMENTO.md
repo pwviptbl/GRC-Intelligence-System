@@ -69,7 +69,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 ## 6. Funcionalidades
 
 - [ ] **Controles (cobertura)**: catálogo de controles implantados (SAST, SCA, scan automático, WAF...) e matriz "quem tem / quem não tem" por software, repositório ou ambiente
-  - [ ] Etapa 1: catálogo, matriz e edição manual (status, ferramenta, data, evidência, não se aplica com motivo)
+  - [x] Etapa 1: catálogo, matriz e edição manual (situação, ferramenta, data, evidência, observação), marcação em lote, filtro "só quem não tem" e cobertura por controle (exigido por tier, sem contar o "não se aplica") — 2026-10-16
   - [ ] Etapa 2: verificação automática (scan pelo EASM; SAST/SCA pela data do último envio na API)
   - [ ] Etapa 3: lacuna exigida pelo tier vira card avulso; ferramenta MCP "quem não tem o controle X"
 - [ ] Filtro e vínculo de achados por prefeitura (`engagement_instancias` está vazio)

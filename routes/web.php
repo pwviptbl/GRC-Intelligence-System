@@ -7,6 +7,7 @@ use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CalendarioControleController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\ControleController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\EngagementTestController;
@@ -82,6 +83,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/cobertura-modulos/lote', [AtividadeController::class, 'destroyModulesBatch'])->middleware('role:admin,governanca')->name('atividades.modules.destroy_batch');
         Route::delete('/cobertura-modulos/{softwareModulo}', [AtividadeController::class, 'destroyModule'])->middleware('role:admin,governanca')->name('atividades.modules.destroy');
 
+        Route::get('/controles', [ControleController::class, 'index'])->name('controles.index');
+        Route::post('/controles/{controle}/implantacoes', [ControleController::class, 'salvarImplantacao'])->middleware('role:admin,governanca,operacional')->name('controles.implantacoes.store');
+        Route::post('/controles/{controle}/implantacoes/lote', [ControleController::class, 'salvarLote'])->middleware('role:admin,governanca,operacional')->name('controles.implantacoes.lote');
+
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');
         Route::post('/instancias/{instancia}/scan', [InstanciaClienteController::class, 'scan'])->name('instancias.scan');
@@ -103,6 +108,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('tier_politicas', TierPoliticaController::class)->except(['index']);
         Route::post('/atividades/{atividade}/duplicate', [AtividadeController::class, 'duplicate'])->name('atividades.duplicate');
         Route::resource('atividades', AtividadeController::class)->except(['index', 'create', 'show', 'edit']);
+        Route::resource('controles', ControleController::class)->only(['store', 'update', 'destroy'])->parameters(['controles' => 'controle']);
         Route::resource('instancias', InstanciaClienteController::class)->except(['index']);
         Route::resource('politicas', PoliticaController::class)->except(['index']);
         Route::resource('procedimentos', ProcedimentoController::class)->except(['index']);
