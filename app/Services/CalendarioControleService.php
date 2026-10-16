@@ -10,6 +10,7 @@ use App\Models\SoftwareModulo;
 use App\Models\TierPolitica;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class CalendarioControleService
@@ -119,6 +120,8 @@ class CalendarioControleService
             }
 
             $risk = $this->resolveRelevantRisk($software);
+            // Dentro do tier, entra antes o software com achado aberto mais grave e maior pontuação
+            $pesoSoftware = $this->riskWeight($risk?->severidade) * 100 + (int) $software->classificacao_pontuacao;
             $eventosDoSoftware = $eventos->get($software->id, collect());
             $gruposCobertos = [];
             $escopos = [];
@@ -170,6 +173,7 @@ class CalendarioControleService
                     'categoria' => $activity->categoria,
                     'rotina' => $activity->rotina,
                     'risk' => null,
+                    'peso_software' => $pesoSoftware,
                     'tier' => $tier,
                     'meses' => $meses,
                     'frequencia' => $policy?->frequencia ?: ($activity->frequencia_sugerida ?: $this->rotuloRecorrencia($meses)),
@@ -203,6 +207,7 @@ class CalendarioControleService
                     'categoria' => null,
                     'rotina' => null,
                     'risk' => $risk,
+                    'peso_software' => $pesoSoftware,
                     'tier' => $tier,
                     'meses' => $meses,
                     'frequencia' => $policy->frequencia,
@@ -211,19 +216,10 @@ class CalendarioControleService
             }
         }
 
-        $vencidas = collect($candidatos)
-            ->filter()
-            ->sort(function (array $left, array $right) {
-                // Tier domina; dentro do tier: nunca feito, mais atrasado, maior risco
-                return ($left['tier'] <=> $right['tier'])
-                    ?: ((int) $right['never_tested'] <=> (int) $left['never_tested'])
-                    ?: ($right['atraso_dias'] <=> $left['atraso_dias'])
-                    ?: ($right['weight'] <=> $left['weight'])
-                    ?: strcmp($left['software']->nome, $right['software']->nome)
-                    ?: strcmp((string) ($left['modulo'] ?? ''), (string) ($right['modulo'] ?? ''))
-                    ?: strcmp($left['acao'], $right['acao']);
-            })
-            ->values();
+        $abertosPorSoftware = $eventos->map(fn ($doSoftware) => $doSoftware
+            ->filter(fn (ControleEvento $e) => in_array($e->status, ControleEvento::OPEN_STATUSES, true))
+            ->count());
+        $vencidas = $this->ordenarPorPrioridade(collect($candidatos)->filter(), $abertosPorSoftware);
 
         $criar = function () use ($vencidas, $capacidade, $semanas, $inicioSemana0, $persistir, &$restante, &$ultimaSemana, &$resultado) {
             foreach ($vencidas as $item) {
@@ -269,6 +265,31 @@ class CalendarioControleService
         $resultado['semanas_para_zerar'] = $ultimaSemana + 1;
 
         return $resultado;
+    }
+
+    /**
+     * Ordem de entrada no plano. O tier domina; dentro dele os softwares se alternam, um item de cada
+     * por rodada, começando pelo de maior peso (achado aberto mais grave, depois a pontuação da classificação).
+     * Os cards que o software já tem em aberto contam como rodadas já feitas.
+     * Dentro do software: nunca feito, vencimento mais antigo e a ordem do catálogo de atividades.
+     */
+    protected function ordenarPorPrioridade(Collection $candidatos, Collection $abertosPorSoftware): Collection
+    {
+        return $candidatos
+            ->groupBy(fn (array $item) => $item['software']->id)
+            ->flatMap(fn (Collection $itens, $softwareId) => $itens
+                ->sort(fn (array $left, array $right) => ((int) $right['never_tested'] <=> (int) $left['never_tested'])
+                    ?: ($left['vence_em'] <=> $right['vence_em'])
+                    ?: (($left['activity']?->id ?? PHP_INT_MAX) <=> ($right['activity']?->id ?? PHP_INT_MAX))
+                    ?: strcmp((string) ($left['modulo'] ?? ''), (string) ($right['modulo'] ?? ''))
+                    ?: strcmp($left['acao'], $right['acao']))
+                ->values()
+                ->map(fn (array $item, int $ordem) => $item + ['rodada' => $abertosPorSoftware->get($softwareId, 0) + $ordem]))
+            ->sort(fn (array $left, array $right) => ($left['tier'] <=> $right['tier'])
+                ?: ($left['rodada'] <=> $right['rodada'])
+                ?: ($right['peso_software'] <=> $left['peso_software'])
+                ?: strcmp($left['software']->nome, $right['software']->nome))
+            ->values();
     }
 
     /**
@@ -366,7 +387,6 @@ class CalendarioControleService
             'vence_em' => $venceEm,
             'atraso_dias' => max(0, (int) $venceEm->diffInDays(now()->startOfDay(), false)),
             'semana_vencimento' => $this->indiceSemana(now()->startOfWeek(Carbon::MONDAY), $venceEm),
-            'weight' => $this->priorityWeight($item['tier'], $item['risk'], $neverTested),
         ];
     }
 
@@ -619,25 +639,6 @@ class CalendarioControleService
             2 => 'Média',
             default => 'Baixa',
         };
-    }
-
-    protected function priorityWeight(int $tier, ?Finding $risk, bool $neverTested = false): int
-    {
-        // BUG #1 FIX: Tier é fator dominante (escala de milhar).
-        // Risco e nunca-testado desempate DENTRO do mesmo tier, nunca cruzam tiers.
-        $tierWeight = match ($tier) {
-            1 => 3000,
-            2 => 2000,
-            default => 1000,
-        };
-
-        // Software nunca testado nesta ação recebe boost dentro do tier
-        $virginBoost = $neverTested ? 500 : 0;
-
-        // Risco é fator secundário — max 40 pontos (Critico=4 × 10)
-        $riskWeight = $risk ? $this->riskWeight($risk->severidade) * 10 : 0;
-
-        return $tierWeight + $virginBoost + $riskWeight;
     }
 
     protected function buildGenerationNotes(Software $software, ?Finding $risk, bool $neverTested = false, ?Atividade $activity = null, ?string $modulo = null): string

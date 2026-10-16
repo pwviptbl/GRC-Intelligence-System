@@ -19,13 +19,15 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído · `[-]` desca
 - [x] Auditoria: senha e token mascarados nos eventos novos — 2026-10-15, `f0ac245`
 - [x] Controles: gerador não ressuscita cards dispensados; dispensa com motivo e histórico; `controles:marcar-atrasados` diário — 2026-10-15, `172894b`
 - [x] Catálogo de controles: Nmap automático (EASM diário), SAST no CI, DAST só no E-cidade Niterói PHP 7.4 por módulo — 2026-10-15 (dados)
-- [x] Calendário de controles planeja por capacidade: recorrência pela política do tier do software, sem card duplicado de política coberta por atividade, fila e projeção na tela, dispensa "neste ciclo" ou "não se aplica", um gerador só (o Planejamento Semanal não cria mais cards) — 2026-10-15
-- [x] MCP: token fixo religado (só LAN) com token novo; Antigravity configurado via `Authorization: Bearer` — 2026-10-15 (configuração, sem commit)
+- [x] Calendário de controles planeja por capacidade: recorrência pela política do tier do software, sem card duplicado de política coberta por atividade, fila e projeção na tela, dispensa "neste ciclo" ou "não se aplica", um gerador só (o Planejamento Semanal não cria mais cards) — 2026-10-15, `4adb301`
+- [x] Plano intercala os softwares do mesmo tier (um item de cada por rodada, começando pelo achado aberto mais grave e pela maior pontuação); antes o desempate pelo nome dava as 4 semanas a um software só — 2026-10-16
+- [x] MCP: token fixo religado (só LAN) com token novo em `/root/grc-mcp-token.txt` no host — 2026-10-15 (configuração, sem commit)
+- [~] MCP: o Antigravity (192.168.1.208) envia um token, mas não o do arquivo — 401 até 16/10 02:57 UTC; falta corrigir o `mcp_config.json`
 
 ## 2. Correções de dados em produção (aguardando aval)
 
 - [-] **A.** Restaurar os 219 controles dispensados — substituído pela limpeza da fila depois do novo planejador
-- [ ] **A2.** Limpar a fila antiga (229 sugestões e 51 "atrasados" criados automaticamente) e gerar o plano com as regras novas
+- [ ] **A2.** Limpar a fila antiga e gerar o plano com as regras novas. Ensaiado em 16/10 numa cópia da produção: 282 cards (229 sugestões, 51 atrasados e 2 planejados, todos automáticos e sem executor, triagem, nota, anexo ou etapa) e 557 linhas de histórico; o plano de 4 semanas cria 14 cards (64 pts) e 167 itens (756 pts) ficam na fila
 - [x] **A3.** Atividades vinculadas às políticas (7 pentests, teste manual, SCA, diretórios): herdam a frequência do tier — 2026-10-15 (dados, `e71314d`)
 - [ ] **B.** Mascarar `current_password` em 4 eventos antigos de `audit_events` e trocar as senhas expostas
 - [ ] **C.** Corrigir o texto do finding #24 ("renovado" → "não foi renovado e vence em 22/10/2026")

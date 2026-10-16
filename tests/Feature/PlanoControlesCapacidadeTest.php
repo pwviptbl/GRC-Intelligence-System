@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Atividade;
 use App\Models\ControleEvento;
+use App\Models\Engagement;
+use App\Models\EngagementTest;
+use App\Models\Finding;
 use App\Models\Software;
 use App\Models\TierPolitica;
 use App\Models\User;
@@ -96,6 +99,31 @@ class PlanoControlesCapacidadeTest extends TestCase
 
         $this->assertSame(1, ControleEvento::where('software_id', $critico->id)->count());
         $this->assertSame(0, ControleEvento::where('software_id', $baixo->id)->count());
+    }
+
+    public function test_softwares_do_mesmo_tier_se_alternam_e_o_de_achado_mais_grave_comeca(): void
+    {
+        $alfa = $this->software('Alfa', 3);
+        $beta = $this->software('Beta', 3, autenticacao: 1);
+        $gama = $this->software('Gama', 3);
+        $this->achadoAberto($beta, 'critico');
+        $this->politica(1, 'Controle base', 'Anual');
+        $this->atividade('Atividade A', 'M', 1);
+        $this->atividade('Atividade B', 'M', 1);
+
+        // 8 pts na semana: dois cards M. Beta tem achado crítico aberto; Alfa e Gama empatam (desempate pelo nome).
+        $this->post(route('calendario_controles.generate'), ['somente_atividades' => 1, 'semanas' => 1]);
+
+        $this->assertSame(['Atividade A'], ControleEvento::where('software_id', $beta->id)->pluck('acao_controle_snapshot')->all());
+        $this->assertSame(['Atividade A'], ControleEvento::where('software_id', $alfa->id)->pluck('acao_controle_snapshot')->all());
+        $this->assertSame(0, ControleEvento::where('software_id', $gama->id)->count());
+
+        // Na semana seguinte Gama recebe a primeira antes de Beta receber a segunda
+        $this->post(route('calendario_controles.generate'), ['somente_atividades' => 1, 'semanas' => 2]);
+
+        $this->assertSame(['Atividade A'], ControleEvento::where('software_id', $gama->id)->pluck('acao_controle_snapshot')->all());
+        $this->assertSame(2, ControleEvento::where('software_id', $beta->id)->count());
+        $this->assertSame(1, ControleEvento::where('software_id', $alfa->id)->count());
     }
 
     public function test_atividade_herda_frequencia_da_politica_do_tier_do_software(): void
@@ -237,7 +265,7 @@ class PlanoControlesCapacidadeTest extends TestCase
         $this->assertSame(1, ControleEvento::count());
     }
 
-    protected function software(string $nome, int $nivel): Software
+    protected function software(string $nome, int $nivel, ?int $autenticacao = null): Software
     {
         return Software::create([
             'nome' => $nome,
@@ -246,7 +274,31 @@ class PlanoControlesCapacidadeTest extends TestCase
             'exposicao_nivel' => $nivel,
             'dados_sensibilidade_nivel' => $nivel,
             'criticidade_operacional_nivel' => $nivel,
-            'autenticacao_nivel' => $nivel,
+            'autenticacao_nivel' => $autenticacao ?? $nivel,
+        ]);
+    }
+
+    protected function achadoAberto(Software $software, string $severidade): Finding
+    {
+        $engagement = Engagement::create([
+            'software_id' => $software->id,
+            'nome' => 'Pentest',
+            'tipo' => 'pentest',
+            'status' => 'ativo',
+        ]);
+        $teste = EngagementTest::create([
+            'engagement_id' => $engagement->id,
+            'titulo' => 'Teste',
+            'tipo_teste' => 'dast',
+            'status' => 'concluido',
+        ]);
+
+        return Finding::create([
+            'test_id' => $teste->id,
+            'titulo' => 'Achado aberto',
+            'descricao' => 'Falha encontrada.',
+            'severidade' => $severidade,
+            'status' => 'aberto',
         ]);
     }
 
