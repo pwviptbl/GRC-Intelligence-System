@@ -13,11 +13,27 @@ use App\Models\TierPolitica;
 use App\Models\User;
 use App\Services\Agent\GrcToolRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class CalendarioControleSuggestionFlowTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // O plano depende do dia da semana (a semana atual só tem os dias úteis restantes)
+        Carbon::setTestNow(Carbon::parse('2026-10-12 10:00:00')); // segunda-feira
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_generate_creates_suggestions_instead_of_operational_items(): void
     {

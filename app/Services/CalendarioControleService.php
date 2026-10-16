@@ -48,7 +48,8 @@ class CalendarioControleService
     {
         $catalogOnly = (bool) ($filters['somente_atividades'] ?? false);
         $semanas = max(1, min(12, (int) ($filters['semanas'] ?? self::HORIZONTE_PADRAO_SEMANAS)));
-        $inicioSemana0 = now()->startOfWeek(Carbon::MONDAY);
+        // No fim de semana o plano começa na segunda seguinte
+        $inicioSemana0 = now()->isWeekend() ? now()->next(Carbon::MONDAY)->startOfDay() : now()->startOfWeek(Carbon::MONDAY);
         $fimHorizonte = $inicioSemana0->copy()->addWeeks($semanas)->subDay()->endOfDay();
         $capacidade = $this->capacidadeSemanal();
 
@@ -82,8 +83,10 @@ class CalendarioControleService
             ->get(['id', 'software_id', 'modulo', 'atividade_id', 'tier_politica_id', 'acao_controle_snapshot', 'status', 'concluido_em', 'dispensado_em', 'dispensa_tipo', 'updated_at'])
             ->groupBy('software_id');
 
+        // A semana atual só tem a capacidade dos dias úteis que ainda restam
+        $restante = [0 => $capacidade * $this->fracaoUtilRestante($inicioSemana0)];
+
         // Carga que já está na fila (de todos os softwares: a capacidade é da equipe)
-        $restante = [];
         $ultimaSemana = -1;
         ControleEvento::query()
             ->whereIn('status', array_diff(ControleEvento::OPEN_STATUSES, ['bloqueado']))
@@ -227,7 +230,7 @@ class CalendarioControleService
                 $resultado['vencidas']++;
                 $resultado['vencidas_pontos'] += $pontos;
 
-                $semana = $this->alocar($restante, $capacidade, $item['semana_vencimento'], $pontos);
+                $semana = $this->alocar($restante, $capacidade, $this->indiceSemana($inicioSemana0, $item['vence_em']), $pontos);
                 $ultimaSemana = max($ultimaSemana, $semana);
 
                 if ($semana >= $semanas) {
@@ -386,7 +389,6 @@ class CalendarioControleService
             'never_tested' => $neverTested,
             'vence_em' => $venceEm,
             'atraso_dias' => max(0, (int) $venceEm->diffInDays(now()->startOfDay(), false)),
-            'semana_vencimento' => $this->indiceSemana(now()->startOfWeek(Carbon::MONDAY), $venceEm),
         ];
     }
 
@@ -463,6 +465,18 @@ class CalendarioControleService
         }
 
         return $primeira;
+    }
+
+    /**
+     * Fração da semana que começa em $inicioSemana0 que ainda está disponível: segunda = 1, sexta = 0,2.
+     */
+    protected function fracaoUtilRestante(Carbon $inicioSemana0): float
+    {
+        if ($inicioSemana0->isAfter(now())) {
+            return 1.0;
+        }
+
+        return max(0, 6 - now()->dayOfWeekIso) / 5;
     }
 
     protected function indiceSemana(Carbon $inicioSemana0, $data): int

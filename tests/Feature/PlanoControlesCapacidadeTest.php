@@ -24,7 +24,7 @@ class PlanoControlesCapacidadeTest extends TestCase
     {
         parent::setUp();
 
-        Carbon::setTestNow(Carbon::parse('2026-10-14 10:00:00')); // quarta-feira
+        Carbon::setTestNow(Carbon::parse('2026-10-12 10:00:00')); // segunda-feira
 
         // 10 pts/semana, 80% planejável = 8 pts (duas atividades M)
         $this->admin = User::factory()->create([
@@ -85,6 +85,35 @@ class PlanoControlesCapacidadeTest extends TestCase
         $this->post(route('calendario_controles.generate'), ['somente_atividades' => 1, 'semanas' => 2]);
         $this->assertSame(4, ControleEvento::where('software_id', $software->id)->count());
         $this->assertSame(2, ControleEvento::whereDate('data_prevista', '2026-10-23')->count());
+    }
+
+    public function test_semana_atual_so_conta_os_dias_uteis_restantes(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-16 10:00:00')); // sexta-feira: sobra 1/5 da semana (1,6 pts)
+        $this->software('Portal', 3);
+        $this->politica(1, 'Controle base', 'Anual');
+        $this->atividade('Atividade A', 'M', 1);
+        $this->atividade('Atividade B', 'M', 1);
+
+        $this->post(route('calendario_controles.generate'), ['somente_atividades' => 1, 'semanas' => 1]);
+
+        // Só a primeira começa nesta semana; a segunda já cairia na próxima, fora do horizonte
+        $this->assertSame(['Atividade A'], ControleEvento::pluck('acao_controle_snapshot')->all());
+        $this->assertSame('2026-10-16', ControleEvento::first()->data_prevista->toDateString());
+    }
+
+    public function test_no_fim_de_semana_o_plano_comeca_na_segunda(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-17 10:00:00')); // sábado
+        $this->software('Portal', 3);
+        $this->politica(1, 'Controle base', 'Anual');
+        $this->atividade('Atividade A', 'M', 1);
+        $this->atividade('Atividade B', 'M', 1);
+
+        $this->post(route('calendario_controles.generate'), ['somente_atividades' => 1, 'semanas' => 1]);
+
+        $this->assertSame(2, ControleEvento::whereDate('data_prevista', '2026-10-23')->count());
+        $this->assertSame(['semana:2026-W43'], ControleEvento::distinct()->pluck('periodo_referencia')->all());
     }
 
     public function test_software_de_tier_mais_critico_entra_primeiro(): void
