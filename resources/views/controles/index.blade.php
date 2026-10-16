@@ -17,7 +17,7 @@
     .ctl-bar span { display:block; height:100%; }
     .ctl-summary-foot { display:flex; justify-content:space-between; gap:8px; margin-top:9px; font-size:11px; color:var(--text-2); flex-wrap:wrap; }
     .ctl-summary-foot a { color:var(--yellow); text-decoration:none; font-weight:600; }
-    .ctl-filter-grid { display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr auto; gap:12px; align-items:end; }
+    .ctl-filter-grid { display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr 1fr auto; gap:12px; align-items:end; }
     .ctl-matrix { overflow-x:auto; margin-bottom:22px; }
     .ctl-matrix .data-table th.ctl-col { text-align:center; min-width:120px; white-space:normal; }
     .ctl-matrix .data-table td.ctl-cell { text-align:center; }
@@ -125,7 +125,7 @@
                         ? ($resumo['percentual'] >= 80 ? 'var(--green)' : ($resumo['percentual'] >= 50 ? 'var(--yellow)' : 'var(--red)'))
                         : 'var(--text-3)';
                 @endphp
-                <a class="ctl-summary {{ $foco?->id === $controle->id ? 'focused' : '' }}" href="{{ route('controles.index', array_filter(['controle_id' => $controle->id, 'software_id' => $filtros['software_id'] ?? null])) }}" data-resumo="{{ $controle->id }}">
+                <a class="ctl-summary {{ $foco?->id === $controle->id ? 'focused' : '' }}" href="{{ route('controles.index', array_filter(['controle_id' => $controle->id, 'cliente_id' => $filtros['cliente_id'] ?? null, 'software_id' => $filtros['software_id'] ?? null])) }}" data-resumo="{{ $controle->id }}">
                     <div class="ctl-summary-head">
                         <div>
                             <div class="ctl-summary-name">{{ $controle->nome }}</div>
@@ -141,7 +141,7 @@
                         <div class="ctl-summary-foot">
                             <span>{{ $resumo['implantados'] }} de {{ $resumo['escopo'] - $resumo['nao_aplica'] }}@if($resumo['em_implantacao']) · {{ $resumo['em_implantacao'] }} em implantação @endif @if($resumo['nao_aplica']) · {{ $resumo['nao_aplica'] }} n/a @endif</span>
                             @if($resumo['faltam'] > 0)
-                                <span onclick="event.preventDefault(); window.location='{{ route('controles.index', array_filter(['controle_id' => $controle->id, 'status' => 'sem', 'software_id' => $filtros['software_id'] ?? null])) }}'" style="color:var(--yellow); font-weight:600; cursor:pointer;">Ver quem não tem ({{ $resumo['faltam'] }}) ➔</span>
+                                <span onclick="event.preventDefault(); window.location='{{ route('controles.index', array_filter(['controle_id' => $controle->id, 'status' => 'sem', 'cliente_id' => $filtros['cliente_id'] ?? null, 'software_id' => $filtros['software_id'] ?? null])) }}'" style="color:var(--yellow); font-weight:600; cursor:pointer;">Ver quem não tem ({{ $resumo['faltam'] }}) ➔</span>
                             @endif
                         </div>
                     @endif
@@ -172,6 +172,15 @@
                     </select>
                 </div>
                 <div class="form-group" style="margin-bottom:0">
+                    <label>Organização</label>
+                    <select name="cliente_id" class="form-select">
+                        <option value="">Todos</option>
+                        @foreach($clientes as $cliente)
+                            <option value="{{ $cliente->id }}" @selected((string) ($filtros['cliente_id'] ?? '') === (string) $cliente->id)>{{ $cliente->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
                     <label>Software</label>
                     <select name="software_id" class="form-select">
                         <option value="">Todos</option>
@@ -182,7 +191,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:0">
                     <label>Busca</label>
-                    <input type="text" name="busca" class="form-input" value="{{ $filtros['busca'] ?? '' }}" placeholder="Cliente, ambiente, URL...">
+                    <input type="text" name="busca" class="form-input" value="{{ $filtros['busca'] ?? '' }}" placeholder="Organização, ambiente, URL...">
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button type="submit" class="btn-primary" style="height:38px; padding:0 16px;">Filtrar</button>
@@ -199,7 +208,13 @@
             <div class="table-header">
                 <h3>{{ $secao['titulo'] }} ({{ $secao['linhas']->count() }})</h3>
                 @if($secao['tipo'] === 'repositorio')
-                    <span style="font-size:11px; color:var(--text-3);">Repositório padrão do software e, abaixo, os repositórios próprios dos clientes</span>
+                    <span style="font-size:11px; color:var(--text-3);">
+                        @if(! empty($filtros['cliente_id']))
+                            Os repositórios próprios da organização e o padrão dos softwares em que ela não tem repositório próprio
+                        @else
+                            Repositório padrão do software e, abaixo, os repositórios próprios das organizações
+                        @endif
+                    </span>
                 @endif
             </div>
 
@@ -449,8 +464,8 @@
                     </div>
                     <div style="font-size:11px; color:var(--text-3); margin:-6px 0 12px;">
                         <span x-show="controle.aplica_em === 'software'">Uma linha por software.</span>
-                        <span x-show="controle.aplica_em === 'repositorio'">O repositório padrão de cada software e os repositórios próprios dos clientes (campo Git do ambiente).</span>
-                        <span x-show="controle.aplica_em === 'ambiente'">Uma linha por ambiente (cliente × software).</span>
+                        <span x-show="controle.aplica_em === 'repositorio'">O repositório padrão de cada software e os repositórios próprios das organizações (campo Git do ambiente).</span>
+                        <span x-show="controle.aplica_em === 'ambiente'">Uma linha por ambiente (organização × software).</span>
                         O tier do alvo é o do software.
                     </div>
                     <div class="ctl-form-grid" style="grid-template-columns:1fr 1fr;">

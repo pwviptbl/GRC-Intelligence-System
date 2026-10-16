@@ -25,15 +25,22 @@ class ControleCoberturaService
     /**
      * Alvos de um tipo de controle, na ordem da matriz.
      * software: um por software ativo; ambiente: um por ambiente dos softwares ativos;
-     * repositorio: o repositório padrão de cada software e, abaixo dele, os repositórios próprios dos clientes.
+     * repositorio: o repositório padrão de cada software e, abaixo dele, os repositórios próprios das organizações.
+     * Com uma organização, ficam só os softwares que ela usa, os ambientes dela e, no repositório, o padrão
+     * apenas quando algum ambiente dela não tem repositório próprio.
      *
      * @return Collection<int, array{chave: string, software_id: ?int, instancia_cliente_id: ?int, grupo_id: int, grupo: string, nome: string, detalhe: ?string, tier: ?int}>
      */
-    public function alvos(string $aplicaEm, ?int $softwareId = null): Collection
+    public function alvos(string $aplicaEm, ?int $softwareId = null, ?int $clienteId = null): Collection
     {
+        $doCliente = $clienteId
+            ? InstanciaCliente::query()->where('cliente_id', $clienteId)->get(['id', 'software_id', 'git_custom_url'])
+            : null;
+
         $softwares = Software::query()
             ->where('ativo', true)
             ->when($softwareId, fn ($q) => $q->whereKey($softwareId))
+            ->when($doCliente, fn ($q) => $q->whereIn('id', $doCliente->pluck('software_id')))
             ->orderBy('nome')
             ->get();
 
@@ -55,11 +62,12 @@ class ControleCoberturaService
         $instancias = InstanciaCliente::query()
             ->with('cliente:id,nome')
             ->whereIn('software_id', $softwares->pluck('id'))
+            ->when($clienteId, fn ($q) => $q->where('cliente_id', $clienteId))
             ->when($aplicaEm === 'repositorio', fn ($q) => $q->whereNotNull('git_custom_url')->where('git_custom_url', '<>', ''))
             ->get()
             ->groupBy('software_id');
 
-        return $softwares->flatMap(function (Software $software) use ($aplicaEm, $instancias, $doSoftware) {
+        return $softwares->flatMap(function (Software $software) use ($aplicaEm, $instancias, $doSoftware, $doCliente) {
             $ambientes = $instancias->get($software->id, collect())
                 ->sortBy(fn (InstanciaCliente $i) => mb_strtolower(($i->cliente?->nome ?? '').' '.($i->nome_ambiente ?? '')))
                 ->map(fn (InstanciaCliente $i) => [
@@ -68,21 +76,27 @@ class ControleCoberturaService
                     'instancia_cliente_id' => $i->id,
                     'grupo_id' => $software->id,
                     'grupo' => $software->nome,
-                    'nome' => ($i->cliente?->nome ?? 'Sem cliente').($i->nome_ambiente ? ' — '.$i->nome_ambiente : ''),
+                    'nome' => ($i->cliente?->nome ?? 'Sem organização').($i->nome_ambiente ? ' — '.$i->nome_ambiente : ''),
                     'detalhe' => $aplicaEm === 'repositorio' ? $i->git_custom_url : $i->url_principal,
                     'tier' => $software->tier_sugerido,
                 ]);
 
-            return $aplicaEm === 'repositorio' ? collect([$doSoftware($software)])->concat($ambientes) : $ambientes;
+            if ($aplicaEm !== 'repositorio') {
+                return $ambientes;
+            }
+
+            $usaPadrao = ! $doCliente || $doCliente->where('software_id', $software->id)->contains(fn ($i) => blank($i->git_custom_url));
+
+            return collect($usaPadrao ? [$doSoftware($software)] : [])->concat($ambientes);
         })->values();
     }
 
     /**
      * Monta a matriz: uma seção por tipo de alvo, uma coluna por controle e o resumo de cobertura de cada um.
-     * O resumo considera o filtro de software, mas não os de situação e busca.
+     * O resumo considera os filtros de software e organização, mas não os de situação e busca.
      *
      * @param  Collection<int, Controle>  $controles
-     * @param  array{controle_id?: int|string|null, status?: string|null, software_id?: int|string|null, busca?: string|null}  $filtros
+     * @param  array{controle_id?: int|string|null, status?: string|null, software_id?: int|string|null, cliente_id?: int|string|null, busca?: string|null}  $filtros
      */
     public function montar(Collection $controles, array $filtros = []): array
     {
@@ -90,6 +104,7 @@ class ControleCoberturaService
         $status = $filtros['status'] ?? null;
         $busca = trim((string) ($filtros['busca'] ?? ''));
         $softwareId = ! empty($filtros['software_id']) ? (int) $filtros['software_id'] : null;
+        $clienteId = ! empty($filtros['cliente_id']) ? (int) $filtros['cliente_id'] : null;
 
         $implantacoes = ControleImplantacao::query()
             ->with('autor:id,name')
@@ -108,7 +123,7 @@ class ControleCoberturaService
                 continue;
             }
 
-            $linhas = $this->alvos($tipo, $softwareId)->map(function (array $alvo) use ($doTipo, $implantacoes) {
+            $linhas = $this->alvos($tipo, $softwareId, $clienteId)->map(function (array $alvo) use ($doTipo, $implantacoes) {
                 $alvo['celulas'] = [];
 
                 foreach ($doTipo as $controle) {

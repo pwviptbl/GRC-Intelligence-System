@@ -68,6 +68,39 @@ class ControlesCoberturaTest extends TestCase
             ->assertSessionHasErrors('alvo');
     }
 
+    public function test_filtro_por_organizacao_mostra_o_que_vale_para_ela(): void
+    {
+        $portal = $this->software('Portal', 3, ['git_url' => 'https://git.local/portal.git']);
+        $nfse = $this->software('NFS-e', 3, ['git_url' => 'https://git.local/nfse.git']);
+        $portalNiteroi = $this->ambiente($portal, 'Niterói', 'https://git.local/portal-niteroi.git');
+        $portalItaqui = $this->ambiente($portal, 'Itaqui');
+        $nfseItaqui = $this->ambiente($nfse, 'Itaqui');
+        $niteroi = $portalNiteroi->cliente_id;
+        $itaqui = $portalItaqui->cliente_id;
+        $service = app(ControleCoberturaService::class);
+
+        // Niterói só usa o Portal, com repositório próprio: o padrão do Portal não vale para ele
+        $this->assertSame(['s:'.$portal->id], $service->alvos('software', clienteId: $niteroi)->pluck('chave')->all());
+        $this->assertSame(['i:'.$portalNiteroi->id], $service->alvos('ambiente', clienteId: $niteroi)->pluck('chave')->all());
+        $this->assertSame(['i:'.$portalNiteroi->id], $service->alvos('repositorio', clienteId: $niteroi)->pluck('chave')->all());
+
+        // Itaqui usa os repositórios padrão dos dois softwares
+        $this->assertSame(['s:'.$nfse->id, 's:'.$portal->id], $service->alvos('repositorio', clienteId: $itaqui)->pluck('chave')->all());
+        $this->assertSame(['i:'.$nfseItaqui->id, 'i:'.$portalItaqui->id], $service->alvos('ambiente', clienteId: $itaqui)->pluck('chave')->all());
+
+        // A cobertura do card acompanha a organização
+        $scan = $this->controle('Scan automático', 'ambiente');
+        ControleImplantacao::create(['controle_id' => $scan->id, 'instancia_cliente_id' => $portalNiteroi->id, 'status' => 'implantado']);
+
+        $this->assertSame(100, $service->montar(collect([$scan]), ['cliente_id' => $niteroi])['resumos'][$scan->id]['percentual']);
+        $this->assertSame(0, $service->montar(collect([$scan]), ['cliente_id' => $itaqui])['resumos'][$scan->id]['percentual']);
+
+        $this->get(route('controles.index', ['cliente_id' => $itaqui]))
+            ->assertOk()
+            ->assertSee('data-alvo="i:'.$portalItaqui->id.'"', false)
+            ->assertDontSee('data-alvo="i:'.$portalNiteroi->id.'"', false);
+    }
+
     public function test_situacao_e_atualizada_sem_duplicar(): void
     {
         $software = $this->software('Portal', 3);

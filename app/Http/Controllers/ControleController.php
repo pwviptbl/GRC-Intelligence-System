@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Controle;
 use App\Models\ControleImplantacao;
 use App\Models\Software;
@@ -22,6 +23,7 @@ class ControleController extends Controller
             'controle_id' => 'nullable|integer|exists:controles,id',
             'status' => ['nullable', Rule::in(array_merge(['sem'], array_keys(ControleImplantacao::STATUS)))],
             'software_id' => 'nullable|integer|exists:software,id',
+            'cliente_id' => 'nullable|integer|exists:clientes,id',
             'busca' => 'nullable|string|max:120',
         ]);
 
@@ -38,6 +40,7 @@ class ControleController extends Controller
             'filtros' => $filtros,
             'foco' => ! empty($filtros['controle_id']) ? $controles->firstWhere('id', (int) $filtros['controle_id']) : null,
             'softwares' => Software::query()->where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
+            'clientes' => Cliente::query()->whereHas('instancias')->orderBy('nome')->get(['id', 'nome']),
             'statusOptions' => ControleImplantacao::STATUS,
             'alvoOptions' => Controle::ALVOS,
             'tierOptions' => Controle::TIER_OPCOES,
