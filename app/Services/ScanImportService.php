@@ -32,6 +32,17 @@ class ScanImportService
         'grype' => GrypeParser::class,
     ];
 
+    /** @return list<string> */
+    public function parserKeys(): array
+    {
+        return array_keys($this->parsers);
+    }
+
+    public function parser(string $key): ScanParserInterface
+    {
+        return app($this->parsers[$key] ?? throw new \InvalidArgumentException("Ferramenta desconhecida: {$key}"));
+    }
+
     /**
      * Retorna a lista de parsers disponíveis formatados para seleção.
      */

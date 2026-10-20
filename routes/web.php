@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AgenteController;
 use App\Http\Controllers\AlertController;
+use App\Http\Controllers\Api\AgenteApiController;
 use App\Http\Controllers\Api\SecurityApiController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AuditoriaController;
@@ -27,6 +29,7 @@ use App\Http\Controllers\TierPoliticaController;
 use App\Http\Controllers\TreinamentoController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WellKnownMcpController;
+use App\Http\Middleware\AuthenticateAgente;
 use App\Http\Middleware\AuthenticateApiKey;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +59,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Gestão de Usuários (Apenas Admin)
     Route::middleware('role:admin')->group(function () {
         Route::resource('usuarios', UserController::class);
+        Route::get('/agentes', [AgenteController::class, 'index'])->name('agentes.index');
+        Route::post('/agentes', [AgenteController::class, 'store'])->name('agentes.store');
+        Route::patch('/agentes/{agente}', [AgenteController::class, 'update'])->name('agentes.update');
+        Route::post('/agentes/{agente}/token', [AgenteController::class, 'regenerarToken'])->name('agentes.token');
+        Route::delete('/agentes/{agente}', [AgenteController::class, 'destroy'])->name('agentes.destroy');
         Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
         Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('/backups/create', [BackupController::class, 'create'])->name('backups.create');
@@ -231,3 +239,11 @@ Route::prefix('api/v1')->middleware([AuthenticateApiKey::class])->group(function
     Route::get('/findings/{finding}', [SecurityApiController::class, 'getFinding']);
     Route::patch('/findings/{finding}/status', [SecurityApiController::class, 'updateFindingStatus']);
 });
+
+// API dos agentes externos (scanners): só Bearer token de agente (CSRF liberado em bootstrap/app.php)
+Route::prefix('api/agente/v1')
+    ->middleware([AuthenticateAgente::class, 'throttle:120,1'])
+    ->group(function () {
+        Route::get('/alvos', [AgenteApiController::class, 'alvos']);
+        Route::post('/alvos/{instancia}/resultados', [AgenteApiController::class, 'resultados'])->whereNumber('instancia');
+    });

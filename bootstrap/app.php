@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'mcp',
+            'api/agente/*',
         ]);
 
         $middleware->alias([

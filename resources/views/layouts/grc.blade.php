@@ -339,6 +339,9 @@
         <a href="{{ route('usuarios.index') }}" class="nav-btn" :class="{ 'active': view.includes('usuarios') }">
           <span class="icon" style="margin-right: 10px;">👥</span> Usuários
         </a>
+        <a href="{{ route('agentes.index') }}" class="nav-btn" :class="{ 'active': view.startsWith('agentes.') }">
+          <span class="icon" style="margin-right: 10px;">🛰️</span> Agentes
+        </a>
         <a href="{{ route('backups.index') }}" class="nav-btn" :class="{ 'active': view.includes('backups') }">
           <span class="icon" style="margin-right: 10px;">💾</span> Backup e Restauração
         </a>

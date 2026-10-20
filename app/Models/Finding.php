@@ -116,6 +116,7 @@ class Finding extends Model
         'data_limite_correcao',
         'detectado_em',
         'corrigido_em',
+        'ultima_deteccao_em',
     ];
 
     protected $casts = [
@@ -128,6 +129,7 @@ class Finding extends Model
         'data_limite_correcao' => 'date',
         'detectado_em' => 'date',
         'corrigido_em' => 'date',
+        'ultima_deteccao_em' => 'date',
         'duplicado_de_id' => 'integer',
         'regressed_from_id' => 'integer',
         'risco_aceito_por' => 'integer',
