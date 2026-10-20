@@ -157,15 +157,31 @@ class InstanciaCliente extends Model
             ];
         }
 
-        $latestTest = $this->applicableTests()
+        // Varreduras automáticas (EASM e agente, tipo infra) são de perímetro e não contam no ciclo.
+        // Engajamento sem branch vale para todos os ambientes do software.
+        $engIds = $this->getApplicableEngagementIds();
+        $latestTest = EngagementTest::query()
             ->whereIn('status', ['concluido', 'em_andamento'])
+            ->whereHas('engagement', fn ($q) => $q->where('tipo', '<>', 'infra')->where(fn ($q) => $q
+                ->whereIn('id', $engIds)
+                ->orWhere(fn ($q) => $q->where('software_id', $this->software_id)->whereNull('branch_testada')->whereNull('versao_testada'))))
             ->with('engagement')
             ->orderByRaw('COALESCE(data_fim, data_inicio, created_at) DESC')
             ->first();
 
-        $refDate = $latestTest ? ($latestTest->data_fim ?? $latestTest->data_inicio ?? $latestTest->created_at) : null;
+        $testDate = $latestTest ? ($latestTest->data_fim ?? $latestTest->data_inicio ?? $latestTest->created_at) : null;
 
-        if (! $latestTest || ! $refDate) {
+        // Atividade concluída do software (geral ou desta organização) também conta como teste
+        $cardDate = ControleEvento::query()
+            ->where('software_id', $this->software_id)
+            ->where('status', 'concluido')
+            ->whereNotNull('concluido_em')
+            ->where(fn ($q) => $q->whereNull('cliente_id')->orWhere('cliente_id', $this->cliente_id))
+            ->max('concluido_em');
+
+        $refDate = collect([$testDate, $cardDate])->filter()->map(fn ($d) => Carbon::parse($d))->max();
+
+        if (! $refDate) {
             $createdAt = $this->created_at ?? now();
             $diasDesdeCriacao = (int) $createdAt->diffInDays(now());
             $cicloDias = $cicloMeses * 30;
@@ -189,7 +205,7 @@ class InstanciaCliente extends Model
         $dataLimite = $refCarbon->copy()->addMonths($cicloMeses);
         $diasRestantes = (int) now()->startOfDay()->diffInDays($dataLimite->startOfDay(), false);
 
-        $origem = $latestTest->engagement?->branch_testada ? " (branch {$latestTest->engagement->branch_testada})" : '';
+        $origem = $latestTest && $testDate && Carbon::parse($testDate)->equalTo($refDate) && $latestTest->engagement?->branch_testada ? " (branch {$latestTest->engagement->branch_testada})" : '';
 
         if ($diasRestantes < 0) {
             return [

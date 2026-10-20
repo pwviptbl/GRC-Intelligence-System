@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Os cálculos de postura (security_score/test_cycle_status) ficam em cache durante a
         // requisição; qualquer escrita nos dados de que dependem invalida o cache.
-        foreach ([Software::class, InstanciaCliente::class, Engagement::class, EngagementTest::class, Finding::class] as $model) {
+        foreach ([Software::class, InstanciaCliente::class, Engagement::class, EngagementTest::class, Finding::class, ControleEvento::class] as $model) {
             $model::saved(fn () => PostureCache::flush());
             $model::deleted(fn () => PostureCache::flush());
         }

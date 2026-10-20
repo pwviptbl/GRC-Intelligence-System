@@ -169,15 +169,17 @@ class Software extends Model
             ];
         }
 
-        $latestTest = EngagementTest::whereHas('engagement', function ($q) {
-            $q->where('software_id', $this->id);
-        })->whereIn('status', ['concluido', 'em_andamento'])
+        // Varreduras automáticas (EASM e agente, tipo infra) são de perímetro e não contam no ciclo
+        $latestTest = EngagementTest::whereHas('engagement', fn ($q) => $q->where('software_id', $this->id)->where('tipo', '<>', 'infra'))
+            ->whereIn('status', ['concluido', 'em_andamento'])
             ->orderByRaw('COALESCE(data_fim, data_inicio, created_at) DESC')
             ->first();
 
-        $refDate = $latestTest ? ($latestTest->data_fim ?? $latestTest->data_inicio ?? $latestTest->created_at) : null;
+        $testDate = $latestTest ? ($latestTest->data_fim ?? $latestTest->data_inicio ?? $latestTest->created_at) : null;
+        $cardDate = ControleEvento::where('software_id', $this->id)->where('status', 'concluido')->max('concluido_em');
+        $refDate = collect([$testDate, $cardDate])->filter()->map(fn ($d) => Carbon::parse($d))->max();
 
-        if (! $latestTest || ! $refDate) {
+        if (! $refDate) {
             $createdAt = $this->created_at ?? now();
             $diasDesdeCriacao = (int) $createdAt->diffInDays(now());
             $cicloDias = $cicloMeses * 30;
