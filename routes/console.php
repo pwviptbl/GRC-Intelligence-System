@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackupController;
 use App\Models\Finding;
+use App\Services\AgenteService;
 use App\Services\CalendarioControleService;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
@@ -77,4 +78,13 @@ Schedule::command('findings:expire-risk-acceptances')
 // Varredura diária de perímetro e certificados SSL (EASM)
 Schedule::command('easm:scan')
     ->dailyAt('03:30')
+    ->withoutOverlapping();
+
+Artisan::command('agentes:agendar', function (AgenteService $service) {
+    $this->info('Execuções agendadas criadas: '.$service->agendarDevidas());
+})->purpose('Cria as varreduras agendadas dos agentes que já venceram hoje');
+
+// O agente busca a execução no Bastion; aqui só se cria o pedido no horário configurado no painel
+Schedule::command('agentes:agendar')
+    ->everyMinute()
     ->withoutOverlapping();

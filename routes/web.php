@@ -64,6 +64,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/agentes/{agente}', [AgenteController::class, 'update'])->name('agentes.update');
         Route::post('/agentes/{agente}/token', [AgenteController::class, 'regenerarToken'])->name('agentes.token');
         Route::delete('/agentes/{agente}', [AgenteController::class, 'destroy'])->name('agentes.destroy');
+        Route::patch('/agentes/{agente}/agendamento', [AgenteController::class, 'agendamento'])->name('agentes.agendamento');
+        Route::post('/agentes/{agente}/rodar', [AgenteController::class, 'rodar'])->name('agentes.rodar');
+        Route::post('/agentes/execucoes/{execucao}/cancelar', [AgenteController::class, 'cancelar'])->name('agentes.cancelar');
         Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
         Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('/backups/create', [BackupController::class, 'create'])->name('backups.create');
@@ -246,4 +249,7 @@ Route::prefix('api/agente/v1')
     ->group(function () {
         Route::get('/alvos', [AgenteApiController::class, 'alvos']);
         Route::post('/alvos/{instancia}/resultados', [AgenteApiController::class, 'resultados'])->whereNumber('instancia');
+        Route::get('/tarefa', [AgenteApiController::class, 'tarefa']);
+        Route::get('/execucoes/{execucao}', [AgenteApiController::class, 'execucao'])->whereNumber('execucao');
+        Route::post('/execucoes/{execucao}/concluir', [AgenteApiController::class, 'concluir'])->whereNumber('execucao');
     });

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Agente;
+use App\Models\AgenteExecucao;
 use App\Models\Engagement;
 use App\Models\EngagementTest;
 use App\Models\Finding;
@@ -87,6 +88,118 @@ class AgenteService
     }
 
     /**
+     * Cria um pedido de varredura. Sem ambientes: todos os alvos, ou, no agendamento com rodízio,
+     * os N alvos varridos há mais tempo.
+     *
+     * @param  list<int>|null  $instanciaIds
+     */
+    public function solicitar(Agente $agente, ?array $instanciaIds = null, string $origem = 'manual', ?int $userId = null): AgenteExecucao
+    {
+        $query = $this->alvosQuery()->orderByRaw('agente_varrido_em asc nulls first')->orderBy('id');
+
+        if ($instanciaIds !== null) {
+            $query->whereIn('id', $instanciaIds);
+        } elseif ($origem === 'agendada' && $agente->alvos_por_execucao) {
+            $query->limit($agente->alvos_por_execucao);
+        }
+
+        return $agente->execucoes()->create([
+            'origem' => $origem,
+            'status' => 'pendente',
+            'alvos' => $query->pluck('id')->all(),
+            'solicitado_por' => $userId,
+        ]);
+    }
+
+    /**
+     * Cria as execuções agendadas que já venceram hoje (chamado a cada minuto pelo scheduler).
+     * Um agente com execução em aberto não ganha outra: a de hoje sai quando a anterior terminar.
+     */
+    public function agendarDevidas(): int
+    {
+        $criadas = 0;
+
+        foreach (Agente::where('ativo', true)->where('agendamento_ativo', true)->get() as $agente) {
+            $horario = $agente->agendamentoDeHoje();
+            if (! $horario || now()->lt($horario)) {
+                continue;
+            }
+
+            $jaCriada = $agente->execucoes()->where('origem', 'agendada')->where('created_at', '>=', $horario)->exists();
+            $emAberto = $agente->execucoes()->whereIn('status', AgenteExecucao::ABERTAS)->exists();
+            if ($jaCriada || $emAberto) {
+                continue;
+            }
+
+            $this->solicitar($agente, origem: 'agendada');
+            $criadas++;
+        }
+
+        return $criadas;
+    }
+
+    /**
+     * Próxima execução do agente: a que ele já tinha começado (reinício do agente) ou a mais antiga na fila.
+     * Execução sem notícia há muito tempo é dada como falha.
+     */
+    public function proximaTarefa(Agente $agente): ?AgenteExecucao
+    {
+        $agente->execucoes()
+            ->where('status', 'em_andamento')
+            ->where('updated_at', '<', now()->subHours(AgenteExecucao::HORAS_SEM_RETORNO))
+            ->update(['status' => 'falha', 'finalizado_em' => now(), 'mensagem' => 'Sem retorno do agente por '.AgenteExecucao::HORAS_SEM_RETORNO.'h.']);
+
+        $execucao = $agente->execucoes()->where('status', 'em_andamento')->reorder('id')->first()
+            ?? $agente->execucoes()->where('status', 'pendente')->reorder('id')->first();
+
+        if ($execucao && $execucao->status === 'pendente') {
+            $execucao->update(['status' => 'em_andamento', 'iniciado_em' => now()]);
+        }
+
+        return $execucao;
+    }
+
+    /**
+     * Descrição dos alvos de uma execução, só dos que continuam na lista (porta aberta, software ativo).
+     */
+    public function alvosDaExecucao(AgenteExecucao $execucao): array
+    {
+        return $this->alvosQuery()
+            ->whereIn('id', $execucao->alvos ?? [])
+            ->with(['cliente:id,nome', 'software:id,nome', 'portasAbertas'])
+            ->orderByRaw('agente_varrido_em asc nulls first')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (InstanciaCliente $i) => $this->descreverAlvo($i))
+            ->filter(fn (array $alvo) => $alvo['host'])
+            ->values()
+            ->all();
+    }
+
+    public function registrarProgresso(AgenteExecucao $execucao, array $resultado): void
+    {
+        $resumo = $execucao->resumo ?? [];
+        foreach (['novos', 'repetidos', 'reabertos', 'fechados', 'informativos_ignorados'] as $campo) {
+            $resumo[$campo] = ($resumo[$campo] ?? 0) + ($resultado[$campo] ?? 0);
+        }
+
+        $execucao->update(['resumo' => $resumo, 'alvos_processados' => $execucao->alvos_processados + 1]);
+    }
+
+    public function concluir(AgenteExecucao $execucao, bool $sucesso, ?string $mensagem = null): void
+    {
+        if (! $execucao->aberta) {
+            return;
+        }
+
+        $execucao->update([
+            'status' => $sucesso ? 'concluida' : 'falha',
+            'finalizado_em' => now(),
+            'mensagem' => $mensagem ? mb_substr($mensagem, 0, 4000) : null,
+        ]);
+    }
+
+    /**
      * Importa o resultado de uma varredura recorrente: o que repete atualiza a última detecção,
      * o que é novo vira achado, o que sumiu é fechado e o informativo é ignorado.
      */
@@ -162,6 +275,8 @@ class AgenteService
                 'status' => 'concluido',
                 'data_fim' => now()->toDateString(),
             ]);
+
+            $instancia->forceFill(['agente_varrido_em' => now()])->saveQuietly();
 
             return ['teste_id' => $teste->id, 'ferramenta' => $parser->getName()] + $contagem;
         });

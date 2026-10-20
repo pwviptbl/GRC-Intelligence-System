@@ -29,6 +29,7 @@ class InstanciaCliente extends Model
 
     protected $casts = [
         'ultimo_scan_em' => 'datetime',
+        'agente_varrido_em' => 'datetime',
     ];
 
     protected static function booted(): void

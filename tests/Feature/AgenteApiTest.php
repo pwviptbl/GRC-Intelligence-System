@@ -3,14 +3,17 @@
 namespace Tests\Feature;
 
 use App\Models\Agente;
+use App\Models\AgenteExecucao;
 use App\Models\Cliente;
 use App\Models\Finding;
 use App\Models\InstanciaCliente;
 use App\Models\InstanciaPortaServico;
 use App\Models\Software;
 use App\Models\User;
+use App\Services\AgenteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -120,19 +123,120 @@ class AgenteApiTest extends TestCase
         $this->get(route('agentes.index'))->assertForbidden();
     }
 
+    public function test_painel_pede_execucao_e_agente_recebe_a_tarefa(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'active' => true]);
+        $software = $this->software();
+        $bage = $this->ambiente($software, 'Bagé', [443 => 'https']);
+        $this->ambiente($software, 'Itaqui', [80 => 'http']);
+
+        $this->actingAs($admin)->post(route('agentes.rodar', $this->agente), ['escopo' => 'selecionados', 'instancias' => [$bage->id]])
+            ->assertRedirect(route('agentes.index'));
+        $execucao = AgenteExecucao::sole();
+        $this->assertSame([$bage->id], $execucao->alvos);
+        $this->assertSame($admin->id, $execucao->solicitado_por);
+
+        $this->getJson('/api/agente/v1/tarefa', $this->auth())
+            ->assertOk()
+            ->assertJsonPath('execucao.id', $execucao->id)
+            ->assertJsonCount(1, 'execucao.alvos')
+            ->assertJsonPath('execucao.alvos.0.id', $bage->id);
+        $this->assertSame('em_andamento', $execucao->fresh()->status);
+
+        $this->enviar($bage, [$this->item('Painel exposto', 'high')], $execucao->id)->assertCreated();
+        $this->assertSame(1, $execucao->fresh()->alvos_processados);
+        $this->assertSame(1, $execucao->fresh()->resumo['novos']);
+        $this->assertNotNull($bage->fresh()->agente_varrido_em);
+
+        $this->postJson("/api/agente/v1/execucoes/{$execucao->id}/concluir", ['sucesso' => true], $this->auth())
+            ->assertOk()->assertJsonPath('status', 'concluida');
+        $this->getJson('/api/agente/v1/tarefa', $this->auth())->assertJsonPath('execucao', null);
+
+        $this->actingAs($admin)->get(route('agentes.index'))->assertOk()->assertSee('Concluída')->assertSee('1 novo(s)');
+    }
+
+    public function test_execucao_cancelada_recusa_novos_envios(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'active' => true]);
+        $bage = $this->ambiente($this->software(), 'Bagé', [443 => 'https']);
+        $execucao = app(AgenteService::class)->solicitar($this->agente);
+        $this->getJson('/api/agente/v1/tarefa', $this->auth())->assertOk();
+
+        $this->actingAs($admin)->post(route('agentes.cancelar', $execucao))->assertRedirect();
+
+        $this->getJson("/api/agente/v1/execucoes/{$execucao->id}", $this->auth())->assertJsonPath('continuar', false);
+        $this->enviar($bage, [$this->item('Painel exposto', 'high')], $execucao->id)->assertStatus(409);
+        $this->assertSame(0, Finding::count());
+    }
+
+    public function test_agendamento_cria_uma_execucao_por_dia_com_rodizio(): void
+    {
+        Carbon::setTestNow('2026-10-24 02:05:00'); // sábado
+        $software = $this->software();
+        $antigo = $this->ambiente($software, 'Bagé', [443 => 'https']);
+        $novo = $this->ambiente($software, 'Itaqui', [443 => 'https']);
+        $nunca = $this->ambiente($software, 'Charqueadas', [443 => 'https']);
+        $antigo->forceFill(['agente_varrido_em' => now()->subDays(10)])->save();
+        $novo->forceFill(['agente_varrido_em' => now()->subDay()])->save();
+
+        $this->agente->update(['agendamento_ativo' => true, 'agendamento_dias' => [6], 'agendamento_hora' => '02:00', 'alvos_por_execucao' => 2]);
+        $service = app(AgenteService::class);
+
+        $this->assertSame(1, $service->agendarDevidas());
+        $this->assertSame([$nunca->id, $antigo->id], AgenteExecucao::sole()->alvos);
+
+        // Mesma janela: não repete; com a anterior concluída, também não repete no mesmo dia
+        $this->assertSame(0, $service->agendarDevidas());
+        AgenteExecucao::query()->update(['status' => 'concluida']);
+        $this->assertSame(0, $service->agendarDevidas());
+
+        Carbon::setTestNow('2026-10-25 02:05:00'); // domingo, fora dos dias
+        $this->assertSame(0, $service->agendarDevidas());
+        $this->assertSame('2026-10-31 02:00', $this->agente->fresh()->proximoAgendamento()->format('Y-m-d H:i'));
+        Carbon::setTestNow();
+    }
+
+    public function test_execucao_sem_retorno_vira_falha(): void
+    {
+        $this->ambiente($this->software(), 'Bagé', [443 => 'https']);
+        $velha = app(AgenteService::class)->solicitar($this->agente);
+        $velha->forceFill(['status' => 'em_andamento', 'updated_at' => now()->subDays(2)])->saveQuietly();
+
+        $this->getJson('/api/agente/v1/tarefa', $this->auth())->assertJsonPath('execucao', null);
+        $this->assertSame('falha', $velha->fresh()->status);
+    }
+
+    public function test_admin_configura_agendamento(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin', 'active' => true]));
+
+        $this->patch(route('agentes.agendamento', $this->agente), ['agendamento_ativo' => 1, 'agendamento_hora' => '02:00'])
+            ->assertSessionHasErrors('agendamento_dias');
+
+        $this->patch(route('agentes.agendamento', $this->agente), [
+            'agendamento_ativo' => 1, 'agendamento_dias' => [6], 'agendamento_hora' => '03:30', 'alvos_por_execucao' => 7,
+        ])->assertRedirect(route('agentes.index'))->assertSessionHasNoErrors();
+
+        $agente = $this->agente->fresh();
+        $this->assertSame([6], $agente->agendamento_dias);
+        $this->assertSame('03:30', $agente->agendamento_hora);
+        $this->assertSame(7, $agente->alvos_por_execucao);
+    }
+
     protected function auth(): array
     {
         return ['Authorization' => 'Bearer '.$this->token];
     }
 
-    protected function enviar(InstanciaCliente $ambiente, array $itens)
+    protected function enviar(InstanciaCliente $ambiente, array $itens, ?int $execucaoId = null)
     {
         $conteudo = implode("\n", array_map('json_encode', $itens));
 
-        return $this->post("/api/agente/v1/alvos/{$ambiente->id}/resultados", [
+        return $this->post("/api/agente/v1/alvos/{$ambiente->id}/resultados", array_filter([
             'ferramenta' => 'nuclei',
             'arquivo' => UploadedFile::fake()->createWithContent('nuclei.jsonl', $conteudo),
-        ], $this->auth() + ['Accept' => 'application/json']);
+            'execucao_id' => $execucaoId,
+        ]), $this->auth() + ['Accept' => 'application/json']);
     }
 
     protected function item(string $nome, string $severidade): array
