@@ -15,6 +15,7 @@ use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\EngagementTestController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\IncidenteController;
+use App\Http\Controllers\InfraMapaController;
 use App\Http\Controllers\InstanciaClienteController;
 use App\Http\Controllers\LgpdController;
 use App\Http\Controllers\McpController;
@@ -97,6 +98,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/controles', [ControleController::class, 'index'])->name('controles.index');
         Route::post('/controles/{controle}/implantacoes', [ControleController::class, 'salvarImplantacao'])->middleware('role:admin,governanca,operacional')->name('controles.implantacoes.store');
         Route::post('/controles/{controle}/implantacoes/lote', [ControleController::class, 'salvarLote'])->middleware('role:admin,governanca,operacional')->name('controles.implantacoes.lote');
+
+        Route::get('/infra', [InfraMapaController::class, 'index'])->name('infra.index');
+        Route::get('/infra/{mapa}', [InfraMapaController::class, 'show'])->name('infra.show');
+        Route::middleware('role:admin,governanca,operacional')->group(function () {
+            Route::post('/infra', [InfraMapaController::class, 'store'])->name('infra.store');
+            Route::patch('/infra/{mapa}', [InfraMapaController::class, 'update'])->name('infra.update');
+            Route::delete('/infra/{mapa}', [InfraMapaController::class, 'destroy'])->name('infra.destroy');
+            Route::post('/infra/{mapa}/componentes', [InfraMapaController::class, 'salvarComponente'])->name('infra.componentes.store');
+            Route::patch('/infra/{mapa}/componentes/{componente}', [InfraMapaController::class, 'salvarComponente'])->name('infra.componentes.update');
+            Route::delete('/infra/{mapa}/componentes/{componente}', [InfraMapaController::class, 'removerComponente'])->name('infra.componentes.destroy');
+            Route::post('/infra/{mapa}/posicoes', [InfraMapaController::class, 'salvarPosicoes'])->name('infra.posicoes');
+            Route::post('/infra/{mapa}/fluxos', [InfraMapaController::class, 'salvarFluxo'])->name('infra.fluxos.store');
+            Route::patch('/infra/{mapa}/fluxos/{fluxo}', [InfraMapaController::class, 'salvarFluxo'])->name('infra.fluxos.update');
+            Route::delete('/infra/{mapa}/fluxos/{fluxo}', [InfraMapaController::class, 'removerFluxo'])->name('infra.fluxos.destroy');
+        });
 
         Route::get('/instancias', [InstanciaClienteController::class, 'index'])->name('instancias.index');
         Route::get('/instancias/export', [InstanciaClienteController::class, 'print'])->name('instancias.export');

@@ -262,6 +262,10 @@
             :class="{ 'active': view.includes('instancias') }">
             <span class="icon" style="opacity: 0.8; margin-right: 10px;">🔗</span> Ambientes
           </a>
+          <a href="{{ route('infra.index') }}" class="nav-btn submenu"
+            :class="{ 'active': view.startsWith('infra.') }">
+            <span class="icon" style="opacity: 0.8; margin-right: 10px;">🗺️</span> Mapa de Infra
+          </a>
         </div>
 
         <div class="nav-folder" @click="menuGovernancaAberto = !menuGovernancaAberto" style="margin-top: 8px;">
