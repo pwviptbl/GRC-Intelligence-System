@@ -79,6 +79,8 @@
             </div>
             @if(! $agente->ativo)
                 <span class="agt-pill agt-off">Desativado</span>
+            @elseif($execucoes->where('agente_id', $agente->id)->where('status', 'em_andamento')->isNotEmpty())
+                <span class="agt-pill agt-on" title="Varredura em andamento: o agente só volta a falar com o Bastion ao fim de cada alvo">Online · rodando</span>
             @elseif($agente->online)
                 <span class="agt-pill agt-on" title="Último contato {{ $agente->ultimo_contato_em->format('d/m/Y H:i:s') }}">Online</span>
             @else
