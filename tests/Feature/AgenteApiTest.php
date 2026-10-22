@@ -130,7 +130,7 @@ class AgenteApiTest extends TestCase
         $bage = $this->ambiente($software, 'Bagé', [443 => 'https']);
         $this->ambiente($software, 'Itaqui', [80 => 'http']);
 
-        $this->actingAs($admin)->post(route('agentes.rodar', $this->agente), ['escopo' => 'selecionados', 'instancias' => [$bage->id]])
+        $this->actingAs($admin)->post(route('agentes.rodar', $this->agente), ['escopo' => 'selecionados', 'perfil' => 'rapido', 'instancias' => [$bage->id]])
             ->assertRedirect(route('agentes.index'));
         $execucao = AgenteExecucao::sole();
         $this->assertSame([$bage->id], $execucao->alvos);
@@ -139,6 +139,7 @@ class AgenteApiTest extends TestCase
         $this->getJson('/api/agente/v1/tarefa', $this->auth())
             ->assertOk()
             ->assertJsonPath('execucao.id', $execucao->id)
+            ->assertJsonPath('execucao.perfil', 'rapido')
             ->assertJsonCount(1, 'execucao.alvos')
             ->assertJsonPath('execucao.alvos.0.id', $bage->id);
         $this->assertSame('em_andamento', $execucao->fresh()->status);
@@ -184,6 +185,7 @@ class AgenteApiTest extends TestCase
 
         $this->assertSame(1, $service->agendarDevidas());
         $this->assertSame([$nunca->id, $antigo->id], AgenteExecucao::sole()->alvos);
+        $this->assertSame('completo', AgenteExecucao::sole()->perfil); // a primeira do mês é completa
 
         // Mesma janela: não repete; com a anterior concluída, também não repete no mesmo dia
         $this->assertSame(0, $service->agendarDevidas());
@@ -193,6 +195,10 @@ class AgenteApiTest extends TestCase
         Carbon::setTestNow('2026-10-25 02:05:00'); // domingo, fora dos dias
         $this->assertSame(0, $service->agendarDevidas());
         $this->assertSame('2026-10-31 02:00', $this->agente->fresh()->proximoAgendamento()->format('Y-m-d H:i'));
+
+        Carbon::setTestNow('2026-10-31 02:05:00'); // sábado seguinte, mesmo mês: rápida
+        $this->assertSame(1, $service->agendarDevidas());
+        $this->assertSame('rapido', AgenteExecucao::latest('id')->first()->perfil);
         Carbon::setTestNow();
     }
 

@@ -185,7 +185,7 @@
                 <tr>
                     <td data-label="#">{{ $execucao->id }}</td>
                     <td data-label="Agente">{{ $execucao->agente?->nome }}</td>
-                    <td data-label="Origem" style="font-size:12px;">{{ $execucao->origem === 'agendada' ? 'Agendada' : 'Manual' }}<div class="agt-sub">{{ $execucao->origem === 'manual' ? ($execucao->solicitante?->name ?? '') : '' }}</div></td>
+                    <td data-label="Origem" style="font-size:12px;">{{ $execucao->origem === 'agendada' ? 'Agendada' : 'Manual' }} · {{ \App\Models\AgenteExecucao::PERFIS[$execucao->perfil] ?? $execucao->perfil }}<div class="agt-sub">{{ $execucao->origem === 'manual' ? ($execucao->solicitante?->name ?? '') : '' }}</div></td>
                     <td data-label="Situação">
                         <span class="agt-st agt-st-{{ $execucao->status }}">{{ $statusExecucao[$execucao->status] }}</span>
                         @if($execucao->mensagem)<div class="agt-sub" style="white-space:pre-line; max-width:280px;">{{ \Illuminate\Support\Str::limit($execucao->mensagem, 200) }}</div>@endif
@@ -250,9 +250,13 @@
     <div class="modal-overlay" x-show="modal === 'rodar'" style="display:none;" x-transition>
         <div class="modal agt-modal">
             <h3>Rodar agora · <span x-text="agente.nome"></span></h3>
-            <p class="agt-dica">O pedido entra na fila e o agente começa em até 30 segundos. Cada ambiente leva de 5 a 20 minutos.</p>
+            <p class="agt-dica">O pedido entra na fila e o agente começa em até 30 segundos. Rápido: CVEs, arquivos expostos, configuração errada, painéis e certificado (~10–15 min por ambiente). Completo: todos os templates do Nuclei (pode passar de 1 hora por ambiente).</p>
             <form method="POST" :action="`/agentes/${agente.id}/rodar`">
                 @csrf
+                <div style="display:flex; gap:16px; margin-bottom:10px;">
+                    <label class="agt-opcao"><input type="radio" name="perfil" value="rapido" checked> Rápido</label>
+                    <label class="agt-opcao"><input type="radio" name="perfil" value="completo"> Completo</label>
+                </div>
                 <label class="agt-opcao"><input type="radio" name="escopo" value="todos" x-model="escopo"> Todos os alvos ({{ $totalAlvos }})</label>
                 <label class="agt-opcao"><input type="radio" name="escopo" value="selecionados" x-model="escopo"> Só os ambientes que eu escolher</label>
 
@@ -282,7 +286,7 @@
     <div class="modal-overlay" x-show="modal === 'agendar'" style="display:none;" x-transition>
         <div class="modal agt-modal">
             <h3>Agendamento · <span x-text="agente.nome"></span></h3>
-            <p class="agt-dica">No horário escolhido o Bastion coloca uma execução na fila. Com “alvos por execução”, cada rodada pega os ambientes varridos há mais tempo, para não pesar nos servidores.</p>
+            <p class="agt-dica">No horário escolhido o Bastion coloca uma execução na fila. Com “alvos por execução”, cada rodada pega os ambientes varridos há mais tempo, para não pesar nos servidores. A primeira execução agendada de cada mês usa o perfil completo; as demais, o rápido.</p>
             <form method="POST" :action="`/agentes/${agente.id}/agendamento`">
                 @csrf @method('PATCH')
                 <div class="form-group">

@@ -93,7 +93,7 @@ class AgenteService
      *
      * @param  list<int>|null  $instanciaIds
      */
-    public function solicitar(Agente $agente, ?array $instanciaIds = null, string $origem = 'manual', ?int $userId = null): AgenteExecucao
+    public function solicitar(Agente $agente, ?array $instanciaIds = null, string $origem = 'manual', ?int $userId = null, string $perfil = 'rapido'): AgenteExecucao
     {
         $query = $this->alvosQuery()->orderByRaw('agente_varrido_em asc nulls first')->orderBy('id');
 
@@ -105,6 +105,7 @@ class AgenteService
 
         return $agente->execucoes()->create([
             'origem' => $origem,
+            'perfil' => $perfil,
             'status' => 'pendente',
             'alvos' => $query->pluck('id')->all(),
             'solicitado_por' => $userId,
@@ -131,7 +132,10 @@ class AgenteService
                 continue;
             }
 
-            $this->solicitar($agente, origem: 'agendada');
+            // Rodízio: a primeira agendada do mês é completa, as demais rápidas
+            $completaNoMes = $agente->execucoes()->where('origem', 'agendada')->where('perfil', 'completo')
+                ->where('created_at', '>=', now()->startOfMonth())->exists();
+            $this->solicitar($agente, origem: 'agendada', perfil: $completaNoMes ? 'rapido' : 'completo');
             $criadas++;
         }
 

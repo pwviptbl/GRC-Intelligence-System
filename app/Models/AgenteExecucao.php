@@ -20,12 +20,18 @@ class AgenteExecucao extends Model
         'cancelada' => 'Cancelada',
     ];
 
+    /** Rápido: templates do que mais aparece (CVE, exposição, configuração, painéis); completo: todos */
+    public const PERFIS = [
+        'rapido' => 'Rápido',
+        'completo' => 'Completo',
+    ];
+
     public const ABERTAS = ['pendente', 'em_andamento'];
 
     /** Sem notícia do agente por esse tempo, a execução em andamento é dada como falha */
     public const HORAS_SEM_RETORNO = 24;
 
-    protected $fillable = ['agente_id', 'origem', 'status', 'alvos', 'alvos_processados', 'resumo', 'mensagem', 'solicitado_por', 'iniciado_em', 'finalizado_em'];
+    protected $fillable = ['agente_id', 'origem', 'perfil', 'status', 'alvos', 'alvos_processados', 'resumo', 'mensagem', 'solicitado_por', 'iniciado_em', 'finalizado_em'];
 
     protected $casts = [
         'alvos' => 'array',

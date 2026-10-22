@@ -58,6 +58,7 @@ class AgenteController extends Controller
     {
         $dados = $request->validate([
             'escopo' => 'required|in:todos,selecionados',
+            'perfil' => 'required|in:'.implode(',', array_keys(AgenteExecucao::PERFIS)),
             'instancias' => 'required_if:escopo,selecionados|array',
             'instancias.*' => 'integer',
         ]);
@@ -66,7 +67,7 @@ class AgenteController extends Controller
             return back()->withErrors(['agente' => "O agente {$agente->nome} está desativado."]);
         }
 
-        $execucao = $this->service->solicitar($agente, $dados['escopo'] === 'todos' ? null : $dados['instancias'], 'manual', $request->user()->id);
+        $execucao = $this->service->solicitar($agente, $dados['escopo'] === 'todos' ? null : $dados['instancias'], 'manual', $request->user()->id, $dados['perfil']);
 
         if ($execucao->alvos === []) {
             $execucao->update(['status' => 'cancelada', 'finalizado_em' => now(), 'mensagem' => 'Nenhum dos ambientes escolhidos está na lista de alvos.']);

@@ -25,12 +25,43 @@ import urllib.error
 import urllib.request
 import uuid
 
-VERSAO = "bastion-agente/1.1"
+VERSAO = "bastion-agente/1.2"
 
 # Perfil conservador: nada de DoS, fuzzing, templates intrusivos ou tentativa de login;
 # sem interactsh (nenhum callback para servidor externo) e com limite de requisições.
 TAGS_EXCLUIDAS = "dos,fuzz,fuzzing,intrusive,bruteforce,brute-force,default-login,headless,osint"
 SEVERIDADES = "low,medium,high,critical"
+
+# Perfil rápido: só os templates do que mais aparece em sistemas web expostos.
+# O completo (todos os templates) roda no rodízio mensal ou quando pedido no painel.
+TAGS_RAPIDO = ("cve,exposure,exposures,misconfig,config,backup,disclosure,logs,debug,"
+               "panel,login,ssl,tls,php,apache,nginx,iis,tomcat,takeover,token,keys,default-page")
+
+
+class SemRedirecionar(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
+
+
+def so_redireciona_para_https(url_http):
+    """True se a URL http apenas redireciona para https (aí varrer o http é trabalho dobrado)."""
+    abrir = urllib.request.build_opener(SemRedirecionar).open
+    try:
+        abrir(urllib.request.Request(url_http, method="GET"), timeout=10)
+        return False
+    except urllib.error.HTTPError as e:
+        return e.code in (301, 302, 303, 307, 308) and (e.headers.get("Location") or "").lower().startswith("https://")
+    except Exception:
+        return False
+
+
+def host_da_url(url):
+    return url.split("://", 1)[1].split("/", 1)[0].split(":")[0]
+
+
+def urls_para_varrer(urls):
+    com_https = {host_da_url(u) for u in urls if u.startswith("https://")}
+    return [u for u in urls if not (u.startswith("http://") and host_da_url(u) in com_https and so_redireciona_para_https(u))]
 
 
 def log(msg):
@@ -76,15 +107,18 @@ def enviar(base, token, alvo_id, caminho, ferramenta="nuclei", execucao_id=None)
     return api(base, token, "POST", f"/api/agente/v1/alvos/{alvo_id}/resultados", corpo, tipo)
 
 
-def comando_nuclei(lista_urls, saida, args):
-    return [
+def comando_nuclei(lista_urls, saida, args, perfil="completo"):
+    cmd = [
         args.nuclei, "-l", lista_urls, "-jsonl", "-o", saida, "-silent", "-no-color",
         "-severity", SEVERIDADES, "-etags", TAGS_EXCLUIDAS, "-ni",
-        "-rl", str(args.rate_limit), "-c", str(args.concorrencia), "-timeout", "10",
+        "-rl", str(args.rate_limit), "-c", str(args.concorrencia), "-timeout", "5",
     ]
+    if perfil == "rapido":
+        cmd += ["-tags", TAGS_RAPIDO]
+    return cmd
 
 
-def varrer_alvo(base, token, alvo, args, execucao_id=None):
+def varrer_alvo(base, token, alvo, args, execucao_id=None, perfil=None):
     """Varre um alvo e envia o resultado. Devolve (ok, mensagem)."""
     rotulo = f"#{alvo['id']} {alvo['organizacao']} | {alvo['software']} | {alvo['host']}"
     if not alvo["urls"]:
@@ -94,15 +128,17 @@ def varrer_alvo(base, token, alvo, args, execucao_id=None):
     with tempfile.TemporaryDirectory(prefix="bastion-") as tmp:
         lista = os.path.join(tmp, "urls.txt")
         saida = os.path.join(tmp, f"nuclei-{alvo['id']}.jsonl")
+        perfil = perfil or args.perfil
+        urls = urls_para_varrer(alvo["urls"])
         with open(lista, "w") as f:
-            f.write("\n".join(alvo["urls"]) + "\n")
+            f.write("\n".join(urls) + "\n")
 
         if args.dry_run:
-            log(f"{rotulo}: {' '.join(alvo['urls'])}")
+            log(f"{rotulo} [{perfil}]: {' '.join(urls)}")
             return True, "dry-run"
 
-        log(f"{rotulo}: varrendo {len(alvo['urls'])} URL(s)")
-        proc = subprocess.run(comando_nuclei(lista, saida, args), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        log(f"{rotulo}: varrendo {len(urls)} URL(s), perfil {perfil}")
+        proc = subprocess.run(comando_nuclei(lista, saida, args, perfil), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
         if proc.returncode != 0:
             # Varredura com erro não é enviada: um resultado incompleto fecharia achados que continuam lá
             msg = f"nuclei falhou ({proc.returncode}): {proc.stderr.strip()[-300:]}"
@@ -134,7 +170,8 @@ def processar_fila(base, token, args):
 
     eid = execucao["id"]
     alvos = execucao["alvos"]
-    log(f"Execução #{eid} ({execucao['origem']}): {len(alvos)} alvo(s)")
+    perfil = execucao.get("perfil") or "completo"
+    log(f"Execução #{eid} ({execucao['origem']}, perfil {perfil}): {len(alvos)} alvo(s)")
 
     falhas = []
     cancelada = False
@@ -146,7 +183,7 @@ def processar_fila(base, token, args):
             cancelada = True
             break
 
-        ok, msg = varrer_alvo(base, token, alvo, args, execucao_id=eid)
+        ok, msg = varrer_alvo(base, token, alvo, args, execucao_id=eid, perfil=perfil)
         if not ok:
             falhas.append(f"#{alvo['id']} {alvo['host']}: {msg}")
 
@@ -188,8 +225,9 @@ def main():
     p.add_argument("--alvo", type=int, action="append", help="id do ambiente (pode repetir)")
     p.add_argument("--enviar", nargs=2, metavar=("ALVO_ID", "ARQUIVO"), help="envia um resultado já existente")
     p.add_argument("--nuclei", default=os.environ.get("NUCLEI_BIN", "nuclei"))
-    p.add_argument("--rate-limit", type=int, default=20, help="requisições por segundo (padrão 20)")
-    p.add_argument("--concorrencia", type=int, default=5)
+    p.add_argument("--rate-limit", type=int, default=40, help="requisições por segundo (padrão 40)")
+    p.add_argument("--concorrencia", type=int, default=10)
+    p.add_argument("--perfil", choices=["rapido", "completo"], default="rapido", help="fora da fila (padrão rapido)")
     args = p.parse_args()
 
     base = os.environ.get("BASTION_URL")

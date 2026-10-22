@@ -77,6 +77,7 @@ class AgenteApiController extends Controller
         return response()->json(['execucao' => [
             'id' => $execucao->id,
             'origem' => $execucao->origem,
+            'perfil' => $execucao->perfil,
             'alvos' => $this->service->alvosDaExecucao($execucao),
         ]]);
     }
