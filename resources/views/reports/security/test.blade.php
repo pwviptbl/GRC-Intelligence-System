@@ -6,7 +6,7 @@
   <div class="report-subtitle">
     Teste: <strong>{{ $engagementTest->titulo }}</strong> · Ferramenta: {{ $engagementTest->ferramenta ?: 'Manual' }}<br>
     Engajamento: <strong>{{ $engagementTest->engagement->nome }}</strong> · Sistema: <strong>{{ $engagementTest->engagement->software->nome }}</strong>
-    @if($engagementTest->retestOf) · 🔄 Reteste do Teste #{{ $engagementTest->retest_of_test_id }} @endif
+    @if($engagementTest->retestOf) · Reteste do Teste #{{ $engagementTest->retest_of_test_id }} @endif
   </div>
 
   {{-- Métricas --}}
@@ -29,7 +29,7 @@
       <div class="finding-header">
         <span class="badge-sev sev-{{ $f->severidade }}">{{ $f->severidade_label }}</span>
         <span class="badge-status">{{ $f->status_label }}</span>
-        @if($f->is_regression)<span class="badge-sev sev-critico">⚠️ REGRESSÃO</span>@endif
+        @if($f->is_regression)<span class="badge-sev sev-critico">REGRESSÃO</span>@endif
         <div class="finding-title" style="margin-left:6px">#{{ $f->id }} - {{ $f->titulo }}</div>
       </div>
       <div class="finding-body">

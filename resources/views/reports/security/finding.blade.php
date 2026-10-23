@@ -63,7 +63,7 @@
     @endif
     @if($finding->is_regression)
       <tr>
-        <td class="meta-cell meta-lbl" style="color:#dc2626">⚠️ Regressão</td>
+        <td class="meta-cell meta-lbl" style="color:#dc2626">Regressão</td>
         <td class="meta-cell" colspan="3" style="color:#dc2626">
           Esta vulnerabilidade reapareceu após ter sido mitigada no achado #{{ $finding->regressed_from_id }}.
         </td>

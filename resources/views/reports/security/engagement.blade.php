@@ -60,7 +60,7 @@
       <div class="finding-header">
         <span class="badge-sev sev-{{ $f->severidade }}">{{ $f->severidade_label }}</span>
         <span class="badge-status">{{ $f->status_label }}</span>
-        @if($f->is_regression)<span class="badge-sev sev-critico">⚠️ REGRESSÃO</span>@endif
+        @if($f->is_regression)<span class="badge-sev sev-critico">REGRESSÃO</span>@endif
         <div class="finding-title" style="margin-left:6px">#{{ $f->id }} - {{ $f->titulo }}</div>
       </div>
       <div class="finding-body">

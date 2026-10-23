@@ -125,7 +125,7 @@
   <table class="header-table">
     <tr>
       <td>
-        <div class="header-logo">🛡️ GRC INTELLIGENCE</div>
+        <div class="header-logo">GRC INTELLIGENCE</div>
         <div style="font-size:10px;color:#64748b">Plataforma de Governança, Riscos, Conformidade e Segurança</div>
       </td>
       <td class="header-meta">

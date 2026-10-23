@@ -42,7 +42,7 @@
           <td class="meta-cell" style="text-align:center">{{ $eng->tipo_label }}</td>
           <td class="meta-cell" style="text-align:center">{{ $eng->status_label }}</td>
           <td class="meta-cell" style="text-align:center">{{ $eng->tests->count() }}</td>
-          <td class="meta-cell" style="text-align:center">{{ $eng->data_inicio?->format('d/m/Y') }} → {{ $eng->data_fim?->format('d/m/Y') ?? 'Atual' }}</td>
+          <td class="meta-cell" style="text-align:center">{{ $eng->data_inicio?->format('d/m/Y') }} a {{ $eng->data_fim?->format('d/m/Y') ?? 'Atual' }}</td>
         </tr>
       @empty
         <tr><td colspan="5" class="meta-cell" style="text-align:center">Nenhum engajamento registrado para este sistema.</td></tr>
@@ -57,7 +57,7 @@
       <div class="finding-header">
         <span class="badge-sev sev-{{ $f->severidade }}">{{ $f->severidade_label }}</span>
         <span class="badge-status">{{ $f->status_label }}</span>
-        @if($f->is_regression)<span class="badge-sev sev-critico">⚠️ REGRESSÃO</span>@endif
+        @if($f->is_regression)<span class="badge-sev sev-critico">REGRESSÃO</span>@endif
         <div class="finding-title" style="margin-left:6px">#{{ $f->id }} - {{ $f->titulo }}</div>
       </div>
       <div class="finding-body">
